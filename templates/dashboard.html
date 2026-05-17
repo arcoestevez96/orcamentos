@@ -17,14 +17,14 @@
   outline: none;
   width: 100%;
 }
-.status-select.fechou  { border-color:#16a34a; color:#4ade80; }
-.status-select.negociando { border-color:#f59e0b; color:#fbbf24; }
-.status-select.perdido { border-color:#ef4444; color:#f87171; }
-.status-select.aberto  { border-color:#6366f1; color:#a5b4fc; }
-.status-select.enviado { border-color:#64748b; color:#94a3b8; }
-.stat-card.fechou .value { color:#4ade80; }
+.status-select.fechou    { border-color:#16a34a; color:#4ade80; }
+.status-select.negociando{ border-color:#f59e0b; color:#fbbf24; }
+.status-select.perdido   { border-color:#ef4444; color:#f87171; }
+.status-select.aberto    { border-color:#6366f1; color:#a5b4fc; }
+.status-select.enviado   { border-color:#64748b; color:#94a3b8; }
+.stat-card.fechou   .value { color:#4ade80; }
 .stat-card.negociando .value { color:#fbbf24; }
-.stat-card.perdido .value { color:#f87171; }
+.stat-card.perdido  .value { color:#f87171; }
 </style>
 </head>
 <body>
@@ -39,20 +39,20 @@
   <div class="page-header">
     <div>
       <h1>Seus Orçamentos</h1>
-      <p>Gerencie e acompanhe todos os orçamentos enviados</p>
+      <p>Acompanhe todos os orçamentos enviados</p>
     </div>
+    <a href="/pdfs" class="btn btn-primary">+ Enviar PDF</a>
   </div>
 
-  {% set total_geral = orcamentos | sum(attribute='total') %}
-  {% set fechados = orcamentos | selectattr('status', 'equalto', 'fechou') | list %}
-  {% set negociando = orcamentos | selectattr('status', 'equalto', 'negociando') | list %}
-  {% set perdidos = orcamentos | selectattr('status', 'equalto', 'perdido') | list %}
-  {% set total_fechado = fechados | sum(attribute='total') %}
+  {% set fechados   = pdfs | selectattr('status', 'equalto', 'fechou')     | list %}
+  {% set negociando = pdfs | selectattr('status', 'equalto', 'negociando') | list %}
+  {% set perdidos   = pdfs | selectattr('status', 'equalto', 'perdido')    | list %}
+  {% set total_fechado = fechados | sum(attribute='valor') %}
 
   <div class="stats">
     <div class="stat-card">
       <div class="label">Total de Orçamentos</div>
-      <div class="value accent">{{ orcamentos | length }}</div>
+      <div class="value accent">{{ pdfs | length }}</div>
     </div>
     <div class="stat-card fechou">
       <div class="label">✅ Fechados</div>
@@ -69,41 +69,53 @@
     </div>
   </div>
 
-  {% if orcamentos %}
+  {% if pdfs %}
   <div class="table-card">
     <table>
       <thead>
         <tr>
           <th>Cliente</th>
           <th>Título</th>
-          <th>Total</th>
-          <th>Criado em</th>
+          <th>Valor</th>
+          <th>Aberturas</th>
+          <th>Enviado em</th>
           <th>Situação</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
-        {% for o in orcamentos %}
-        <tr id="row-{{ o.id }}">
-          <td><strong>{{ o.cliente_nome }}</strong>{% if o.cliente_telefone %}<br><small style="color:var(--text2)">{{ o.cliente_telefone }}</small>{% endif %}</td>
-          <td>{{ o.titulo }}</td>
-          <td style="color:var(--green);font-weight:600">R$ {{ "%.2f"|format(o.total) | replace('.', ',') }}</td>
-          <td style="color:var(--text2);font-size:.85rem">{{ o.criado_em[:10] }}</td>
-          <td style="min-width:130px">
-            <select class="status-select {{ o.status }}" onchange="atualizarStatus({{ o.id }}, this)">
-              <option value="enviado"    {% if o.status == 'enviado'    %}selected{% endif %}>📤 Enviado</option>
-              <option value="aberto"     {% if o.status == 'aberto'     %}selected{% endif %}>👁 Visualizado</option>
-              <option value="negociando" {% if o.status == 'negociando' %}selected{% endif %}>🤝 Negociando</option>
-              <option value="fechou"     {% if o.status == 'fechou'     %}selected{% endif %}>✅ Fechou</option>
-              <option value="perdido"    {% if o.status == 'perdido'    %}selected{% endif %}>❌ Perdido</option>
+        {% for p in pdfs %}
+        <tr>
+          <td>
+            <strong>{{ p.cliente_nome }}</strong>
+            {% if p.cliente_telefone %}<br><small style="color:var(--text2)">{{ p.cliente_telefone }}</small>{% endif %}
+          </td>
+          <td>{{ p.titulo }}</td>
+          <td style="color:var(--green);font-weight:600">
+            {% if p.valor and p.valor > 0 %}R$ {{ "%.2f"|format(p.valor) | replace('.', ',') }}{% else %}<span style="color:var(--text2)">—</span>{% endif %}
+          </td>
+          <td style="text-align:center">
+            {% if p.aberturas and p.aberturas > 0 %}
+              <span style="color:#a5b4fc;font-weight:600">{{ p.aberturas }}x</span>
+              {% if p.aberto_em %}<br><small style="color:var(--text2);font-size:.72rem">{{ p.aberto_em[:16] }}</small>{% endif %}
+            {% else %}
+              <span style="color:var(--text2)">Não aberto</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text2);font-size:.85rem">{{ p.criado_em[:10] }}</td>
+          <td style="min-width:135px">
+            <select class="status-select {{ p.status }}" onchange="atualizarStatus({{ p.id }}, this)">
+              <option value="enviado"    {% if p.status == 'enviado'    %}selected{% endif %}>📤 Enviado</option>
+              <option value="aberto"     {% if p.status == 'aberto'     %}selected{% endif %}>👁 Visualizado</option>
+              <option value="negociando" {% if p.status == 'negociando' %}selected{% endif %}>🤝 Negociando</option>
+              <option value="fechou"     {% if p.status == 'fechou'     %}selected{% endif %}>✅ Fechou</option>
+              <option value="perdido"    {% if p.status == 'perdido'    %}selected{% endif %}>❌ Perdido</option>
             </select>
-            {% if o.aberto_em %}<small style="color:var(--text2);font-size:.72rem;display:block;margin-top:.2rem">Visto: {{ o.aberto_em[:16] }}</small>{% endif %}
           </td>
           <td>
             <div class="actions">
-              <button class="btn btn-green btn-sm" onclick="compartilhar('{{ o.token }}', '{{ o.id }}', '{{ o.cliente_nome }}', '{{ o.cliente_telefone }}')">📤 Enviar</button>
-              <a href="/editar/{{ o.id }}" class="btn btn-secondary btn-sm">✏️</a>
-              <form method="POST" action="/deletar/{{ o.id }}" onsubmit="return confirm('Deletar este orçamento?')">
+              <a href="/pdf/{{ p.token }}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
+              <form method="POST" action="/deletar_pdf/{{ p.id }}" onsubmit="return confirm('Deletar este PDF?')">
                 <button class="btn btn-danger btn-sm">🗑</button>
               </form>
             </div>
@@ -115,7 +127,7 @@
   </div>
   {% else %}
   <div class="empty">
-    <div class="icon">📋</div>
+    <div class="icon">📎</div>
     <h3>Nenhum orçamento ainda</h3>
     <p>Faça upload de um PDF para começar</p>
     <br>
@@ -124,67 +136,16 @@
   {% endif %}
 </div>
 
-<!-- Modal enviar -->
-<div class="modal-overlay" id="modalEnviar">
-  <div class="modal">
-    <h3>📤 Enviar Orçamento</h3>
-    <p style="color:var(--text2);font-size:.9rem;margin-bottom:1rem">Copie o link e envie para o cliente pelo WhatsApp ou email.</p>
-    <div class="link-box" id="linkGerado">Gerando link...</div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="fecharModal()">Fechar</button>
-      <button class="btn btn-green" onclick="copiarLink()">📋 Copiar Link</button>
-      <button class="btn btn-primary" id="btnWhatsApp" onclick="abrirWhatsApp()">💬 WhatsApp</button>
-    </div>
-  </div>
-</div>
-
 <script>
-let linkAtual = '';
-let telAtual = '';
-let idAtual = null;
-
 async function atualizarStatus(id, sel) {
   const status = sel.value;
   sel.className = 'status-select ' + status;
-  await fetch('/atualizar_status/' + id, {
+  await fetch('/atualizar_status_pdf/' + id, {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({status})
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ status })
   });
 }
-
-async function compartilhar(token, id, nome, tel) {
-  idAtual = id;
-  telAtual = tel;
-  document.getElementById('modalEnviar').classList.add('show');
-  document.getElementById('linkGerado').textContent = 'Gerando link...';
-
-  const res = await fetch('/link/' + token);
-  const data = await res.json();
-  linkAtual = data.link;
-  document.getElementById('linkGerado').textContent = linkAtual;
-
-  await fetch('/marcar_enviado/' + id, { method: 'POST' });
-}
-
-function fecharModal() {
-  document.getElementById('modalEnviar').classList.remove('show');
-}
-
-function copiarLink() {
-  navigator.clipboard.writeText(linkAtual);
-  alert('Link copiado!');
-}
-
-function abrirWhatsApp() {
-  const msg = encodeURIComponent('Olá! Segue o link do seu orçamento: ' + linkAtual);
-  const tel = telAtual.replace(/\D/g, '');
-  window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
-}
-
-document.getElementById('modalEnviar').addEventListener('click', function(e) {
-  if (e.target === this) fecharModal();
-});
 </script>
 </body>
 </html>

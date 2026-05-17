@@ -68,8 +68,10 @@ def init_db():
                 id SERIAL PRIMARY KEY, token TEXT UNIQUE NOT NULL,
                 cliente_nome TEXT NOT NULL, cliente_telefone TEXT, titulo TEXT NOT NULL,
                 arquivo BYTEA, filename TEXT, status TEXT DEFAULT 'enviado',
-                criado_em TEXT NOT NULL, aberto_em TEXT, aberturas INTEGER DEFAULT 0
+                criado_em TEXT NOT NULL, aberto_em TEXT, aberturas INTEGER DEFAULT 0,
+                valor NUMERIC DEFAULT 0
             )''')
+        cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS valor NUMERIC DEFAULT 0')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
@@ -205,9 +207,10 @@ def now_str():
 
 @app.route('/')
 def dashboard():
-    orcamentos = db_exec('SELECT * FROM orcamentos ORDER BY criado_em DESC', fetch='all') or []
-    lista = [{**o, 'total': calcular_total(json.loads(o['itens']))} for o in orcamentos]
-    return render_template('dashboard.html', orcamentos=lista)
+    pdfs = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
+    for p in pdfs:
+        p['valor'] = float(p['valor'] or 0)
+    return render_template('dashboard.html', pdfs=pdfs)
 
 @app.route('/criar', methods=['GET', 'POST'])
 def criar():
@@ -310,15 +313,18 @@ def upload_pdf():
     dados = f.read()
     token = str(uuid.uuid4()).replace('-','')[:16]
     filename = secure_filename(f.filename)
+    valor = request.form.get('valor', '0').replace('R$','').replace('.','').replace(',','.').strip() or '0'
+    try: valor = float(valor)
+    except: valor = 0.0
     if USE_PG:
         import psycopg2
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em) VALUES(%s,%s,%s,%s,%s,%s,%s,%s)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), psycopg2.Binary(dados), filename, 'enviado', now_str()))
+             request.form.get('titulo', filename), psycopg2.Binary(dados), filename, 'enviado', now_str(), valor))
     else:
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em) VALUES(?,?,?,?,?,?,?,?)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(?,?,?,?,?,?,?,?,?)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), dados, filename, 'enviado', now_str()))
+             request.form.get('titulo', filename), dados, filename, 'enviado', now_str(), valor))
     link = f"{get_base_url()}/pdf/{token}"
     cliente_nome = request.form.get('cliente_nome', 'Cliente')
     cliente_tel = request.form.get('cliente_telefone', '').strip()
@@ -367,6 +373,16 @@ def ver_pdf(token):
     arquivo = bytes(p['arquivo']) if p['arquivo'] else b''
     return Response(arquivo, mimetype='application/pdf',
         headers={'Content-Disposition': f'inline; filename="{p["filename"]}"'})
+
+@app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
+def atualizar_status_pdf(id):
+    d = request.get_json()
+    status = d.get('status','')
+    if status not in ['enviado','aberto','fechou','negociando','perdido']:
+        return jsonify({'ok': False})
+    sql = 'UPDATE pdfs SET status=%s WHERE id=%s' if USE_PG else 'UPDATE pdfs SET status=? WHERE id=?'
+    db_exec(sql, (status, id))
+    return jsonify({'ok': True})
 
 @app.route('/deletar_pdf/<int:id>', methods=['POST'])
 def deletar_pdf(id):
