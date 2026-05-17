@@ -58,6 +58,35 @@
     </div>
 
     <div class="config-section">
+      <div class="section-title">💬 Notificação via WhatsApp (Z-API)</div>
+      <div class="info-box">
+        Receba mensagens no WhatsApp toda vez que um cliente abrir seu orçamento ou PDF.<br><br>
+        <strong>Instance ID e Token:</strong> encontrados no painel do Z-API após criar a instância<br>
+        <strong>Client-Token:</strong> encontrado em Segurança no seu perfil do Z-API<br>
+        <strong>Seu número:</strong> com código do país (ex: 5571999990000)
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Instance ID</label>
+          <input type="text" id="zapi_instance" value="{{ cfg.zapi_instance }}" placeholder="Ex: 3F33D695...">
+        </div>
+        <div class="form-group">
+          <label>Token</label>
+          <input type="text" id="zapi_token" value="{{ cfg.zapi_token }}" placeholder="Ex: 61F6350A...">
+        </div>
+        <div class="form-group">
+          <label>Client-Token</label>
+          <input type="text" id="zapi_client_token" value="{{ cfg.zapi_client_token }}" placeholder="Ex: F1d06fb3...">
+        </div>
+        <div class="form-group">
+          <label>Seu número (com código do país)</label>
+          <input type="text" id="zapi_phone" value="{{ cfg.zapi_phone }}" placeholder="Ex: 5571999990000">
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:.8rem" onclick="testarZapi()">📲 Testar WhatsApp</button>
+    </div>
+
+    <div class="config-section">
       <div class="section-title">✈️ Notificação via Telegram</div>
       <div class="info-box">
         Receba uma mensagem no Telegram toda vez que um cliente abrir seu orçamento ou PDF.<br><br>
@@ -149,6 +178,27 @@ async function testarEmail() {
   }
 }
 
+async function testarZapi() {
+  const instance = document.getElementById('zapi_instance').value.trim();
+  const token = document.getElementById('zapi_token').value.trim();
+  const client_token = document.getElementById('zapi_client_token').value.trim();
+  const phone = document.getElementById('zapi_phone').value.trim();
+  if (!instance || !token || !client_token || !phone) return alert('Preencha todos os campos do Z-API e salve primeiro.');
+  const btn = document.querySelector('[onclick="testarZapi()"]');
+  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
+  try {
+    const res = await fetch('/testar_zapi', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ instance, token, client_token, phone })
+    });
+    const data = await res.json();
+    if (data.ok) alert('✅ Mensagem enviada! Verifique seu WhatsApp.');
+    else alert('❌ Erro: ' + (data.erro || data.resposta));
+  } finally {
+    btn.textContent = '📲 Testar WhatsApp'; btn.disabled = false;
+  }
+}
+
 async function testarTelegram() {
   const token = document.getElementById('telegram_token').value.trim();
   const chat_id = document.getElementById('telegram_chat_id').value.trim();
@@ -178,6 +228,10 @@ async function salvar() {
     base_url: document.getElementById('base_url').value.trim(),
     telegram_token: document.getElementById('telegram_token').value.trim(),
     telegram_chat_id: document.getElementById('telegram_chat_id').value.trim(),
+    zapi_instance: document.getElementById('zapi_instance').value.trim(),
+    zapi_token: document.getElementById('zapi_token').value.trim(),
+    zapi_client_token: document.getElementById('zapi_client_token').value.trim(),
+    zapi_phone: document.getElementById('zapi_phone').value.trim(),
   };
   const res = await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
   const data = await res.json();

@@ -70,7 +70,8 @@ def init_db():
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
-                     ('telegram_token',''),('telegram_chat_id','')]:
+                     ('telegram_token',''),('telegram_chat_id',''),
+                     ('zapi_instance',''),('zapi_token',''),('zapi_client_token',''),('zapi_phone','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         con.commit()
         con.close()
@@ -101,6 +102,10 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("email_senha_app","");
             INSERT OR IGNORE INTO config VALUES ("telegram_token","");
             INSERT OR IGNORE INTO config VALUES ("telegram_chat_id","");
+            INSERT OR IGNORE INTO config VALUES ("zapi_instance","");
+            INSERT OR IGNORE INTO config VALUES ("zapi_token","");
+            INSERT OR IGNORE INTO config VALUES ("zapi_client_token","");
+            INSERT OR IGNORE INTO config VALUES ("zapi_phone","");
         ''')
         con.commit()
         con.close()
@@ -156,6 +161,15 @@ def notificar_telegram(token, chat_id, msg):
     except Exception as e:
         return False, str(e)
 
+def notificar_zapi(instance, token, client_token, phone, msg):
+    try:
+        url = f"https://api.z-api.io/instances/{instance}/token/{token}/send-text"
+        headers = {'Content-Type': 'application/json', 'Client-Token': client_token}
+        r = requests.post(url, json={'phone': phone, 'message': msg}, headers=headers, timeout=15)
+        return r.status_code == 200, r.text
+    except Exception as e:
+        return False, str(e)
+
 def notificar(cfg, txt, html=None):
     if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
         notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)
@@ -163,6 +177,8 @@ def notificar(cfg, txt, html=None):
         notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')
     if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
         notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)
+    if cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token') and cfg.get('zapi_phone'):
+        notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], cfg['zapi_phone'], txt)
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -339,6 +355,18 @@ def testar_whatsapp():
     if not numero or not apikey:
         return jsonify({'ok': False, 'erro': 'Preencha número e API Key'})
     ok, resp = notificar_whatsapp(numero, apikey, '✅ Teste do app de Orçamentos! Funcionando.')
+    return jsonify({'ok': ok, 'resposta': resp})
+
+@app.route('/testar_zapi', methods=['POST'])
+def testar_zapi():
+    d = request.get_json()
+    instance = d.get('instance','').strip()
+    token = d.get('token','').strip()
+    client_token = d.get('client_token','').strip()
+    phone = d.get('phone','').strip()
+    if not all([instance, token, client_token, phone]):
+        return jsonify({'ok': False, 'erro': 'Preencha todos os campos'})
+    ok, resp = notificar_zapi(instance, token, client_token, phone, '✅ Teste do app de Orçamentos! WhatsApp funcionando!')
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_telegram', methods=['POST'])
