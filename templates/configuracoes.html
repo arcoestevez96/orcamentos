@@ -44,24 +44,40 @@
     </div>
 
     <div class="config-section">
-      <div class="section-title">📧 Notificação via Email (Gmail)</div>
-      <div class="info-box">
-        <strong>Como configurar em 1 minuto:</strong><br><br>
-        <strong>1.</strong> Acesse <strong>myaccount.google.com/apppasswords</strong><br>
-        <strong>2.</strong> Em "Nome do app" escreva <strong>Orçamentos</strong> e clique em Criar<br>
-        <strong>3.</strong> Copie a senha de 16 letras gerada e cole abaixo
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Seu Gmail</label>
-          <input type="email" id="email_remetente" value="{{ cfg.email_remetente }}" placeholder="seuemail@gmail.com">
+      <div class="section-title">📧 Notificação via Gmail</div>
+
+      <!-- Estado: conectado -->
+      <div id="gmail-conectado" style="display:{% if cfg.gmail_refresh_token %}flex{% else %}none{% endif %};align-items:center;gap:1rem;flex-wrap:wrap;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:1rem 1.2rem">
+        <span style="font-size:1.5rem">✅</span>
+        <div style="flex:1">
+          <strong style="color:#4ade80">Gmail conectado</strong><br>
+          <span id="gmail-email-label" style="font-size:.85rem;color:#94a3b8">{{ cfg.gmail_email }}</span>
         </div>
-        <div class="form-group">
-          <label>Senha de App (16 caracteres)</label>
-          <input type="password" id="email_senha_app" value="{{ cfg.email_senha_app }}" placeholder="xxxx xxxx xxxx xxxx">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="testarGmail()">📧 Testar</button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)" onclick="desconectarGmail()">Desconectar</button>
         </div>
       </div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:.8rem" onclick="testarEmail()">📧 Testar Email</button>
+
+      <!-- Estado: não conectado -->
+      <div id="gmail-desconectado" style="display:{% if cfg.gmail_refresh_token %}none{% else %}block{% endif %}">
+        <div class="info-box">
+          Conecte seu Gmail para receber notificações por email. Sem senha de app — basta autorizar com 1 clique.
+        </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:.8rem" onclick="window.location='/auth/gmail'">
+          🔗 Conectar Gmail
+        </button>
+      </div>
+
+      {% if request.args.get('gmail_ok') %}
+      <div style="margin-top:.8rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:.8rem 1rem;font-size:.88rem;color:#4ade80">
+        ✅ Gmail conectado com sucesso!
+      </div>
+      {% elif request.args.get('gmail_erro') %}
+      <div style="margin-top:.8rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:.8rem 1rem;font-size:.88rem;color:#f87171">
+        ❌ Erro ao conectar Gmail. Tente novamente.
+      </div>
+      {% endif %}
     </div>
 
     <div class="config-section">
@@ -176,26 +192,30 @@
 </div>
 
 <script>
-async function testarEmail() {
-  const email = document.getElementById('email_remetente').value.trim();
-  const senha = document.getElementById('email_senha_app').value.trim();
-  if (!email || !senha) return alert('Preencha o email e a senha de app primeiro.');
-  const btn = document.querySelector('[onclick="testarEmail()"]');
+async function testarGmail() {
+  const btn = document.querySelector('[onclick="testarGmail()"]');
   btn.textContent = '⏳ Enviando...'; btn.disabled = true;
   try {
     const res = await fetch('/testar_email', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ email, senha })
+      body: JSON.stringify({ gmail_oauth: true })
     });
     const data = await res.json();
     if (data.ok) {
-      alert('✅ Email enviado! Verifique sua caixa de entrada em ' + email);
+      alert('✅ Email enviado! Verifique sua caixa de entrada.');
     } else {
-      alert('❌ Erro: ' + data.erro + '\n\nVerifique se a Senha de App está correta e se o 2FA está ativado no Gmail.');
+      alert('❌ Erro: ' + data.erro);
     }
   } finally {
-    btn.textContent = '📧 Testar Email'; btn.disabled = false;
+    btn.textContent = '📧 Testar'; btn.disabled = false;
   }
+}
+
+async function desconectarGmail() {
+  if (!confirm('Desconectar o Gmail? Você não receberá mais notificações por email.')) return;
+  await fetch('/auth/gmail/disconnect', { method: 'POST' });
+  document.getElementById('gmail-conectado').style.display = 'none';
+  document.getElementById('gmail-desconectado').style.display = 'block';
 }
 
 async function testarZapi() {
@@ -273,8 +293,6 @@ async function testarTelegram() {
 async function salvar() {
   const dados = {
     empresa_nome: document.getElementById('empresa_nome').value.trim(),
-    email_remetente: document.getElementById('email_remetente').value.trim(),
-    email_senha_app: document.getElementById('email_senha_app').value.trim(),
     whatsapp_numero: document.getElementById('whatsapp_numero').value.trim(),
     whatsapp_apikey: document.getElementById('whatsapp_apikey').value.trim(),
     base_url: document.getElementById('base_url').value.trim(),

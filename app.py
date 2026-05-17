@@ -1,4 +1,4 @@
-import os, json, uuid, requests, smtplib, threading, re, io
+import os, json, uuid, requests, smtplib, threading, re, io, base64
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from functools import wraps
@@ -93,7 +93,8 @@ def init_db():
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
                      ('telegram_token',''),('telegram_chat_id',''),
-                     ('zapi_instance',''),('zapi_token',''),('zapi_client_token',''),('zapi_phone','')]:
+                     ('zapi_instance',''),('zapi_token',''),('zapi_client_token',''),('zapi_phone',''),
+                     ('gmail_refresh_token',''),('gmail_email','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         con.commit()
         con.close()
@@ -138,6 +139,8 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("zapi_token","");
             INSERT OR IGNORE INTO config VALUES ("zapi_client_token","");
             INSERT OR IGNORE INTO config VALUES ("zapi_phone","");
+            INSERT OR IGNORE INTO config VALUES ("gmail_refresh_token","");
+            INSERT OR IGNORE INTO config VALUES ("gmail_email","");
         ''')
         con.commit()
         con.close()
@@ -377,12 +380,70 @@ def auth_apple_callback():
     except Exception:
         return redirect(url_for('login') + '?erro=apple_erro')
 
+# ── Gmail OAuth (para notificações — sem senha de app) ───────────────────────
+
+@app.route('/auth/gmail')
+@login_required
+def auth_gmail():
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
+    if not client_id:
+        return redirect(url_for('configuracoes') + '?erro=google_nao_configurado')
+    base = get_base_url()
+    params = ('client_id=' + client_id +
+              '&redirect_uri=' + requests.utils.quote(base + '/auth/gmail/callback') +
+              '&response_type=code'
+              '&scope=' + requests.utils.quote('https://www.googleapis.com/auth/gmail.send email profile') +
+              '&access_type=offline'
+              '&prompt=consent')
+    return redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params)
+
+@app.route('/auth/gmail/callback')
+@login_required
+def auth_gmail_callback():
+    code = request.args.get('code', '')
+    if not code:
+        return redirect(url_for('configuracoes') + '?gmail_erro=cancelado')
+    base = get_base_url()
+    try:
+        tok = requests.post('https://oauth2.googleapis.com/token', data={
+            'code':          code,
+            'client_id':     os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+            'redirect_uri':  base + '/auth/gmail/callback',
+            'grant_type':    'authorization_code',
+        }, timeout=15).json()
+        refresh_token = tok.get('refresh_token', '')
+        access_token  = tok.get('access_token', '')
+        if not refresh_token:
+            return redirect(url_for('configuracoes') + '?gmail_erro=sem_refresh_token')
+        # Pega o email da conta conectada
+        info = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',
+            headers={'Authorization': 'Bearer ' + access_token}, timeout=15).json()
+        gmail_email = info.get('email', session.get('user_email', ''))
+        save_config({'gmail_refresh_token': refresh_token, 'gmail_email': gmail_email})
+    except Exception as e:
+        return redirect(url_for('configuracoes') + '?gmail_erro=excecao')
+    return redirect(url_for('configuracoes') + '?gmail_ok=1')
+
+@app.route('/auth/gmail/disconnect', methods=['POST'])
+@login_required
+def auth_gmail_disconnect():
+    save_config({'gmail_refresh_token': '', 'gmail_email': ''})
+    return jsonify({'ok': True})
+
+@app.route('/gmail/status')
+@login_required
+def gmail_status():
+    cfg = get_config()
+    conectado = bool(cfg.get('gmail_refresh_token'))
+    return jsonify({'conectado': conectado, 'email': cfg.get('gmail_email', '')})
+
 def save_config(dados):
     for k, v in dados.items():
         if USE_PG:
-            db_exec('UPDATE config SET valor=%s WHERE chave=%s', (v, k))
+            db_exec('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT(chave) DO UPDATE SET valor=EXCLUDED.valor', (k, v))
         else:
-            db_exec('UPDATE config SET valor=? WHERE chave=?', (v, k))
+            db_exec('INSERT OR REPLACE INTO config(chave,valor) VALUES(?,?)', (k, v))
 
 def extrair_valor_pdf(dados_bytes):
     """Extrai o valor total do PDF usando pdfplumber + IA (Claude) ou regex robusta."""
@@ -521,6 +582,40 @@ def notificar_email(email, senha, html):
     except BaseException as e:
         return False, str(e)
 
+def notificar_email_gmail(refresh_token, sender_email, html, subject='👁 Notificação OrcEVeja'):
+    """Envia email via Gmail API usando OAuth (sem precisar de senha de app)."""
+    try:
+        # 1. Troca refresh_token por access_token
+        tok = requests.post('https://oauth2.googleapis.com/token', data={
+            'client_id':     os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+            'refresh_token': refresh_token,
+            'grant_type':    'refresh_token',
+        }, timeout=15).json()
+        access_token = tok.get('access_token', '')
+        if not access_token:
+            return False, f"Sem access_token: {tok.get('error_description', tok)}"
+        # 2. Monta mensagem MIME
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = sender_email
+        msg.attach(MIMEText(html, 'html'))
+        # 3. Codifica em base64url
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+        # 4. Envia via Gmail API
+        r = requests.post(
+            'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+            headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
+            json={'raw': raw},
+            timeout=15
+        )
+        if r.status_code == 200:
+            return True, 'ok'
+        return False, r.text
+    except Exception as e:
+        return False, str(e)
+
 def notificar_telegram(token, chat_id, msg):
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -543,7 +638,10 @@ def notificar(cfg, txt, html=None):
         try:
             if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
                 notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)
-            if cfg.get('email_remetente') and cfg.get('email_senha_app'):
+            # Gmail OAuth tem prioridade; cai no SMTP só se não tiver refresh_token
+            if cfg.get('gmail_refresh_token') and cfg.get('gmail_email'):
+                notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html or f'<p>{txt}</p>')
+            elif cfg.get('email_remetente') and cfg.get('email_senha_app'):
                 notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')
             if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
                 notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)
@@ -798,13 +896,34 @@ def ver_pdf(token):
 @app.route('/renovar_link/<int:id>', methods=['POST'])
 @login_required
 def renovar_link(id):
-    """Gera novo token e reseta o prazo de 48h do PDF."""
+    """Gera novo token, reseta prazo de 48h e envia o novo link para o cliente."""
+    # Busca dados do PDF antes de renovar
+    sql_sel = 'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=%s' if USE_PG else \
+              'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=?'
+    p = db_exec(sql_sel, (id,), fetch='one')
+    if not p:
+        return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
+
     novo_token = str(uuid.uuid4()).replace('-','')[:16]
-    sql = 'UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL WHERE id=%s' if USE_PG else \
-          'UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL WHERE id=?'
-    db_exec(sql, (novo_token, now_str(), 'enviado', id))
+    sql_up = 'UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL WHERE id=%s' if USE_PG else \
+             'UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL WHERE id=?'
+    db_exec(sql_up, (novo_token, now_str(), 'enviado', id))
     link = f"{get_base_url()}/pdf/{novo_token}"
-    return jsonify({'ok': True, 'token': novo_token, 'link': link})
+
+    # Envia novo link automaticamente para o WhatsApp do cliente
+    cfg = get_config()
+    cliente_tel  = (p.get('cliente_telefone') or '').strip()
+    cliente_nome = p.get('cliente_nome', 'Cliente')
+    if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
+        phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
+        msg = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO ATUALIZADO.\n\n{link}"
+        threading.Thread(
+            target=lambda: notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'],
+                                          cfg['zapi_client_token'], phone, msg),
+            daemon=True).start()
+
+    return jsonify({'ok': True, 'token': novo_token, 'link': link,
+                    'enviado_wpp': bool(cliente_tel)})
 
 @app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
 @login_required
@@ -947,12 +1066,25 @@ def testar_telegram():
 @app.route('/testar_email', methods=['POST'])
 def testar_email():
     d = request.get_json()
+    html = '<div style="font-family:sans-serif;padding:2rem"><h2 style="color:#16a34a">✅ Email funcionando!</h2><p>Notificações do OrcEVeja configuradas com sucesso via Gmail.</p></div>'
+    # Modo Gmail OAuth
+    if d.get('gmail_oauth'):
+        cfg = get_config()
+        if not cfg.get('gmail_refresh_token') or not cfg.get('gmail_email'):
+            return jsonify({'ok': False, 'erro': 'Gmail não conectado'})
+        ok, erro = notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html, subject='✅ Teste OrcEVeja — Gmail funcionando!')
+        return jsonify({'ok': ok, 'erro': erro})
+    # Modo SMTP legado
     email, senha = d.get('email','').strip(), d.get('senha','').strip()
     if not email or not senha:
         return jsonify({'ok': False, 'erro': 'Preencha email e senha'})
-    html = '<div style="font-family:sans-serif;padding:2rem"><h2 style="color:#16a34a">✅ Email funcionando!</h2><p>Notificações do app de Orçamentos configuradas com sucesso.</p></div>'
     ok, erro = notificar_email(email, senha, html)
     return jsonify({'ok': ok, 'erro': erro})
+
+@app.route('/ping')
+def ping():
+    """Health check — usado por serviços externos para manter o servidor acordado."""
+    return jsonify({'ok': True, 'status': 'alive'})
 
 if __name__ == '__main__':
     init_db()
