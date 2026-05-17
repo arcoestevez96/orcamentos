@@ -58,6 +58,26 @@
     </div>
 
     <div class="config-section">
+      <div class="section-title">✈️ Notificação via Telegram</div>
+      <div class="info-box">
+        Receba uma mensagem no Telegram toda vez que um cliente abrir seu orçamento ou PDF.<br><br>
+        <strong>Token do Bot:</strong> obtido ao criar o bot no @BotFather<br>
+        <strong>Seu Chat ID:</strong> o número único da sua conversa com o bot
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Token do Bot</label>
+          <input type="text" id="telegram_token" value="{{ cfg.telegram_token }}" placeholder="Ex: 8600023036:AAGbrp...">
+        </div>
+        <div class="form-group">
+          <label>Seu Chat ID</label>
+          <input type="text" id="telegram_chat_id" value="{{ cfg.telegram_chat_id }}" placeholder="Ex: 1584819175">
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:.8rem" onclick="testarTelegram()">✈️ Testar Telegram</button>
+    </div>
+
+    <div class="config-section">
       <div class="section-title">💬 Notificação via WhatsApp (opcional)</div>
       <div class="info-box">
         Para receber notificações no WhatsApp quando um cliente abrir seu orçamento, siga os passos:<br><br>
@@ -129,6 +149,25 @@ async function testarEmail() {
   }
 }
 
+async function testarTelegram() {
+  const token = document.getElementById('telegram_token').value.trim();
+  const chat_id = document.getElementById('telegram_chat_id').value.trim();
+  if (!token || !chat_id) return alert('Preencha o Token e o Chat ID primeiro e clique em Salvar.');
+  const btn = document.querySelector('[onclick="testarTelegram()"]');
+  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
+  try {
+    const res = await fetch('/testar_telegram', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token, chat_id })
+    });
+    const data = await res.json();
+    if (data.ok) alert('✅ Mensagem enviada! Verifique seu Telegram.');
+    else alert('❌ Erro: ' + (data.erro || data.resposta));
+  } finally {
+    btn.textContent = '✈️ Testar Telegram'; btn.disabled = false;
+  }
+}
+
 async function salvar() {
   const dados = {
     empresa_nome: document.getElementById('empresa_nome').value.trim(),
@@ -137,6 +176,8 @@ async function salvar() {
     whatsapp_numero: document.getElementById('whatsapp_numero').value.trim(),
     whatsapp_apikey: document.getElementById('whatsapp_apikey').value.trim(),
     base_url: document.getElementById('base_url').value.trim(),
+    telegram_token: document.getElementById('telegram_token').value.trim(),
+    telegram_chat_id: document.getElementById('telegram_chat_id').value.trim(),
   };
   const res = await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
   const data = await res.json();

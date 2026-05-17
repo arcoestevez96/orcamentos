@@ -69,7 +69,8 @@ def init_db():
             )''')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
-                     ('email_remetente',''),('email_senha_app','')]:
+                     ('email_remetente',''),('email_senha_app',''),
+                     ('telegram_token',''),('telegram_chat_id','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         con.commit()
         con.close()
@@ -98,6 +99,8 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("base_url","");
             INSERT OR IGNORE INTO config VALUES ("email_remetente","");
             INSERT OR IGNORE INTO config VALUES ("email_senha_app","");
+            INSERT OR IGNORE INTO config VALUES ("telegram_token","");
+            INSERT OR IGNORE INTO config VALUES ("telegram_chat_id","");
         ''')
         con.commit()
         con.close()
@@ -145,11 +148,21 @@ def notificar_email(email, senha, html):
     except Exception as e:
         return False, str(e)
 
+def notificar_telegram(token, chat_id, msg):
+    try:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        r = requests.post(url, json={'chat_id': chat_id, 'text': msg}, timeout=15)
+        return r.status_code == 200, r.text
+    except Exception as e:
+        return False, str(e)
+
 def notificar(cfg, txt, html=None):
     if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
         notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)
     if cfg.get('email_remetente') and cfg.get('email_senha_app'):
         notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')
+    if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
+        notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -326,6 +339,15 @@ def testar_whatsapp():
     if not numero or not apikey:
         return jsonify({'ok': False, 'erro': 'Preencha número e API Key'})
     ok, resp = notificar_whatsapp(numero, apikey, '✅ Teste do app de Orçamentos! Funcionando.')
+    return jsonify({'ok': ok, 'resposta': resp})
+
+@app.route('/testar_telegram', methods=['POST'])
+def testar_telegram():
+    d = request.get_json()
+    token, chat_id = d.get('token','').strip(), d.get('chat_id','').strip()
+    if not token or not chat_id:
+        return jsonify({'ok': False, 'erro': 'Preencha o token e o chat ID'})
+    ok, resp = notificar_telegram(token, chat_id, '✅ Teste do app de Orçamentos! Notificações funcionando.')
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_email', methods=['POST'])
