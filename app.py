@@ -563,43 +563,78 @@ def comprimir_pdf(dados_bytes):
     except Exception:
         return dados_bytes
 
+PRAZO_HORAS = 48  # link expira após 48h
+
 @app.route('/pdf/<token>')
 def ver_pdf(token):
-    """Registra abertura e serve o PDF direto — abre no visualizador nativo do dispositivo."""
+    """Registra abertura e serve o PDF. Bloqueia e notifica se o link expirou (48h)."""
+    from datetime import timedelta
     sql = 'SELECT * FROM pdfs WHERE token=%s' if USE_PG else 'SELECT * FROM pdfs WHERE token=?'
     p = db_exec(sql, (token,), fetch='one')
     if not p: return 'Orçamento não encontrado.', 404
+
+    # ── Verifica expiração (48h após criado_em) ──────────────────────────────
     cfg = get_config()
+    try:
+        criado = datetime.strptime(p['criado_em'][:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=BRASILIA)
+    except Exception:
+        criado = datetime.now(BRASILIA)
+    expira = criado + timedelta(hours=PRAZO_HORAS)
+    agora  = datetime.now(BRASILIA)
+    expirado = agora > expira
+
+    if expirado:
+        # Registra tentativa e notifica
+        hora = agora.strftime('%H:%M de %d/%m')
+        txt = (f"⏰ LINK EXPIRADO — {p['cliente_nome']} tentou abrir "
+               f"'{p['titulo']}' às {hora}, mas o link de 48h já venceu.")
+        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fef2f2;border-radius:12px">
+            <h2 style="color:#dc2626">⏰ Link Expirado!</h2>
+            <p><strong>{p['cliente_nome']}</strong> tentou abrir <strong>{p['titulo']}</strong>
+            às <strong>{hora}</strong>, mas o link de 48h já venceu.<br><br>
+            Acesse o dashboard para gerar um novo link.</p></div>"""
+        threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
+        empresa = cfg.get('empresa_nome', 'a empresa')
+        return render_template('expirado.html', cliente=p['cliente_nome'],
+                               titulo=p['titulo'], empresa=empresa), 410
+
+    # ── Registra abertura normal ─────────────────────────────────────────────
     aberturas = (p['aberturas'] or 0) + 1
-    primeira = p['status'] == 'enviado'
+    primeira  = p['status'] == 'enviado'
     if USE_PG:
         db_exec("UPDATE pdfs SET aberturas=%s,aberto_em=%s,status=%s WHERE token=%s",
             (aberturas, now_str(), 'aberto', token))
     else:
         db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
             (aberturas, now_str(), 'aberto', token))
-    hora = datetime.now(BRASILIA).strftime('%H:%M')
+    hora = agora.strftime('%H:%M')
     if primeira:
-        txt = f"👁 {p['cliente_nome']} abriu o PDF {p['titulo']} pela 1ª vez às {hora}!"
+        txt = f"👁 {p['cliente_nome']} abriu '{p['titulo']}' pela 1ª vez às {hora}!"
         html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
             <h2 style="color:#16a34a">👁 PDF Visualizado!</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>.</p></div>"""
     else:
-        txt = f"🔄 {p['cliente_nome']} abriu novamente {p['titulo']} às {hora}. Total: {aberturas}x"
+        txt = f"🔄 {p['cliente_nome']} abriu novamente '{p['titulo']}' às {hora}. Total: {aberturas}x"
         html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">
             <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>"""
     notificar(cfg, txt, html_notif)
-    arquivo = bytes(p['arquivo']) if p['arquivo'] else b''
+    arquivo  = bytes(p['arquivo']) if p['arquivo'] else b''
     filename = (p['filename'] or 'orcamento.pdf').replace('"', '')
-    return Response(
-        arquivo,
-        mimetype='application/pdf',
-        headers={
-            'Content-Disposition': f'inline; filename="{filename}"',
-            'Cache-Control': 'no-store',
-        }
-    )
+    return Response(arquivo, mimetype='application/pdf',
+        headers={'Content-Disposition': f'inline; filename="{filename}"',
+                 'Cache-Control': 'no-store'})
+
+@app.route('/renovar_link/<int:id>', methods=['POST'])
+@login_required
+def renovar_link(id):
+    """Gera novo token e reseta o prazo de 48h do PDF."""
+    novo_token = str(uuid.uuid4()).replace('-','')[:16]
+    sql = 'UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL WHERE id=%s' if USE_PG else \
+          'UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL WHERE id=?'
+    db_exec(sql, (novo_token, now_str(), 'enviado', id))
+    link = f"{get_base_url()}/pdf/{novo_token}"
+    return jsonify({'ok': True, 'token': novo_token, 'link': link})
 
 @app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
 @login_required

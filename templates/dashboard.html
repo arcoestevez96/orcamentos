@@ -208,6 +208,7 @@
           <td data-label="Ações">
             <div class="actions">
               <a href="/pdf/{{ p.token }}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
+              <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink({{ p.id }}, this)">🔁</button>
               <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor({{ p.id }}, this)">🔄</button>
               <button class="btn btn-danger btn-sm" onclick="deletarPdf({{ p.id }}, this)">🗑</button>
             </div>
@@ -307,6 +308,28 @@ async function atualizarStatus(id, sel) {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ status: sel.value })
   });
+}
+
+async function renovarLink(id, btn) {
+  if (!confirm('Gerar novo link de 48h para este orçamento?\nO link antigo vai parar de funcionar.')) return;
+  btn.textContent = '⏳'; btn.disabled = true;
+  try {
+    const res  = await fetch('/renovar_link/' + id, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      // Atualiza o botão Ver com o novo link
+      const tr = btn.closest('tr');
+      const verBtn = tr.querySelector('a[target="_blank"]');
+      if (verBtn) verBtn.href = data.link;
+      // Copia o novo link
+      try { await navigator.clipboard.writeText(data.link); } catch {}
+      btn.textContent = '✅';
+      alert('✅ Novo link gerado e copiado!\n\n' + data.link);
+      setTimeout(() => { btn.textContent = '🔁'; btn.disabled = false; }, 2000);
+    } else {
+      btn.textContent = '🔁'; btn.disabled = false;
+    }
+  } catch { btn.textContent = '🔁'; btn.disabled = false; }
 }
 
 async function relerValor(id, btn) {
@@ -434,6 +457,7 @@ async function enviarPDF() {
         <td data-label="Ações">
           <div class="actions">
             <a href="${data.link}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink(${data.id}, this)">🔁</button>
             <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor(${data.id}, this)">🔄</button>
             <button class="btn btn-danger btn-sm" onclick="deletarPdf(${data.id}, this)">🗑</button>
           </div>
