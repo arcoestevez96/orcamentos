@@ -1,4 +1,4 @@
-import os, json, uuid, requests, smtplib
+import os, json, uuid, requests, smtplib, threading
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, jsonify, send_file, Response
 from werkzeug.utils import secure_filename
@@ -145,12 +145,12 @@ def notificar_email(email, senha, html):
         msg['From'] = email
         msg['To'] = email
         msg.attach(MIMEText(html, 'html'))
-        with smtplib.SMTP('smtp.gmail.com', 587) as s:
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as s:
             s.starttls()
             s.login(email, senha)
             s.sendmail(email, email, msg.as_string())
         return True, 'ok'
-    except Exception as e:
+    except BaseException as e:
         return False, str(e)
 
 def notificar_telegram(token, chat_id, msg):
@@ -171,14 +171,19 @@ def notificar_zapi(instance, token, client_token, phone, msg):
         return False, str(e)
 
 def notificar(cfg, txt, html=None):
-    if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
-        notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)
-    if cfg.get('email_remetente') and cfg.get('email_senha_app'):
-        notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')
-    if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
-        notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)
-    if cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token') and cfg.get('zapi_phone'):
-        notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], cfg['zapi_phone'], txt)
+    def _enviar():
+        try:
+            if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
+                notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)
+            if cfg.get('email_remetente') and cfg.get('email_senha_app'):
+                notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')
+            if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
+                notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)
+            if cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token') and cfg.get('zapi_phone'):
+                notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], cfg['zapi_phone'], txt)
+        except BaseException:
+            pass
+    threading.Thread(target=_enviar, daemon=True).start()
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
