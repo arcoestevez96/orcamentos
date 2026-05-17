@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ 'Editar' if orcamento else 'Novo' }} Orçamento</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav>
+  <div class="logo"><span>📋</span> Orçamentos</div>
+  <a href="/">Dashboard</a>
+  <a href="/pdfs">PDFs</a>
+  <a href="/configuracoes">Configurações</a>
+  <div class="ml-auto">
+    <a href="/criar" class="btn btn-nav">+ Novo Orçamento</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1>{{ 'Editar Orçamento' if orcamento else 'Novo Orçamento' }}</h1>
+      <p>Preencha os dados do cliente e adicione os itens</p>
+    </div>
+    <div class="actions">
+      <a href="/" class="btn btn-secondary">← Voltar</a>
+      <button class="btn btn-primary" onclick="salvar()">💾 Salvar Orçamento</button>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="section-title">👤 Dados do Cliente</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nome do Cliente *</label>
+        <input type="text" id="cliente_nome" placeholder="Ex: João Silva" value="{{ orcamento.cliente_nome if orcamento else '' }}">
+      </div>
+      <div class="form-group">
+        <label>WhatsApp / Telefone</label>
+        <input type="text" id="cliente_telefone" placeholder="Ex: 11999990000" value="{{ orcamento.cliente_telefone if orcamento else '' }}">
+      </div>
+      <div class="form-group full">
+        <label>Título do Orçamento *</label>
+        <input type="text" id="titulo" placeholder="Ex: Reforma de Banheiro — Ap. 42" value="{{ orcamento.titulo if orcamento else '' }}">
+      </div>
+    </div>
+
+    <div class="section-title">
+      🏗️ Etapas e Itens
+      <button class="btn btn-secondary btn-sm" onclick="addEtapa()">+ Adicionar Etapa</button>
+    </div>
+
+    <div id="etapas"></div>
+
+    <div class="total-box">
+      <div class="label">Total Geral do Orçamento</div>
+      <div class="valor" id="totalGeral">R$ 0,00</div>
+    </div>
+
+    <div class="section-title" style="margin-top:2rem">📝 Condições</div>
+    <div class="form-grid cols3">
+      <div class="form-group">
+        <label>Prazo de Execução</label>
+        <input type="text" id="prazo" placeholder="Ex: 30 dias úteis" value="{{ orcamento.prazo if orcamento else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Forma de Pagamento</label>
+        <input type="text" id="forma_pagamento" placeholder="Ex: 50% entrada + 50% entrega" value="{{ orcamento.forma_pagamento if orcamento else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Validade da Proposta</label>
+        <input type="text" id="validade" placeholder="Ex: 15 dias" value="{{ orcamento.validade if orcamento else '' }}">
+      </div>
+      <div class="form-group full">
+        <label>Observações</label>
+        <textarea id="observacoes" placeholder="Observações adicionais, materiais inclusos, garantias...">{{ orcamento.observacoes if orcamento else '' }}</textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:.8rem;margin-top:1.5rem">
+      <a href="/" class="btn btn-secondary">Cancelar</a>
+      <button class="btn btn-primary" onclick="salvar()">💾 Salvar Orçamento</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const orcamentoInicial = {{ orcamento.itens | tojson if orcamento else '[]' }};
+let etapas = orcamentoInicial.length ? orcamentoInicial : [];
+
+function fmt(v) {
+  return 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function calcTotal(etapa) {
+  return (etapa.itens || []).reduce((s, i) => s + (parseFloat(i.quantidade)||0)*(parseFloat(i.preco)||0), 0);
+}
+
+function atualizarTotais() {
+  let total = 0;
+  etapas.forEach((et, ei) => {
+    const t = calcTotal(et);
+    total += t;
+    const el = document.getElementById('total-etapa-' + ei);
+    if (el) el.textContent = fmt(t);
+  });
+  document.getElementById('totalGeral').textContent = fmt(total);
+}
+
+function renderEtapas() {
+  const cont = document.getElementById('etapas');
+  cont.innerHTML = '';
+  etapas.forEach((et, ei) => {
+    cont.innerHTML += `
+    <div class="etapa" id="etapa-${ei}">
+      <div class="etapa-header">
+        <input class="etapa-nome" type="text" value="${et.nome || ''}" placeholder="Nome da etapa (ex: Demolição)" oninput="etapas[${ei}].nome=this.value">
+        <button class="btn btn-danger btn-sm" onclick="removerEtapa(${ei})">🗑 Remover</button>
+      </div>
+      <div class="item-label">
+        <span>Descrição</span><span style="width:80px">Unidade</span><span style="width:80px">Qtd</span><span style="width:110px">Preço Unit.</span><span style="width:36px"></span>
+      </div>
+      <div id="itens-${ei}"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:.5rem" onclick="addItem(${ei})">+ Adicionar Item</button>
+      <div class="total-etapa">Subtotal: <span id="total-etapa-${ei}">R$ 0,00</span></div>
+    </div>`;
+  });
+  etapas.forEach((et, ei) => renderItens(ei));
+  atualizarTotais();
+}
+
+function renderItens(ei) {
+  const cont = document.getElementById('itens-' + ei);
+  if (!cont) return;
+  cont.innerHTML = '';
+  (etapas[ei].itens || []).forEach((item, ii) => {
+    cont.innerHTML += `
+    <div class="item-row">
+      <input type="text" value="${item.descricao||''}" placeholder="Descrição do item" oninput="etapas[${ei}].itens[${ii}].descricao=this.value">
+      <input type="text" style="width:80px" value="${item.unidade||''}" placeholder="un/m²/h" oninput="etapas[${ei}].itens[${ii}].unidade=this.value">
+      <input type="number" style="width:80px" value="${item.quantidade||''}" placeholder="0" min="0" step="any" oninput="etapas[${ei}].itens[${ii}].quantidade=this.value;atualizarTotais()">
+      <input type="number" style="width:110px" value="${item.preco||''}" placeholder="0,00" min="0" step="any" oninput="etapas[${ei}].itens[${ii}].preco=this.value;atualizarTotais()">
+      <button class="btn btn-danger btn-sm" style="width:36px;padding:.35rem" onclick="removerItem(${ei},${ii})">✕</button>
+    </div>`;
+  });
+}
+
+function addEtapa() {
+  etapas.push({ nome: 'Nova Etapa', itens: [{ descricao: '', unidade: '', quantidade: '', preco: '' }] });
+  renderEtapas();
+}
+
+function removerEtapa(ei) {
+  if (!confirm('Remover esta etapa?')) return;
+  etapas.splice(ei, 1);
+  renderEtapas();
+}
+
+function addItem(ei) {
+  if (!etapas[ei].itens) etapas[ei].itens = [];
+  etapas[ei].itens.push({ descricao: '', unidade: '', quantidade: '', preco: '' });
+  renderItens(ei);
+}
+
+function removerItem(ei, ii) {
+  etapas[ei].itens.splice(ii, 1);
+  renderItens(ei);
+  atualizarTotais();
+}
+
+async function salvar() {
+  const nome = document.getElementById('cliente_nome').value.trim();
+  const titulo = document.getElementById('titulo').value.trim();
+  if (!nome || !titulo) return alert('Preencha o nome do cliente e o título.');
+  if (!etapas.length) return alert('Adicione pelo menos uma etapa.');
+
+  const dados = {
+    cliente_nome: nome,
+    cliente_telefone: document.getElementById('cliente_telefone').value.trim(),
+    titulo,
+    itens: etapas,
+    prazo: document.getElementById('prazo').value.trim(),
+    forma_pagamento: document.getElementById('forma_pagamento').value.trim(),
+    validade: document.getElementById('validade').value.trim(),
+    observacoes: document.getElementById('observacoes').value.trim(),
+  };
+
+  const url = {{ '"' + '/editar/' + orcamento.id|string + '"' if orcamento else '"/criar"' }};
+  const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
+  const data = await res.json();
+  if (data.ok) window.location.href = '/';
+}
+
+// Init
+if (etapas.length === 0) {
+  etapas = [{ nome: 'Etapa 1', itens: [{ descricao: '', unidade: '', quantidade: '', preco: '' }] }];
+}
+renderEtapas();
+</script>
+</body>
+</html>

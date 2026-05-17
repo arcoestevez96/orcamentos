@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurações</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav>
+  <div class="logo"><span>📋</span> Orçamentos</div>
+  <a href="/">Dashboard</a>
+  <a href="/pdfs">PDFs</a>
+  <a href="/configuracoes" class="active">Configurações</a>
+  <div class="ml-auto">
+    <a href="/criar" class="btn btn-nav">+ Novo Orçamento</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1>Configurações</h1>
+      <p>Configure suas informações e o WhatsApp para notificações</p>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="config-section">
+      <div class="section-title">🏢 Sua Empresa</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Nome da Empresa / Profissional</label>
+          <input type="text" id="empresa_nome" value="{{ cfg.empresa_nome }}" placeholder="Ex: Gabriel Estevez Reformas">
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="section-title">📧 Notificação via Email (Gmail)</div>
+      <div class="info-box">
+        <strong>Como configurar em 1 minuto:</strong><br><br>
+        <strong>1.</strong> Acesse <strong>myaccount.google.com/apppasswords</strong><br>
+        <strong>2.</strong> Em "Nome do app" escreva <strong>Orçamentos</strong> e clique em Criar<br>
+        <strong>3.</strong> Copie a senha de 16 letras gerada e cole abaixo
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Seu Gmail</label>
+          <input type="email" id="email_remetente" value="{{ cfg.email_remetente }}" placeholder="seuemail@gmail.com">
+        </div>
+        <div class="form-group">
+          <label>Senha de App (16 caracteres)</label>
+          <input type="password" id="email_senha_app" value="{{ cfg.email_senha_app }}" placeholder="xxxx xxxx xxxx xxxx">
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:.8rem" onclick="testarEmail()">📧 Testar Email</button>
+    </div>
+
+    <div class="config-section">
+      <div class="section-title">💬 Notificação via WhatsApp (opcional)</div>
+      <div class="info-box">
+        Para receber notificações no WhatsApp quando um cliente abrir seu orçamento, siga os passos:<br><br>
+        <strong>1.</strong> Adicione o número <strong>+34 644 60 16 13</strong> na sua agenda do WhatsApp<br>
+        <strong>2.</strong> Envie a mensagem: <strong>I allow callmebot to send me messages</strong><br>
+        <strong>3.</strong> Você receberá seu <strong>API Key</strong> em alguns segundos<br>
+        <strong>4.</strong> Preencha os campos abaixo com seu número e o API Key recebido
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Seu número do WhatsApp (com DDD, sem +55)</label>
+          <input type="text" id="whatsapp_numero" value="{{ cfg.whatsapp_numero }}" placeholder="Ex: 11999990000">
+        </div>
+        <div class="form-group">
+          <label>API Key do CallMeBot</label>
+          <input type="text" id="whatsapp_apikey" value="{{ cfg.whatsapp_apikey }}" placeholder="Ex: 123456">
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:.8rem" onclick="testarWhatsApp()">📲 Testar Notificação</button>
+    </div>
+
+    <div class="config-section">
+      <div class="section-title">🔗 URL Base dos Links</div>
+      <div class="info-box">
+        Esta é a URL que aparecerá nos links enviados para seus clientes.<br><br>
+        • <strong>Uso local:</strong> deixe como <strong>http://localhost:5000</strong> e use um túnel (veja abaixo)<br>
+        • <strong>Hospedagem:</strong> coloque a URL do seu servidor (ex: https://meusite.com)
+      </div>
+      <div class="form-group">
+        <label>URL Base</label>
+        <input type="text" id="base_url" value="{{ cfg.base_url }}" placeholder="http://localhost:5000">
+      </div>
+      <div class="info-box" style="margin-top:1rem">
+        <strong>Como compartilhar links com clientes (uso local):</strong><br><br>
+        Abra o Terminal e rode o comando abaixo para criar um link público temporário:<br><br>
+        <code style="background:rgba(0,0,0,.3);padding:.3rem .6rem;border-radius:4px;font-size:.85rem">
+          ssh -R 80:localhost:5000 nokey@localhost.run
+        </code><br><br>
+        Cole a URL gerada no campo "URL Base" acima e salve.
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-primary" onclick="salvar()">💾 Salvar Configurações</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function testarEmail() {
+  const email = document.getElementById('email_remetente').value.trim();
+  const senha = document.getElementById('email_senha_app').value.trim();
+  if (!email || !senha) return alert('Preencha o email e a senha de app primeiro.');
+  const btn = document.querySelector('[onclick="testarEmail()"]');
+  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
+  try {
+    const res = await fetch('/testar_email', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email, senha })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('✅ Email enviado! Verifique sua caixa de entrada em ' + email);
+    } else {
+      alert('❌ Erro: ' + data.erro + '\n\nVerifique se a Senha de App está correta e se o 2FA está ativado no Gmail.');
+    }
+  } finally {
+    btn.textContent = '📧 Testar Email'; btn.disabled = false;
+  }
+}
+
+async function salvar() {
+  const dados = {
+    empresa_nome: document.getElementById('empresa_nome').value.trim(),
+    email_remetente: document.getElementById('email_remetente').value.trim(),
+    email_senha_app: document.getElementById('email_senha_app').value.trim(),
+    whatsapp_numero: document.getElementById('whatsapp_numero').value.trim(),
+    whatsapp_apikey: document.getElementById('whatsapp_apikey').value.trim(),
+    base_url: document.getElementById('base_url').value.trim(),
+  };
+  const res = await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
+  const data = await res.json();
+  if (data.ok) alert('✅ Configurações salvas!');
+}
+
+async function testarWhatsApp() {
+  const numero = document.getElementById('whatsapp_numero').value.trim();
+  const apikey = document.getElementById('whatsapp_apikey').value.trim();
+  if (!numero || !apikey) return alert('Preencha o número e o API Key primeiro e clique em Salvar.');
+  const btn = document.querySelector('[onclick="testarWhatsApp()"]');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/testar_whatsapp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ numero, apikey })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('✅ Mensagem enviada! Verifique seu WhatsApp.');
+    } else {
+      alert('❌ Erro ao enviar.\n\nResposta: ' + (data.resposta || data.erro) + '\n\nVerifique se:\n1. Adicionou o número +34 644 60 16 13 na agenda\n2. Enviou a mensagem "I allow callmebot to send me messages"\n3. O API Key está correto');
+    }
+  } finally {
+    btn.textContent = '📲 Testar Notificação';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

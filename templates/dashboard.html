@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orçamentos</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav>
+  <div class="logo"><span>📋</span> Orçamentos</div>
+  <a href="/" class="active">Dashboard</a>
+  <a href="/pdfs">PDFs</a>
+  <a href="/configuracoes">Configurações</a>
+  <div class="ml-auto">
+    <a href="/criar" class="btn btn-nav">+ Novo Orçamento</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1>Seus Orçamentos</h1>
+      <p>Gerencie e acompanhe todos os orçamentos enviados</p>
+    </div>
+  </div>
+
+  {% set total_geral = orcamentos | sum(attribute='total') %}
+  {% set abertos = orcamentos | selectattr('status', 'equalto', 'aberto') | list %}
+  {% set enviados = orcamentos | selectattr('status', 'equalto', 'enviado') | list %}
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Total de Orçamentos</div>
+      <div class="value accent">{{ orcamentos | length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Aguardando Abertura</div>
+      <div class="value yellow">{{ enviados | length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Visualizados</div>
+      <div class="value green">{{ abertos | length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Volume Total</div>
+      <div class="value green">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
+    </div>
+  </div>
+
+  {% if orcamentos %}
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Título</th>
+          <th>Total</th>
+          <th>Criado em</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orcamentos %}
+        <tr>
+          <td><strong>{{ o.cliente_nome }}</strong>{% if o.cliente_telefone %}<br><small style="color:var(--text2)">{{ o.cliente_telefone }}</small>{% endif %}</td>
+          <td>{{ o.titulo }}</td>
+          <td style="color:var(--green);font-weight:600">R$ {{ "%.2f"|format(o.total) | replace('.', ',') }}</td>
+          <td style="color:var(--text2);font-size:.85rem">{{ o.criado_em[:10] }}</td>
+          <td>
+            {% if o.status == 'rascunho' %}
+              <span class="badge rascunho">✏️ Rascunho</span>
+            {% elif o.status == 'enviado' %}
+              <span class="badge enviado">📤 Enviado</span>
+            {% elif o.status == 'aberto' %}
+              <span class="badge aberto">👁 Visualizado</span>
+              {% if o.aberto_em %}<br><small style="color:var(--text2);font-size:.75rem">{{ o.aberto_em[:16] }}</small>{% endif %}
+            {% endif %}
+          </td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-green btn-sm" onclick="compartilhar('{{ o.token }}', '{{ o.id }}', '{{ o.cliente_nome }}', '{{ o.cliente_telefone }}')">📤 Enviar</button>
+              <a href="/editar/{{ o.id }}" class="btn btn-secondary btn-sm">✏️</a>
+              <form method="POST" action="/deletar/{{ o.id }}" onsubmit="return confirm('Deletar este orçamento?')">
+                <button class="btn btn-danger btn-sm">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <div class="icon">📋</div>
+    <h3>Nenhum orçamento ainda</h3>
+    <p>Crie seu primeiro orçamento para começar</p>
+    <br>
+    <a href="/criar" class="btn btn-primary">+ Criar Orçamento</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal enviar -->
+<div class="modal-overlay" id="modalEnviar">
+  <div class="modal">
+    <h3>📤 Enviar Orçamento</h3>
+    <p style="color:var(--text2);font-size:.9rem;margin-bottom:1rem">Copie o link e envie para o cliente pelo WhatsApp ou email.</p>
+    <div class="link-box" id="linkGerado">Gerando link...</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="fecharModal()">Fechar</button>
+      <button class="btn btn-green" onclick="copiarLink()">📋 Copiar Link</button>
+      <button class="btn btn-primary" id="btnWhatsApp" onclick="abrirWhatsApp()">💬 WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let linkAtual = '';
+let telAtual = '';
+let idAtual = null;
+
+async function compartilhar(token, id, nome, tel) {
+  idAtual = id;
+  telAtual = tel;
+  document.getElementById('modalEnviar').classList.add('show');
+  document.getElementById('linkGerado').textContent = 'Gerando link...';
+
+  const res = await fetch('/link/' + token);
+  const data = await res.json();
+  linkAtual = data.link;
+  document.getElementById('linkGerado').textContent = linkAtual;
+
+  // Marcar como enviado
+  await fetch('/marcar_enviado/' + id, { method: 'POST' });
+}
+
+function fecharModal() {
+  document.getElementById('modalEnviar').classList.remove('show');
+}
+
+function copiarLink() {
+  navigator.clipboard.writeText(linkAtual);
+  const btn = document.querySelector('.btn-green.btn-sm');
+  alert('Link copiado!');
+}
+
+function abrirWhatsApp() {
+  const msg = encodeURIComponent('Olá! Segue o link do seu orçamento: ' + linkAtual);
+  const tel = telAtual.replace(/\D/g, '');
+  window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
+}
+
+document.getElementById('modalEnviar').addEventListener('click', function(e) {
+  if (e.target === this) fecharModal();
+});
+</script>
+</body>
+</html>

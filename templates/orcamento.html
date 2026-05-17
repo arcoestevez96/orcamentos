@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orçamento — {{ o.titulo }}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1e293b; }
+
+.page { max-width: 780px; margin: 2rem auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 40px rgba(0,0,0,.1); overflow: hidden; }
+
+/* HEADER */
+.header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff; padding: 2.5rem 2.5rem 2rem; }
+.header-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
+.empresa { font-size: 1.3rem; font-weight: 700; }
+.orcamento-label { font-size: .8rem; opacity: .6; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .2rem; }
+.orcamento-num { font-size: 1rem; font-weight: 600; opacity: .9; }
+.header-info { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.15); }
+.info-block label { font-size: .75rem; opacity: .6; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .2rem; }
+.info-block span { font-size: .95rem; font-weight: 500; }
+
+/* BODY */
+.body { padding: 2rem 2.5rem; }
+
+.titulo-orcamento { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #e2e8f0; }
+
+/* ETAPA */
+.etapa { margin-bottom: 1.5rem; }
+.etapa-titulo { background: #f8fafc; border-left: 4px solid #4f6ef7; padding: .6rem 1rem; font-weight: 600; font-size: .95rem; color: #334155; border-radius: 0 6px 6px 0; margin-bottom: .5rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+thead tr { background: #f1f5f9; }
+th { padding: .6rem .8rem; text-align: left; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; font-weight: 600; }
+td { padding: .65rem .8rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
+tr:last-child td { border-bottom: none; }
+.td-right { text-align: right; }
+.subtotal-row td { background: #f8fafc; font-weight: 600; font-size: .85rem; color: #475569; }
+
+/* TOTAL */
+.total-section { margin-top: 1.5rem; display: flex; justify-content: flex-end; }
+.total-box { background: linear-gradient(135deg, #4f6ef7, #6c8aff); color: #fff; border-radius: 12px; padding: 1.2rem 2rem; text-align: right; min-width: 260px; }
+.total-box .total-label { font-size: .85rem; opacity: .85; margin-bottom: .3rem; }
+.total-box .total-valor { font-size: 2rem; font-weight: 700; }
+
+/* CONDIÇÕES */
+.condicoes { margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.condicao { background: #f8fafc; border-radius: 10px; padding: 1rem 1.2rem; }
+.condicao label { font-size: .75rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .3rem; }
+.condicao span { font-size: .9rem; font-weight: 500; color: #334155; }
+
+/* OBS */
+.obs { margin-top: 1.5rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 1rem 1.2rem; }
+.obs label { font-size: .75rem; color: #92400e; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .4rem; font-weight: 600; }
+.obs p { font-size: .9rem; color: #78350f; line-height: 1.6; }
+
+/* FOOTER */
+.footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.5rem 2.5rem; display: flex; align-items: center; justify-content: space-between; }
+.footer small { color: #94a3b8; font-size: .8rem; }
+.badge-status { display: inline-flex; align-items: center; gap: .4rem; background: #dcfce7; color: #16a34a; padding: .3rem .8rem; border-radius: 99px; font-size: .8rem; font-weight: 600; }
+
+/* PRINT BTN */
+.print-btn { position: fixed; bottom: 2rem; right: 2rem; background: #4f6ef7; color: #fff; border: none; border-radius: 50px; padding: .8rem 1.5rem; font-size: .9rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 20px rgba(79,110,247,.4); display: flex; align-items: center; gap: .5rem; }
+.print-btn:hover { background: #6c8aff; }
+
+@media print {
+  body { background: #fff; }
+  .page { box-shadow: none; margin: 0; border-radius: 0; }
+  .print-btn { display: none; }
+}
+@media (max-width: 600px) {
+  .page { margin: 0; border-radius: 0; }
+  .header, .body, .footer { padding-left: 1.2rem; padding-right: 1.2rem; }
+  .header-info { grid-template-columns: 1fr; }
+  .print-btn { bottom: 1rem; right: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="header">
+    <div class="header-top">
+      <div class="empresa">{{ o.empresa_nome or '🏗️ Orçamento' }}</div>
+      <div style="text-align:right">
+        <div class="orcamento-label">Proposta</div>
+        <div class="orcamento-num">#{{ o.token }}</div>
+      </div>
+    </div>
+    <div class="header-info">
+      <div class="info-block">
+        <label>Cliente</label>
+        <span>{{ o.cliente_nome }}</span>
+      </div>
+      {% if o.cliente_telefone %}
+      <div class="info-block">
+        <label>Contato</label>
+        <span>{{ o.cliente_telefone }}</span>
+      </div>
+      {% endif %}
+      <div class="info-block">
+        <label>Data</label>
+        <span>{{ o.criado_em[:10].split('-') | reverse | join('/') }}</span>
+      </div>
+      {% if o.validade %}
+      <div class="info-block">
+        <label>Válido por</label>
+        <span>{{ o.validade }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="titulo-orcamento">{{ o.titulo }}</div>
+
+    {% for etapa in o.itens %}
+    <div class="etapa">
+      <div class="etapa-titulo">{{ etapa.nome }}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Unidade</th>
+            <th class="td-right">Qtd</th>
+            <th class="td-right">Preço Unit.</th>
+            <th class="td-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set subtotal = namespace(val=0) %}
+          {% for item in etapa.itens %}
+            {% set linha = (item.quantidade | float) * (item.preco | float) %}
+            {% set subtotal.val = subtotal.val + linha %}
+          <tr>
+            <td>{{ item.descricao }}</td>
+            <td>{{ item.unidade }}</td>
+            <td class="td-right">{{ item.quantidade }}</td>
+            <td class="td-right">R$ {{ "%.2f"|format(item.preco | float) | replace('.', ',') }}</td>
+            <td class="td-right" style="font-weight:500">R$ {{ "%.2f"|format(linha) | replace('.', ',') }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="subtotal-row">
+            <td colspan="4" class="td-right">Subtotal {{ etapa.nome }}</td>
+            <td class="td-right">R$ {{ "%.2f"|format(subtotal.val) | replace('.', ',') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+
+    <div class="total-section">
+      <div class="total-box">
+        <div class="total-label">Valor Total da Proposta</div>
+        <div class="total-valor">R$ {{ "%.2f"|format(o.total) | replace('.', ',') }}</div>
+      </div>
+    </div>
+
+    {% if o.prazo or o.forma_pagamento %}
+    <div class="condicoes">
+      {% if o.prazo %}
+      <div class="condicao">
+        <label>⏱ Prazo</label>
+        <span>{{ o.prazo }}</span>
+      </div>
+      {% endif %}
+      {% if o.forma_pagamento %}
+      <div class="condicao">
+        <label>💳 Pagamento</label>
+        <span>{{ o.forma_pagamento }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if o.observacoes %}
+    <div class="obs">
+      <label>📋 Observações</label>
+      <p>{{ o.observacoes }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="footer">
+    <small>Gerado em {{ o.criado_em[:10].split('-') | reverse | join('/') }}</small>
+    <span class="badge-status">✅ Proposta Ativa</span>
+  </div>
+</div>
+
+<button class="print-btn" onclick="window.print()">🖨️ Salvar PDF</button>
+
+</body>
+</html>

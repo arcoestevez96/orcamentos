@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDFs Rastreados</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav>
+  <div class="logo"><span>📋</span> Orçamentos</div>
+  <a href="/">Dashboard</a>
+  <a href="/pdfs" class="active">PDFs</a>
+  <a href="/configuracoes">Configurações</a>
+  <div class="ml-auto">
+    <button class="btn btn-nav" onclick="abrirUpload()">📎 Enviar PDF</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1>PDFs com Rastreamento</h1>
+      <p>Envie PDFs de orçamentos e saiba quando o cliente abrir</p>
+    </div>
+    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar Novo PDF</button>
+  </div>
+
+  {% if pdfs %}
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Título / Arquivo</th>
+          <th>Enviado em</th>
+          <th>Status</th>
+          <th>Aberturas</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pdfs %}
+        <tr>
+          <td>
+            <strong>{{ p.cliente_nome }}</strong>
+            {% if p.cliente_telefone %}<br><small style="color:var(--text2)">{{ p.cliente_telefone }}</small>{% endif %}
+          </td>
+          <td>{{ p.titulo }}</td>
+          <td style="color:var(--text2);font-size:.85rem">{{ p.criado_em[:10] }}</td>
+          <td>
+            {% if p.status == 'enviado' %}
+              <span class="badge enviado">📤 Aguardando</span>
+            {% else %}
+              <span class="badge aberto">👁 Visualizado</span>
+              {% if p.aberto_em %}<br><small style="color:var(--text2);font-size:.75rem">{{ p.aberto_em[:16] }}</small>{% endif %}
+            {% endif %}
+          </td>
+          <td style="text-align:center">
+            {% if p.aberturas and p.aberturas > 0 %}
+              <span style="color:var(--green);font-weight:700;font-size:1.1rem">{{ p.aberturas }}x</span>
+            {% else %}
+              <span style="color:var(--text2)">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-green btn-sm" onclick="copiarLink('{{ p.token }}')">🔗 Copiar Link</button>
+              <button class="btn btn-secondary btn-sm" onclick="whatsappLink('{{ p.token }}', '{{ p.cliente_telefone }}')">💬</button>
+              <form method="POST" action="/deletar_pdf/{{ p.id }}" onsubmit="return confirm('Deletar este PDF?')">
+                <button class="btn btn-danger btn-sm">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <div class="icon">📄</div>
+    <h3>Nenhum PDF enviado ainda</h3>
+    <p>Faça upload de um PDF de orçamento para gerar um link rastreável</p>
+    <br>
+    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar Primeiro PDF</button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal Upload -->
+<div class="modal-overlay" id="modalUpload">
+  <div class="modal" style="max-width:520px">
+    <h3>📎 Enviar PDF com Rastreamento</h3>
+    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1.2rem">Faça upload do seu orçamento em PDF e receba notificação no WhatsApp quando o cliente abrir.</p>
+
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>Nome do Cliente *</label>
+      <input type="text" id="up_cliente_nome" placeholder="Ex: João Silva">
+    </div>
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>WhatsApp do Cliente</label>
+      <input type="text" id="up_cliente_tel" placeholder="Ex: 11999990000">
+    </div>
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>Título do Orçamento</label>
+      <input type="text" id="up_titulo" placeholder="Ex: Reforma Cozinha — Casa Jardim">
+    </div>
+    <div class="form-group" style="margin-bottom:1rem">
+      <label>Arquivo PDF *</label>
+      <input type="file" id="up_arquivo" accept=".pdf" onchange="previewArquivo(this)">
+      <small id="up_arquivo_nome" style="color:var(--text2);margin-top:.3rem"></small>
+    </div>
+
+    <div id="up_link_result" style="display:none">
+      <div style="color:var(--green);font-weight:600;margin-bottom:.5rem">✅ PDF enviado! Copie o link abaixo:</div>
+      <div class="link-box" id="up_link"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="fecharUpload()">Fechar</button>
+      <button class="btn btn-primary" id="btnEnviar" onclick="enviarPDF()">📤 Enviar e Gerar Link</button>
+      <button class="btn btn-green" id="btnCopiar" style="display:none" onclick="copiarLinkModal()">📋 Copiar Link</button>
+      <button class="btn btn-primary" id="btnWpp" style="display:none" onclick="wppModal()">💬 WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Link -->
+<div class="modal-overlay" id="modalLink">
+  <div class="modal">
+    <h3>🔗 Link do Orçamento PDF</h3>
+    <div class="link-box" id="linkModal"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modalLink').classList.remove('show')">Fechar</button>
+      <button class="btn btn-green" onclick="navigator.clipboard.writeText(document.getElementById('linkModal').textContent);alert('Copiado!')">📋 Copiar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_URL = '{{ request.host_url.rstrip("/") }}';
+let linkAtualModal = '';
+let telModal = '';
+
+function abrirUpload() {
+  document.getElementById('modalUpload').classList.add('show');
+  document.getElementById('up_link_result').style.display = 'none';
+  document.getElementById('btnCopiar').style.display = 'none';
+  document.getElementById('btnWpp').style.display = 'none';
+  document.getElementById('btnEnviar').style.display = '';
+}
+function fecharUpload() {
+  document.getElementById('modalUpload').classList.remove('show');
+  if (linkAtualModal) location.reload();
+}
+
+function previewArquivo(input) {
+  const nome = input.files[0]?.name || '';
+  document.getElementById('up_arquivo_nome').textContent = nome;
+  if (!document.getElementById('up_titulo').value) {
+    document.getElementById('up_titulo').value = nome.replace('.pdf','');
+  }
+}
+
+async function enviarPDF() {
+  const nome = document.getElementById('up_cliente_nome').value.trim();
+  const arquivo = document.getElementById('up_arquivo').files[0];
+  if (!nome) return alert('Preencha o nome do cliente.');
+  if (!arquivo) return alert('Selecione um arquivo PDF.');
+  document.getElementById('btnEnviar').textContent = '⏳ Enviando...';
+  document.getElementById('btnEnviar').disabled = true;
+  const fd = new FormData();
+  fd.append('pdf', arquivo);
+  fd.append('cliente_nome', nome);
+  fd.append('cliente_telefone', document.getElementById('up_cliente_tel').value.trim());
+  fd.append('titulo', document.getElementById('up_titulo').value.trim() || arquivo.name);
+  const res = await fetch('/upload_pdf', { method: 'POST', body: fd });
+  const data = await res.json();
+  document.getElementById('btnEnviar').textContent = '📤 Enviar e Gerar Link';
+  document.getElementById('btnEnviar').disabled = false;
+  if (data.ok) {
+    linkAtualModal = data.link;
+    telModal = document.getElementById('up_cliente_tel').value.trim();
+    document.getElementById('up_link').textContent = data.link;
+    document.getElementById('up_link_result').style.display = 'block';
+    document.getElementById('btnEnviar').style.display = 'none';
+    document.getElementById('btnCopiar').style.display = '';
+    document.getElementById('btnWpp').style.display = '';
+  } else {
+    alert('Erro: ' + data.erro);
+  }
+}
+
+function copiarLinkModal() {
+  navigator.clipboard.writeText(linkAtualModal);
+  alert('Link copiado!');
+}
+
+function wppModal() {
+  const msg = encodeURIComponent('Olá! Segue o link do seu orçamento: ' + linkAtualModal);
+  const tel = telModal.replace(/\D/g,'');
+  window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
+}
+
+async function copiarLink(token) {
+  const link = location.origin + '/pdf/' + token;
+  await navigator.clipboard.writeText(link);
+  alert('Link copiado!');
+}
+
+function whatsappLink(token, tel) {
+  const link = location.origin + '/pdf/' + token;
+  const msg = encodeURIComponent('Olá! Segue o link do seu orçamento: ' + link);
+  const t = tel.replace(/\D/g,'');
+  window.open('https://wa.me/55' + t + '?text=' + msg, '_blank');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+});
+</script>
+</body>
+</html>
