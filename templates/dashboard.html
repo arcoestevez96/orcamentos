@@ -370,6 +370,88 @@ document.getElementById('modalUpload').addEventListener('click', e => {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js').catch(() => {});
 }
+
+// ── Pull-to-refresh ──────────────────────────────────────────────────────────
+(function() {
+  const THRESHOLD = 72;   // px para acionar
+  const MAX_PULL  = 100;  // px máximo de arraste visual
+
+  // Cria indicador visual
+  const indicator = document.createElement('div');
+  indicator.id = 'ptr-indicator';
+  indicator.innerHTML = '<div class="ptr-spinner"></div><span>Solte para atualizar</span>';
+  indicator.style.cssText = [
+    'position:fixed;top:0;left:0;right:0;z-index:9999',
+    'display:flex;align-items:center;justify-content:center;gap:.6rem',
+    'height:56px;background:var(--surface);border-bottom:1px solid var(--border)',
+    'color:var(--text2);font-size:.85rem;font-weight:500',
+    'transform:translateY(-100%);transition:transform .2s ease',
+    'pointer-events:none'
+  ].join(';');
+  document.body.appendChild(indicator);
+
+  // Spinner CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    .ptr-spinner {
+      width:20px;height:20px;border-radius:50%;
+      border:2.5px solid var(--border);border-top-color:var(--accent2);
+      flex-shrink:0;
+    }
+    .ptr-spinner.spin { animation:ptr-spin .6s linear infinite; }
+    @keyframes ptr-spin { to { transform:rotate(360deg); } }
+    body.ptr-pulling { overflow:hidden; }
+  `;
+  document.head.appendChild(style);
+
+  let startY = 0, pulling = false, released = false;
+
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY > 0) return;        // só no topo
+    if (released) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling || released) return;
+    const delta = Math.min(e.touches[0].clientY - startY, MAX_PULL);
+    if (delta <= 0) return;
+
+    const progress = Math.min(delta / THRESHOLD, 1);
+    const translateY = delta * 0.5;         // segue o dedo com amortecimento
+
+    indicator.style.transform = `translateY(calc(-100% + ${translateY}px))`;
+    indicator.querySelector('span').textContent =
+      delta >= THRESHOLD ? 'Solte para atualizar' : 'Puxe para atualizar';
+
+    const spinner = indicator.querySelector('.ptr-spinner');
+    spinner.style.transform = `rotate(${progress * 360}deg)`;
+    document.body.classList.toggle('ptr-pulling', delta > 8);
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!pulling || released) return;
+    pulling = false;
+
+    const current = indicator.style.transform;
+    const translateVal = parseFloat((current.match(/\(calc\(-100% \+ ([\d.]+)px\)/) || [])[1] || 0);
+
+    if (translateVal >= THRESHOLD * 0.5) {
+      // Acionou: mostra spinner girando e recarrega
+      released = true;
+      indicator.style.transform = 'translateY(0)';
+      indicator.querySelector('.ptr-spinner').classList.add('spin');
+      indicator.querySelector('span').textContent = 'Atualizando…';
+      document.body.classList.remove('ptr-pulling');
+      setTimeout(() => location.reload(), 500);
+    } else {
+      // Não atingiu threshold: volta
+      indicator.style.transform = 'translateY(-100%)';
+      document.body.classList.remove('ptr-pulling');
+    }
+  });
+})();
 </script>
 </body>
 </html>
