@@ -409,7 +409,7 @@ def upload_pdf():
                 pass
         threading.Thread(target=_enviar_cliente, daemon=True).start()
 
-    return jsonify({'ok': True, 'token': token, 'link': link})
+    return jsonify({'ok': True, 'token': token, 'link': link, 'id': db_exec('SELECT id FROM pdfs WHERE token=%s' if USE_PG else 'SELECT id FROM pdfs WHERE token=?', (token,), fetch='one')['id'], 'valor': valor, 'titulo': request.form.get('titulo', filename), 'tel': cliente_tel})
 
 @app.route('/pdf/<token>')
 def ver_pdf(token):
@@ -455,7 +455,13 @@ def atualizar_status_pdf(id):
 def deletar_pdf(id):
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
-    return redirect('/pdfs')
+    return redirect('/')
+
+@app.route('/deletar_pdf_ajax/<int:id>', methods=['POST'])
+def deletar_pdf_ajax(id):
+    sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
+    db_exec(sql, (id,))
+    return jsonify({'ok': True})
 
 # ── configurações ─────────────────────────────────────────────────────────────
 

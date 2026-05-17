@@ -7,32 +7,29 @@
 <link rel="stylesheet" href="/static/style.css">
 <style>
 .status-select {
-  background: var(--bg3);
-  color: var(--text1);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .35rem .6rem;
-  font-size: .82rem;
-  cursor: pointer;
-  outline: none;
-  width: 100%;
+  background: var(--bg3); color: var(--text1);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .35rem .6rem; font-size: .82rem;
+  cursor: pointer; outline: none; width: 100%;
 }
 .status-select.fechou    { border-color:#16a34a; color:#4ade80; }
 .status-select.negociando{ border-color:#f59e0b; color:#fbbf24; }
 .status-select.perdido   { border-color:#ef4444; color:#f87171; }
 .status-select.aberto    { border-color:#6366f1; color:#a5b4fc; }
 .status-select.enviado   { border-color:#64748b; color:#94a3b8; }
-.stat-card.fechou   .value { color:#4ade80; }
+.stat-card.fechou    .value { color:#4ade80; }
 .stat-card.negociando .value { color:#fbbf24; }
-.stat-card.perdido  .value { color:#f87171; }
+.stat-card.perdido   .value { color:#f87171; }
 </style>
 </head>
 <body>
 <nav>
   <div class="logo"><span>📋</span> Orçamentos</div>
   <a href="/" class="active">Dashboard</a>
-  <a href="/pdfs">PDFs</a>
   <a href="/configuracoes">Configurações</a>
+  <div class="ml-auto">
+    <button class="btn btn-nav" onclick="abrirUpload()">📎 Enviar PDF</button>
+  </div>
 </nav>
 
 <div class="container">
@@ -41,20 +38,20 @@
       <h1>Seus Orçamentos</h1>
       <p>Acompanhe todos os orçamentos enviados</p>
     </div>
-    <a href="/pdfs" class="btn btn-primary">+ Enviar PDF</a>
+    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar PDF</button>
   </div>
 
   {% set fechados   = pdfs | selectattr('status', 'equalto', 'fechou')     | list %}
   {% set negociando = pdfs | selectattr('status', 'equalto', 'negociando') | list %}
   {% set perdidos   = pdfs | selectattr('status', 'equalto', 'perdido')    | list %}
-  {% set total_geral     = pdfs      | sum(attribute='valor') %}
-  {% set total_fechado   = fechados  | sum(attribute='valor') %}
-  {% set total_negoc     = negociando| sum(attribute='valor') %}
-  {% set total_perdido   = perdidos  | sum(attribute='valor') %}
+  {% set total_geral   = pdfs       | sum(attribute='valor') %}
+  {% set total_fechado = fechados   | sum(attribute='valor') %}
+  {% set total_negoc   = negociando | sum(attribute='valor') %}
+  {% set total_perdido = perdidos   | sum(attribute='valor') %}
 
   <div class="stats">
     <div class="stat-card">
-      <div class="label">📋 Total de Orçamentos</div>
+      <div class="label">📋 Total</div>
       <div class="value accent" id="cnt-total">{{ pdfs | length }}</div>
       <div style="font-size:.8rem;color:var(--accent);margin-top:.2rem" id="val-total">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
     </div>
@@ -89,9 +86,9 @@
           <th>Ações</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="tbody-pdfs">
         {% for p in pdfs %}
-        <tr>
+        <tr id="row-{{ p.id }}">
           <td>
             <strong>{{ p.cliente_nome }}</strong>
             {% if p.cliente_telefone %}<br><small style="color:var(--text2)">{{ p.cliente_telefone }}</small>{% endif %}
@@ -121,9 +118,7 @@
           <td>
             <div class="actions">
               <a href="/pdf/{{ p.token }}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
-              <form method="POST" action="/deletar_pdf/{{ p.id }}" onsubmit="return confirm('Deletar este PDF?')">
-                <button class="btn btn-danger btn-sm">🗑</button>
-              </form>
+              <button class="btn btn-danger btn-sm" onclick="deletarPdf({{ p.id }}, this)">🗑</button>
             </div>
           </td>
         </tr>
@@ -132,19 +127,60 @@
     </table>
   </div>
   {% else %}
-  <div class="empty">
+  <div class="empty" id="empty-state">
     <div class="icon">📎</div>
     <h3>Nenhum orçamento ainda</h3>
     <p>Faça upload de um PDF para começar</p>
     <br>
-    <a href="/pdfs" class="btn btn-primary">📎 Enviar PDF</a>
+    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar PDF</button>
   </div>
   {% endif %}
 </div>
 
+<!-- Modal Upload -->
+<div class="modal-overlay" id="modalUpload">
+  <div class="modal" style="max-width:520px">
+    <h3>📎 Enviar PDF com Rastreamento</h3>
+    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1.2rem">O link será enviado automaticamente para o WhatsApp do cliente.</p>
+
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>Nome do Cliente *</label>
+      <input type="text" id="up_nome" placeholder="Ex: João Silva">
+    </div>
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>WhatsApp do Cliente</label>
+      <input type="text" id="up_tel" placeholder="Ex: 71999990000">
+    </div>
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>Título do Orçamento</label>
+      <input type="text" id="up_titulo" placeholder="Ex: Reforma Cozinha">
+    </div>
+    <div class="form-group" style="margin-bottom:.8rem">
+      <label>Valor (deixe vazio para a IA ler do PDF)</label>
+      <input type="text" id="up_valor" placeholder="Ex: 15000,00">
+    </div>
+    <div class="form-group" style="margin-bottom:1rem">
+      <label>Arquivo PDF *</label>
+      <input type="file" id="up_arquivo" accept=".pdf" onchange="previewArq(this)">
+      <small id="up_arq_nome" style="color:var(--text2);margin-top:.3rem;display:block"></small>
+    </div>
+
+    <div id="up_resultado" style="display:none;margin-bottom:1rem">
+      <div style="color:var(--green);font-weight:600;margin-bottom:.5rem">✅ PDF enviado! Link gerado:</div>
+      <div class="link-box" id="up_link"></div>
+      <div id="up_valor_lido" style="color:#fbbf24;font-size:.85rem;margin-top:.4rem"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="fecharUpload()">Fechar</button>
+      <button class="btn btn-primary" id="btnEnviar" onclick="enviarPDF()">📤 Enviar e Gerar Link</button>
+      <button class="btn btn-green" id="btnCopiar" style="display:none" onclick="copiarLink()">📋 Copiar Link</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// Mapa de valores por PDF: { id: { status, valor } }
-const pdfs = {
+const pdfData = {
   {% for p in pdfs %}
   {{ p.id }}: { status: '{{ p.status }}', valor: {{ p.valor or 0 }} },
   {% endfor %}
@@ -155,36 +191,140 @@ function fmtBRL(v) {
 }
 
 function recalcularCards() {
-  let total = 0, cntFechou = 0, valFechou = 0,
-      cntNeg = 0, valNeg = 0, cntPerd = 0, valPerd = 0;
-
-  Object.values(pdfs).forEach(p => {
+  let total = 0, cntF = 0, valF = 0, cntN = 0, valN = 0, cntP = 0, valP = 0;
+  Object.values(pdfData).forEach(p => {
     total += p.valor;
-    if (p.status === 'fechou')     { cntFechou++; valFechou += p.valor; }
-    if (p.status === 'negociando') { cntNeg++;    valNeg    += p.valor; }
-    if (p.status === 'perdido')    { cntPerd++;   valPerd   += p.valor; }
+    if (p.status === 'fechou')     { cntF++; valF += p.valor; }
+    if (p.status === 'negociando') { cntN++; valN += p.valor; }
+    if (p.status === 'perdido')    { cntP++; valP += p.valor; }
   });
-
+  document.getElementById('cnt-total').textContent     = Object.keys(pdfData).length;
   document.getElementById('val-total').textContent     = fmtBRL(total);
-  document.getElementById('cnt-fechou').textContent    = cntFechou;
-  document.getElementById('val-fechou').textContent    = fmtBRL(valFechou);
-  document.getElementById('cnt-negociando').textContent= cntNeg;
-  document.getElementById('val-negociando').textContent= fmtBRL(valNeg);
-  document.getElementById('cnt-perdido').textContent   = cntPerd;
-  document.getElementById('val-perdido').textContent   = fmtBRL(valPerd);
+  document.getElementById('cnt-fechou').textContent    = cntF;
+  document.getElementById('val-fechou').textContent    = fmtBRL(valF);
+  document.getElementById('cnt-negociando').textContent= cntN;
+  document.getElementById('val-negociando').textContent= fmtBRL(valN);
+  document.getElementById('cnt-perdido').textContent   = cntP;
+  document.getElementById('val-perdido').textContent   = fmtBRL(valP);
 }
 
 async function atualizarStatus(id, sel) {
-  const status = sel.value;
-  sel.className = 'status-select ' + status;
-  pdfs[id].status = status;
+  sel.className = 'status-select ' + sel.value;
+  pdfData[id].status = sel.value;
   recalcularCards();
   await fetch('/atualizar_status_pdf/' + id, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ status })
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ status: sel.value })
   });
 }
+
+async function deletarPdf(id, btn) {
+  if (!confirm('Deletar este orçamento?')) return;
+  const res = await fetch('/deletar_pdf_ajax/' + id, { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('row-' + id).remove();
+    delete pdfData[id];
+    recalcularCards();
+  }
+}
+
+// Upload
+let linkAtual = '';
+function abrirUpload() {
+  document.getElementById('modalUpload').classList.add('show');
+  document.getElementById('up_resultado').style.display = 'none';
+  document.getElementById('btnCopiar').style.display = 'none';
+  document.getElementById('btnEnviar').style.display = '';
+  document.getElementById('btnEnviar').disabled = false;
+  document.getElementById('btnEnviar').textContent = '📤 Enviar e Gerar Link';
+}
+function fecharUpload() {
+  document.getElementById('modalUpload').classList.remove('show');
+}
+function previewArq(input) {
+  const nome = input.files[0]?.name || '';
+  document.getElementById('up_arq_nome').textContent = nome;
+  if (!document.getElementById('up_titulo').value)
+    document.getElementById('up_titulo').value = nome.replace('.pdf','').replace('.PDF','');
+}
+function copiarLink() {
+  navigator.clipboard.writeText(linkAtual);
+  alert('Link copiado!');
+}
+
+async function enviarPDF() {
+  const nome = document.getElementById('up_nome').value.trim();
+  const arquivo = document.getElementById('up_arquivo').files[0];
+  if (!nome) return alert('Preencha o nome do cliente.');
+  if (!arquivo) return alert('Selecione um arquivo PDF.');
+
+  const btn = document.getElementById('btnEnviar');
+  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
+
+  const fd = new FormData();
+  fd.append('pdf', arquivo);
+  fd.append('cliente_nome', nome);
+  fd.append('cliente_telefone', document.getElementById('up_tel').value.trim());
+  fd.append('titulo', document.getElementById('up_titulo').value.trim() || arquivo.name);
+  fd.append('valor', document.getElementById('up_valor').value.trim());
+
+  const res = await fetch('/upload_pdf', { method: 'POST', body: fd });
+  const data = await res.json();
+
+  btn.textContent = '📤 Enviar e Gerar Link'; btn.disabled = false;
+
+  if (data.ok) {
+    linkAtual = data.link;
+    document.getElementById('up_link').textContent = data.link;
+    document.getElementById('up_resultado').style.display = 'block';
+    document.getElementById('btnEnviar').style.display = 'none';
+    document.getElementById('btnCopiar').style.display = '';
+
+    if (data.valor && data.valor > 0)
+      document.getElementById('up_valor_lido').textContent = '🤖 IA leu o valor: ' + fmtBRL(data.valor);
+    else
+      document.getElementById('up_valor_lido').textContent = '';
+
+    // Adiciona nova linha na tabela sem recarregar
+    pdfData[data.id] = { status: 'enviado', valor: data.valor || 0 };
+    recalcularCards();
+
+    const tbody = document.getElementById('tbody-pdfs');
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.id = 'row-' + data.id;
+      tr.innerHTML = `
+        <td><strong>${nome}</strong>${data.tel ? '<br><small style="color:var(--text2)">'+data.tel+'</small>' : ''}</td>
+        <td>${data.titulo}</td>
+        <td style="color:var(--green);font-weight:600">${data.valor > 0 ? fmtBRL(data.valor) : '<span style="color:var(--text2)">—</span>'}</td>
+        <td style="text-align:center"><span style="color:var(--text2)">Não aberto</span></td>
+        <td style="color:var(--text2);font-size:.85rem">${new Date().toISOString().slice(0,10)}</td>
+        <td style="min-width:135px">
+          <select class="status-select enviado" onchange="atualizarStatus(${data.id}, this)">
+            <option value="enviado" selected>📤 Enviado</option>
+            <option value="aberto">👁 Visualizado</option>
+            <option value="negociando">🤝 Negociando</option>
+            <option value="fechou">✅ Fechou</option>
+            <option value="perdido">❌ Perdido</option>
+          </select>
+        </td>
+        <td>
+          <div class="actions">
+            <a href="${data.link}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
+            <button class="btn btn-danger btn-sm" onclick="deletarPdf(${data.id}, this)">🗑</button>
+          </div>
+        </td>`;
+      tbody.insertBefore(tr, tbody.firstChild);
+    }
+  } else {
+    alert('Erro: ' + data.erro);
+  }
+}
+
+document.getElementById('modalUpload').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalUpload')) fecharUpload();
+});
 </script>
 </body>
 </html>
