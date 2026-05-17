@@ -1217,6 +1217,7 @@ def assinar():
             cancel_url=f"{base}/paywall?falha=cancelado",
             payment_method_types=['card'],
             locale='pt-BR',
+            allow_promotion_codes=True,
         )
         return redirect(checkout.url)
     except Exception:
