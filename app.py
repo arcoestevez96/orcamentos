@@ -158,17 +158,34 @@ def extrair_valor_pdf(dados_bytes):
             except Exception:
                 pass
 
-        # Fallback: regex para encontrar o maior valor monetário no texto
-        padroes = re.findall(r'R\$?\s*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)', texto)
+        # Remove espaços entre dígitos (problema comum em PDFs: "1 47.269,58" → "147.269,58")
+        texto_limpo = re.sub(r'(\d) (\d)', r'\1\2', texto)
+        texto_limpo = re.sub(r'(\d) (\d)', r'\1\2', texto_limpo)  # segunda passagem
+
+        # Prioridade 1: linhas com TOTAL que têm valores
+        valores_total = []
+        for linha in texto_limpo.splitlines():
+            if re.search(r'TOTAL', linha, re.IGNORECASE):
+                nums = re.findall(r'R\$\s*([\d.]+,\d{2})', linha)
+                if not nums:
+                    nums = re.findall(r'([\d]{1,3}(?:\.\d{3})*,\d{2})', linha)
+                for n in nums:
+                    try:
+                        valores_total.append(float(n.replace('.','').replace(',','.')))
+                    except: pass
+
+        if valores_total:
+            return max(valores_total)
+
+        # Fallback: maior valor monetário do documento inteiro
+        padroes = re.findall(r'R\$\s*([\d.]+,\d{2})', texto_limpo)
         if not padroes:
-            padroes = re.findall(r'([\d]{1,3}(?:\.\d{3})*,\d{2})', texto)
+            padroes = re.findall(r'([\d]{1,3}(?:\.\d{3})*,\d{2})', texto_limpo)
         valores = []
         for p in padroes:
             try:
-                v = p.replace('.', '').replace(',', '.')
-                valores.append(float(v))
-            except:
-                pass
+                valores.append(float(p.replace('.','').replace(',','.')))
+            except: pass
         return max(valores) if valores else 0.0
     except Exception:
         return 0.0
