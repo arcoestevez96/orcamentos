@@ -1,5 +1,8 @@
 import os, json, uuid, requests, smtplib, threading
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+BRASILIA = ZoneInfo('America/Sao_Paulo')
 from flask import Flask, render_template, request, redirect, jsonify, send_file, Response
 from werkzeug.utils import secure_filename
 from email.mime.text import MIMEText
@@ -196,7 +199,7 @@ def calcular_total(itens):
     return total
 
 def now_str():
-    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.now(BRASILIA).strftime('%Y-%m-%d %H:%M:%S')
 
 # ── rotas ────────────────────────────────────────────────────────────────────
 
@@ -257,7 +260,7 @@ def ver(token):
         sql2 = "UPDATE orcamentos SET status='aberto',aberto_em=%s WHERE token=%s" if USE_PG else \
                "UPDATE orcamentos SET status='aberto',aberto_em=? WHERE token=?"
         db_exec(sql2, (now_str(), token))
-        hora = datetime.now().strftime('%H:%M')
+        hora = datetime.now(BRASILIA).strftime('%H:%M')
         txt = f"✅ {o['cliente_nome']} abriu o orçamento {o['titulo']} às {hora}!"
         html = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
             <h2 style="color:#16a34a">👁 Orçamento Visualizado!</h2>
@@ -322,7 +325,7 @@ def ver_pdf(token):
     else:
         db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
             (aberturas, now_str(), 'aberto', token))
-    hora = datetime.now().strftime('%H:%M')
+    hora = datetime.now(BRASILIA).strftime('%H:%M')
     if primeira:
         txt = f"👁 {p['cliente_nome']} abriu o PDF {p['titulo']} pela 1ª vez às {hora}!"
         html = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
