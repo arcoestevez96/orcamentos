@@ -1,4 +1,4 @@
-import os, json, uuid, requests, smtplib, threading
+import os, json, uuid, requests, smtplib, threading, re, io
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -125,6 +125,53 @@ def save_config(dados):
             db_exec('UPDATE config SET valor=%s WHERE chave=%s', (v, k))
         else:
             db_exec('UPDATE config SET valor=? WHERE chave=?', (v, k))
+
+def extrair_valor_pdf(dados_bytes):
+    """Extrai o valor total do PDF usando pdfplumber + IA (Claude) ou regex."""
+    try:
+        import pdfplumber
+        texto = ''
+        with pdfplumber.open(io.BytesIO(dados_bytes)) as pdf:
+            for page in pdf.pages:
+                texto += (page.extract_text() or '') + '\n'
+
+        if not texto.strip():
+            return 0.0
+
+        # Tentar IA primeiro (Claude)
+        anthropic_key = os.environ.get('ANTHROPIC_API_KEY', '')
+        if anthropic_key:
+            try:
+                import anthropic
+                client = anthropic.Anthropic(api_key=anthropic_key)
+                msg = client.messages.create(
+                    model='claude-haiku-4-5',
+                    max_tokens=100,
+                    messages=[{
+                        'role': 'user',
+                        'content': f'Leia este texto de orçamento e retorne APENAS o valor total final em número (ex: 15000.50). Se não encontrar, retorne 0.\n\nTexto:\n{texto[:3000]}'
+                    }]
+                )
+                valor_str = msg.content[0].text.strip().replace(',', '.').replace('R$', '').replace(' ', '')
+                valor_str = re.sub(r'[^\d.]', '', valor_str)
+                return float(valor_str) if valor_str else 0.0
+            except Exception:
+                pass
+
+        # Fallback: regex para encontrar o maior valor monetário no texto
+        padroes = re.findall(r'R\$?\s*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)', texto)
+        if not padroes:
+            padroes = re.findall(r'([\d]{1,3}(?:\.\d{3})*,\d{2})', texto)
+        valores = []
+        for p in padroes:
+            try:
+                v = p.replace('.', '').replace(',', '.')
+                valores.append(float(v))
+            except:
+                pass
+        return max(valores) if valores else 0.0
+    except Exception:
+        return 0.0
 
 def get_base_url():
     cfg = get_config()
@@ -313,9 +360,12 @@ def upload_pdf():
     dados = f.read()
     token = str(uuid.uuid4()).replace('-','')[:16]
     filename = secure_filename(f.filename)
-    valor = request.form.get('valor', '0').replace('R$','').replace('.','').replace(',','.').strip() or '0'
-    try: valor = float(valor)
-    except: valor = 0.0
+    valor_manual = request.form.get('valor', '').replace('R$','').replace('.','').replace(',','.').strip()
+    try: valor = float(valor_manual) if valor_manual else None
+    except: valor = None
+    # Se não informou valor manualmente, tenta extrair do PDF com IA
+    if not valor:
+        valor = extrair_valor_pdf(dados) or 0.0
     if USE_PG:
         import psycopg2
         db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',

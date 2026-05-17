@@ -47,12 +47,16 @@
   {% set fechados   = pdfs | selectattr('status', 'equalto', 'fechou')     | list %}
   {% set negociando = pdfs | selectattr('status', 'equalto', 'negociando') | list %}
   {% set perdidos   = pdfs | selectattr('status', 'equalto', 'perdido')    | list %}
-  {% set total_fechado = fechados | sum(attribute='valor') %}
+  {% set total_geral     = pdfs      | sum(attribute='valor') %}
+  {% set total_fechado   = fechados  | sum(attribute='valor') %}
+  {% set total_negoc     = negociando| sum(attribute='valor') %}
+  {% set total_perdido   = perdidos  | sum(attribute='valor') %}
 
   <div class="stats">
     <div class="stat-card">
-      <div class="label">Total de Orçamentos</div>
+      <div class="label">📋 Total de Orçamentos</div>
       <div class="value accent">{{ pdfs | length }}</div>
+      <div style="font-size:.8rem;color:var(--accent);margin-top:.2rem">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
     </div>
     <div class="stat-card fechou">
       <div class="label">✅ Fechados</div>
@@ -62,10 +66,12 @@
     <div class="stat-card negociando">
       <div class="label">🤝 Negociando</div>
       <div class="value">{{ negociando | length }}</div>
+      <div style="font-size:.8rem;color:#fbbf24;margin-top:.2rem">R$ {{ "%.2f"|format(total_negoc) | replace('.', ',') }}</div>
     </div>
     <div class="stat-card perdido">
       <div class="label">❌ Perdidos</div>
       <div class="value">{{ perdidos | length }}</div>
+      <div style="font-size:.8rem;color:#f87171;margin-top:.2rem">R$ {{ "%.2f"|format(total_perdido) | replace('.', ',') }}</div>
     </div>
   </div>
 
