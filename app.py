@@ -1155,7 +1155,35 @@ def ping():
     """Health check — usado por serviços externos para manter o servidor acordado."""
     return jsonify({'ok': True, 'status': 'alive'})
 
-# ── pagamento (Mercado Pago) ──────────────────────────────────────────────────
+# ── pagamento (Stripe) ────────────────────────────────────────────────────────
+
+def get_stripe_price_id(plano):
+    """Retorna o Price ID do Stripe para o plano. Cria se não existir."""
+    import stripe
+    stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+    env_key = 'STRIPE_PRICE_ANUAL' if plano == 'anual' else 'STRIPE_PRICE_MENSAL'
+    price_id = os.environ.get(env_key, '')
+    if price_id:
+        return price_id
+    # Cria produto e preço dinamicamente na primeira vez
+    cfg_key = f'stripe_price_{plano}'
+    cfg = get_config()
+    if cfg.get(cfg_key):
+        return cfg[cfg_key]
+    try:
+        product = stripe.Product.create(name='Orce & Veja Pro')
+        if plano == 'anual':
+            price = stripe.Price.create(
+                product=product.id, unit_amount=18000, currency='brl',
+                recurring={'interval': 'year'})
+        else:
+            price = stripe.Price.create(
+                product=product.id, unit_amount=1990, currency='brl',
+                recurring={'interval': 'month'})
+        save_config({cfg_key: price.id})
+        return price.id
+    except Exception:
+        return ''
 
 @app.route('/paywall')
 def paywall():
@@ -1169,55 +1197,52 @@ def paywall():
 def assinar():
     if not session.get('user_email'):
         return redirect(url_for('login'))
-    plano = request.form.get('plano', 'mensal')
-    mp_token = os.environ.get('MP_ACCESS_TOKEN', '')
-    if not mp_token:
-        return redirect(url_for('paywall') + '?falha=sem_token')
+    plano      = request.form.get('plano', 'mensal')
+    secret_key = os.environ.get('STRIPE_SECRET_KEY', '')
+    if not secret_key:
+        return redirect(url_for('paywall') + '?falha=sem_chave')
     try:
-        import mercadopago
-        sdk = mercadopago.SDK(mp_token)
-        preco  = 180.00 if plano == 'anual' else 19.90
-        titulo = 'Orce & Veja Pro — Anual' if plano == 'anual' else 'Orce & Veja Pro — Mensal'
-        base   = get_base_url()
-        pref   = sdk.preference().create({
-            'items': [{'title': titulo, 'quantity': 1, 'unit_price': preco, 'currency_id': 'BRL'}],
-            'payer': {'email': session['user_email']},
-            'external_reference': f"{session['user_email']}|{plano}",
-            'back_urls': {
-                'success': f"{base}/pagamento/sucesso",
-                'failure': f"{base}/pagamento/falha",
-                'pending': f"{base}/pagamento/pendente",
-            },
-            'auto_return': 'approved',
-            'notification_url': f"{base}/webhook/mp",
-            'statement_descriptor': 'ORCE E VEJA',
-        })
-        checkout_url = pref['response'].get('init_point', '')
-        if not checkout_url:
+        import stripe
+        stripe.api_key = secret_key
+        base     = get_base_url()
+        price_id = get_stripe_price_id(plano)
+        if not price_id:
             return redirect(url_for('paywall') + '?falha=1')
-        return redirect(checkout_url)
-    except Exception as e:
+        checkout = stripe.checkout.Session.create(
+            mode='subscription',
+            customer_email=session['user_email'],
+            line_items=[{'price': price_id, 'quantity': 1}],
+            metadata={'email': session['user_email'], 'plano': plano},
+            success_url=f"{base}/pagamento/sucesso?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{base}/paywall?falha=cancelado",
+            payment_method_types=['card'],
+            locale='pt-BR',
+        )
+        return redirect(checkout.url)
+    except Exception:
         return redirect(url_for('paywall') + '?falha=1')
 
 @app.route('/pagamento/sucesso')
 def pagamento_sucesso():
-    payment_id = request.args.get('payment_id', '')
-    status     = request.args.get('status', '')
+    from datetime import timedelta
+    session_id = request.args.get('session_id', '')
     email      = session.get('user_email', '')
-    if status == 'approved' and payment_id and email:
+    if session_id and email:
         try:
-            import mercadopago
-            from datetime import timedelta
-            sdk     = mercadopago.SDK(os.environ.get('MP_ACCESS_TOKEN', ''))
-            payment = sdk.payment().get(payment_id)['response']
-            if payment.get('status') == 'approved':
-                ext = payment.get('external_reference', '')
-                plano = ext.split('|')[1] if '|' in ext else 'mensal'
+            import stripe
+            stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+            checkout = stripe.checkout.Session.retrieve(session_id)
+            if checkout.payment_status in ('paid', 'no_payment_required'):
+                plano = (checkout.metadata or {}).get('plano', 'mensal')
                 dias  = 365 if plano == 'anual' else 30
                 ends  = (datetime.now(BRASILIA) + timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')
                 sql   = 'UPDATE users SET subscription_status=%s, subscription_ends_at=%s WHERE email=%s' if USE_PG else \
                         'UPDATE users SET subscription_status=?, subscription_ends_at=? WHERE email=?'
                 db_exec(sql, ('ativo', ends, email.lower()))
+                cfg = get_config()
+                hora = datetime.now(BRASILIA).strftime('%d/%m/%Y às %H:%M')
+                txt  = f"💳 Nova assinatura Stripe! {email} — plano {plano} às {hora}"
+                threading.Thread(target=lambda: notificar(cfg, txt), daemon=True).start()
         except Exception:
             pass
     return redirect(url_for('dashboard') + '?pagamento=ok')
@@ -1226,40 +1251,64 @@ def pagamento_sucesso():
 def pagamento_falha():
     return redirect(url_for('paywall') + '?falha=1')
 
-@app.route('/pagamento/pendente')
-def pagamento_pendente():
-    return redirect(url_for('paywall') + '?pendente=1')
-
-@app.route('/webhook/mp', methods=['POST'])
-def webhook_mp():
-    """Webhook do Mercado Pago — confirma pagamento e libera acesso."""
+@app.route('/webhook/stripe', methods=['POST'])
+def webhook_stripe():
+    """Webhook do Stripe — confirma pagamentos recorrentes e cancelamentos."""
     from datetime import timedelta
-    data     = request.get_json(silent=True) or {}
-    topic    = data.get('type') or request.args.get('topic', '')
-    res_id   = (data.get('data') or {}).get('id') or request.args.get('id', '')
-    if not res_id or topic not in ('payment', 'merchant_order', ''):
-        return jsonify({'ok': True})
+    import stripe
+    stripe.api_key     = os.environ.get('STRIPE_SECRET_KEY', '')
+    webhook_secret     = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+    payload            = request.get_data()
+    sig                = request.headers.get('Stripe-Signature', '')
     try:
-        import mercadopago
-        sdk     = mercadopago.SDK(os.environ.get('MP_ACCESS_TOKEN', ''))
-        payment = sdk.payment().get(res_id)['response']
-        if payment.get('status') == 'approved':
-            ext   = payment.get('external_reference', '')
-            email = ext.split('|')[0] if '|' in ext else ''
-            plano = ext.split('|')[1] if '|' in ext else 'mensal'
-            if email:
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
+        else:
+            event = stripe.Event.construct_from(request.get_json(), stripe.api_key)
+    except Exception:
+        return jsonify({'ok': False}), 400
+
+    etype = event['type']
+    obj   = event['data']['object']
+
+    if etype == 'checkout.session.completed':
+        email = (obj.get('metadata') or {}).get('email') or obj.get('customer_email', '')
+        plano = (obj.get('metadata') or {}).get('plano', 'mensal')
+        if email and obj.get('payment_status') in ('paid', 'no_payment_required'):
+            dias = 365 if plano == 'anual' else 30
+            ends = (datetime.now(BRASILIA) + timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')
+            sql  = 'UPDATE users SET subscription_status=%s, subscription_ends_at=%s WHERE email=%s' if USE_PG else \
+                   'UPDATE users SET subscription_status=?, subscription_ends_at=? WHERE email=?'
+            db_exec(sql, ('ativo', ends, email.lower()))
+
+    elif etype == 'invoice.payment_succeeded':
+        # Renovação mensal/anual automática
+        customer_email = obj.get('customer_email', '')
+        sub_id = obj.get('subscription', '')
+        if customer_email and sub_id:
+            try:
+                sub  = stripe.Subscription.retrieve(sub_id)
+                plano = 'anual' if sub['items']['data'][0]['price']['recurring']['interval'] == 'year' else 'mensal'
                 dias = 365 if plano == 'anual' else 30
                 ends = (datetime.now(BRASILIA) + timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')
                 sql  = 'UPDATE users SET subscription_status=%s, subscription_ends_at=%s WHERE email=%s' if USE_PG else \
                        'UPDATE users SET subscription_status=?, subscription_ends_at=? WHERE email=?'
-                db_exec(sql, ('ativo', ends, email.lower()))
-                # Notifica admin
-                cfg = get_config()
-                hora = datetime.now(BRASILIA).strftime('%d/%m/%Y às %H:%M')
-                txt  = f"💳 Nova assinatura! {email} assinou o plano {plano} às {hora}"
-                threading.Thread(target=lambda: notificar(cfg, txt), daemon=True).start()
-    except Exception:
-        pass
+                db_exec(sql, ('ativo', ends, customer_email.lower()))
+            except Exception:
+                pass
+
+    elif etype in ('customer.subscription.deleted', 'customer.subscription.paused'):
+        customer_email = obj.get('customer_email', '')
+        if not customer_email:
+            try:
+                customer_email = stripe.Customer.retrieve(obj['customer']).email or ''
+            except Exception:
+                pass
+        if customer_email:
+            sql = 'UPDATE users SET subscription_status=%s WHERE email=%s' if USE_PG else \
+                  'UPDATE users SET subscription_status=? WHERE email=?'
+            db_exec(sql, ('cancelado', customer_email.lower()))
+
     return jsonify({'ok': True})
 
 if __name__ == '__main__':
