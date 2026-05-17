@@ -190,35 +190,36 @@ def extrair_valor_pdf(dados_bytes):
                 pass
 
         texto_limpo = limpar_texto(texto)
+        linhas = texto_limpo.splitlines()
 
-        # ── Palavras-chave de total em ordem de prioridade
-        TOTAL_KWS = [
-            r'TOTAL\s+GERAL',
-            r'VALOR\s+TOTAL',
-            r'TOTAL\s+A\s+PAGAR',
-            r'TOTAL\s+DO\s+OR[CÇ]AMENTO',
-            r'TOTAL\s+FINAL',
-            r'GRAND\s+TOTAL',
-            r'TOTAL',
-        ]
+        def extrair_valor_linha(linha):
+            """Extrai o maior valor BRL de uma linha."""
+            nums = re.findall(r'R\$\s*([\d.]+,\d{2})', linha)
+            if not nums:
+                nums = re.findall(r'([\d]{1,3}(?:\.\d{3})+,\d{2})', linha)
+            if not nums:
+                nums = re.findall(r'(\d{3,},\d{2})', linha)
+            vals = [v for v in [parse_brl(n) for n in nums] if v and v > 0]
+            return max(vals) if vals else None
 
-        for kw in TOTAL_KWS:
-            for linha in texto_limpo.splitlines():
-                if not re.search(kw, linha, re.IGNORECASE):
-                    continue
-                # Tenta R$ valor
-                nums = re.findall(r'R\$\s*([\d.]+,\d{2})', linha)
-                # Tenta valor com ponto de milhar
-                if not nums:
-                    nums = re.findall(r'([\d]{1,3}(?:\.\d{3})+,\d{2})', linha)
-                # Tenta valor sem ponto de milhar (ex: 15000,00)
-                if not nums:
-                    nums = re.findall(r'(\d{3,},\d{2})', linha)
-                vals = [v for v in [parse_brl(n) for n in nums] if v and v > 0]
-                if vals:
-                    return max(vals)
+        # ── PRIORIDADE 1: última linha que contém "VALOR TOTAL" (regra do usuário)
+        for linha in reversed(linhas):
+            if re.search(r'VALOR\s+TOTAL', linha, re.IGNORECASE):
+                v = extrair_valor_linha(linha)
+                if v:
+                    return v
 
-        # ── Fallback: todos os valores monetários, retorna o maior
+        # ── PRIORIDADE 2: última linha com outras variantes de total
+        for kw in [r'TOTAL\s+GERAL', r'TOTAL\s+A\s+PAGAR',
+                   r'TOTAL\s+DO\s+OR[CÇ]AMENTO', r'TOTAL\s+FINAL',
+                   r'GRAND\s+TOTAL', r'TOTAL']:
+            for linha in reversed(linhas):
+                if re.search(kw, linha, re.IGNORECASE):
+                    v = extrair_valor_linha(linha)
+                    if v:
+                        return v
+
+        # ── FALLBACK: maior valor monetário do documento inteiro
         all_nums = re.findall(r'R\$\s*([\d.]+,\d{2})', texto_limpo)
         if not all_nums:
             all_nums = re.findall(r'([\d]{1,3}(?:\.\d{3})+,\d{2})', texto_limpo)
@@ -468,16 +469,26 @@ def ver_pdf(token):
     hora = datetime.now(BRASILIA).strftime('%H:%M')
     if primeira:
         txt = f"👁 {p['cliente_nome']} abriu o PDF {p['titulo']} pela 1ª vez às {hora}!"
-        html = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
+        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
             <h2 style="color:#16a34a">👁 PDF Visualizado!</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>.</p></div>"""
     else:
         txt = f"🔄 {p['cliente_nome']} abriu novamente {p['titulo']} às {hora}. Total: {aberturas}x"
-        html = f"""<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">
+        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">
             <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>"""
-    notificar(cfg, txt, html)
-    arquivo = bytes(p['arquivo']) if p['arquivo'] else b''
+    notificar(cfg, txt, html_notif)
+    titulo = p['titulo'] or p['filename'] or 'Orçamento'
+    empresa = cfg.get('empresa_nome', '') or 'Orçamento'
+    return render_template('viewer_pdf.html', token=token, titulo=titulo, empresa=empresa)
+
+@app.route('/pdf_raw/<token>')
+def pdf_raw(token):
+    """Serve o arquivo PDF puro (sem rastreamento — já registrado em /pdf/<token>)."""
+    sql = 'SELECT arquivo, filename FROM pdfs WHERE token=%s' if USE_PG else 'SELECT arquivo, filename FROM pdfs WHERE token=?'
+    p = db_exec(sql, (token,), fetch='one')
+    if not p or not p['arquivo']: return 'PDF não encontrado.', 404
+    arquivo = bytes(p['arquivo'])
     return Response(arquivo, mimetype='application/pdf',
         headers={'Content-Disposition': f'inline; filename="{p["filename"]}"'})
 
