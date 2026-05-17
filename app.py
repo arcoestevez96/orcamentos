@@ -667,6 +667,12 @@ def now_str():
 # ── rotas ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
+def index():
+    if session.get('user_email'):
+        return redirect(url_for('dashboard'))
+    return render_template('landing.html')
+
+@app.route('/dashboard')
 @login_required
 def dashboard():
     pdfs = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
@@ -705,7 +711,7 @@ def editar(id):
         return jsonify({'ok': True})
     sql = 'SELECT * FROM orcamentos WHERE id=%s' if USE_PG else 'SELECT * FROM orcamentos WHERE id=?'
     o = db_exec(sql, (id,), fetch='one')
-    if not o: return redirect('/')
+    if not o: return redirect(url_for('dashboard'))
     o['itens'] = json.loads(o['itens'])
     return render_template('criar.html', orcamento=o)
 
@@ -713,7 +719,7 @@ def editar(id):
 def deletar(id):
     sql = 'DELETE FROM orcamentos WHERE id=%s' if USE_PG else 'DELETE FROM orcamentos WHERE id=?'
     db_exec(sql, (id,))
-    return redirect('/')
+    return redirect(url_for('dashboard'))
 
 @app.route('/ver/<token>')
 def ver(token):
@@ -941,7 +947,7 @@ def atualizar_status_pdf(id):
 def deletar_pdf(id):
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
-    return redirect('/')
+    return redirect(url_for('dashboard'))
 
 @app.route('/deletar_pdf_ajax/<int:id>', methods=['POST'])
 @login_required
