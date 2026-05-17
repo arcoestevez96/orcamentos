@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orçamentos</title>
 <link rel="stylesheet" href="/static/style.css">
+<style>
+.status-select {
+  background: var(--bg3);
+  color: var(--text1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .35rem .6rem;
+  font-size: .82rem;
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+}
+.status-select.fechou  { border-color:#16a34a; color:#4ade80; }
+.status-select.negociando { border-color:#f59e0b; color:#fbbf24; }
+.status-select.perdido { border-color:#ef4444; color:#f87171; }
+.status-select.aberto  { border-color:#6366f1; color:#a5b4fc; }
+.status-select.enviado { border-color:#64748b; color:#94a3b8; }
+.stat-card.fechou .value { color:#4ade80; }
+.stat-card.negociando .value { color:#fbbf24; }
+.stat-card.perdido .value { color:#f87171; }
+</style>
 </head>
 <body>
 <nav>
@@ -26,25 +47,28 @@
   </div>
 
   {% set total_geral = orcamentos | sum(attribute='total') %}
-  {% set abertos = orcamentos | selectattr('status', 'equalto', 'aberto') | list %}
-  {% set enviados = orcamentos | selectattr('status', 'equalto', 'enviado') | list %}
+  {% set fechados = orcamentos | selectattr('status', 'equalto', 'fechou') | list %}
+  {% set negociando = orcamentos | selectattr('status', 'equalto', 'negociando') | list %}
+  {% set perdidos = orcamentos | selectattr('status', 'equalto', 'perdido') | list %}
+  {% set total_fechado = fechados | sum(attribute='total') %}
 
   <div class="stats">
     <div class="stat-card">
       <div class="label">Total de Orçamentos</div>
       <div class="value accent">{{ orcamentos | length }}</div>
     </div>
-    <div class="stat-card">
-      <div class="label">Aguardando Abertura</div>
-      <div class="value yellow">{{ enviados | length }}</div>
+    <div class="stat-card fechou">
+      <div class="label">✅ Fechados</div>
+      <div class="value">{{ fechados | length }}</div>
+      <div style="font-size:.8rem;color:#4ade80;margin-top:.2rem">R$ {{ "%.2f"|format(total_fechado) | replace('.', ',') }}</div>
     </div>
-    <div class="stat-card">
-      <div class="label">Visualizados</div>
-      <div class="value green">{{ abertos | length }}</div>
+    <div class="stat-card negociando">
+      <div class="label">🤝 Negociando</div>
+      <div class="value">{{ negociando | length }}</div>
     </div>
-    <div class="stat-card">
-      <div class="label">Volume Total</div>
-      <div class="value green">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
+    <div class="stat-card perdido">
+      <div class="label">❌ Perdidos</div>
+      <div class="value">{{ perdidos | length }}</div>
     </div>
   </div>
 
@@ -57,26 +81,26 @@
           <th>Título</th>
           <th>Total</th>
           <th>Criado em</th>
-          <th>Status</th>
+          <th>Situação</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         {% for o in orcamentos %}
-        <tr>
+        <tr id="row-{{ o.id }}">
           <td><strong>{{ o.cliente_nome }}</strong>{% if o.cliente_telefone %}<br><small style="color:var(--text2)">{{ o.cliente_telefone }}</small>{% endif %}</td>
           <td>{{ o.titulo }}</td>
           <td style="color:var(--green);font-weight:600">R$ {{ "%.2f"|format(o.total) | replace('.', ',') }}</td>
           <td style="color:var(--text2);font-size:.85rem">{{ o.criado_em[:10] }}</td>
-          <td>
-            {% if o.status == 'rascunho' %}
-              <span class="badge rascunho">✏️ Rascunho</span>
-            {% elif o.status == 'enviado' %}
-              <span class="badge enviado">📤 Enviado</span>
-            {% elif o.status == 'aberto' %}
-              <span class="badge aberto">👁 Visualizado</span>
-              {% if o.aberto_em %}<br><small style="color:var(--text2);font-size:.75rem">{{ o.aberto_em[:16] }}</small>{% endif %}
-            {% endif %}
+          <td style="min-width:130px">
+            <select class="status-select {{ o.status }}" onchange="atualizarStatus({{ o.id }}, this)">
+              <option value="enviado"    {% if o.status == 'enviado'    %}selected{% endif %}>📤 Enviado</option>
+              <option value="aberto"     {% if o.status == 'aberto'     %}selected{% endif %}>👁 Visualizado</option>
+              <option value="negociando" {% if o.status == 'negociando' %}selected{% endif %}>🤝 Negociando</option>
+              <option value="fechou"     {% if o.status == 'fechou'     %}selected{% endif %}>✅ Fechou</option>
+              <option value="perdido"    {% if o.status == 'perdido'    %}selected{% endif %}>❌ Perdido</option>
+            </select>
+            {% if o.aberto_em %}<small style="color:var(--text2);font-size:.72rem;display:block;margin-top:.2rem">Visto: {{ o.aberto_em[:16] }}</small>{% endif %}
           </td>
           <td>
             <div class="actions">
@@ -122,6 +146,16 @@ let linkAtual = '';
 let telAtual = '';
 let idAtual = null;
 
+async function atualizarStatus(id, sel) {
+  const status = sel.value;
+  sel.className = 'status-select ' + status;
+  await fetch('/atualizar_status/' + id, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({status})
+  });
+}
+
 async function compartilhar(token, id, nome, tel) {
   idAtual = id;
   telAtual = tel;
@@ -133,7 +167,6 @@ async function compartilhar(token, id, nome, tel) {
   linkAtual = data.link;
   document.getElementById('linkGerado').textContent = linkAtual;
 
-  // Marcar como enviado
   await fetch('/marcar_enviado/' + id, { method: 'POST' });
 }
 
@@ -143,7 +176,6 @@ function fecharModal() {
 
 function copiarLink() {
   navigator.clipboard.writeText(linkAtual);
-  const btn = document.querySelector('.btn-green.btn-sm');
   alert('Link copiado!');
 }
 

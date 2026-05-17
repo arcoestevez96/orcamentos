@@ -279,6 +279,16 @@ def marcar_enviado(id):
     db_exec(sql, (id,))
     return jsonify({'ok': True})
 
+@app.route('/atualizar_status/<int:id>', methods=['POST'])
+def atualizar_status(id):
+    d = request.get_json()
+    status = d.get('status','')
+    if status not in ['fechou','negociando','perdido','enviado','aberto']:
+        return jsonify({'ok': False})
+    sql = 'UPDATE orcamentos SET status=%s WHERE id=%s' if USE_PG else 'UPDATE orcamentos SET status=? WHERE id=?'
+    db_exec(sql, (status, id))
+    return jsonify({'ok': True})
+
 @app.route('/link/<token>')
 def gerar_link(token):
     return jsonify({'link': f"{get_base_url()}/ver/{token}"})
