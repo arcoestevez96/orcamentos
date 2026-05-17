@@ -1,16 +1,19 @@
 import os, json, uuid, requests, smtplib, threading, re, io
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from functools import wraps
 
 BRASILIA = ZoneInfo('America/Sao_Paulo')
-from flask import Flask, render_template, request, redirect, jsonify, send_file, Response
+from flask import Flask, render_template, request, redirect, jsonify, send_file, Response, session, url_for, flash
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import io
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.secret_key = os.environ.get('SECRET_KEY', 'orceveja-secret-2025-local')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_PG = bool(DATABASE_URL)
@@ -71,6 +74,14 @@ def init_db():
                 criado_em TEXT NOT NULL, aberto_em TEXT, aberturas INTEGER DEFAULT 0,
                 valor NUMERIC DEFAULT 0
             )''')
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                nome TEXT,
+                criado_em TEXT NOT NULL
+            )''')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS valor NUMERIC DEFAULT 0')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
@@ -93,6 +104,13 @@ def init_db():
                 criado_em TEXT NOT NULL, aberto_em TEXT
             );
             CREATE TABLE IF NOT EXISTS config (chave TEXT PRIMARY KEY, valor TEXT);
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                nome TEXT,
+                criado_em TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS pdfs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL,
                 cliente_nome TEXT NOT NULL, cliente_telefone TEXT, titulo TEXT NOT NULL,
@@ -118,6 +136,76 @@ def init_db():
 def get_config():
     rows = db_exec('SELECT chave, valor FROM config', fetch='all')
     return {r['chave']: r['valor'] for r in rows} if rows else {}
+
+# ── autenticação ─────────────────────────────────────────────────────────────
+
+def usuario_existe():
+    r = db_exec('SELECT id FROM users LIMIT 1', fetch='one')
+    return r is not None
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('user_email'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Se ainda não tem usuário cadastrado, redireciona para cadastro
+    if not usuario_existe():
+        return redirect(url_for('cadastro'))
+    erro = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        senha = request.form.get('senha', '').strip()
+        sql = 'SELECT * FROM users WHERE email=%s' if USE_PG else 'SELECT * FROM users WHERE email=?'
+        u = db_exec(sql, (email,), fetch='one')
+        if u and check_password_hash(u['password_hash'], senha):
+            session['user_email'] = u['email']
+            session['user_nome'] = u['nome'] or u['email'].split('@')[0]
+            return redirect(url_for('dashboard'))
+        erro = 'Email ou senha incorretos.'
+    return render_template('login.html', modo='login', erro=erro)
+
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    # Cadastro só permitido se ainda não há usuário
+    if usuario_existe() and not session.get('user_email'):
+        return redirect(url_for('login'))
+    erro = None
+    if request.method == 'POST':
+        nome  = request.form.get('nome', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        senha = request.form.get('senha', '').strip()
+        conf  = request.form.get('confirmar', '').strip()
+        if not email or not senha:
+            erro = 'Preencha email e senha.'
+        elif senha != conf:
+            erro = 'As senhas não coincidem.'
+        elif len(senha) < 6:
+            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        else:
+            sql_check = 'SELECT id FROM users WHERE email=%s' if USE_PG else 'SELECT id FROM users WHERE email=?'
+            if db_exec(sql_check, (email,), fetch='one'):
+                erro = 'Este email já está cadastrado.'
+            else:
+                ph = generate_password_hash(senha)
+                sql_ins = 'INSERT INTO users(email,password_hash,nome,criado_em) VALUES(%s,%s,%s,%s)' if USE_PG else \
+                          'INSERT INTO users(email,password_hash,nome,criado_em) VALUES(?,?,?,?)'
+                db_exec(sql_ins, (email, ph, nome, now_str()))
+                # Salva email nas configurações de notificação automaticamente
+                save_config({'email_remetente': email})
+                session['user_email'] = email
+                session['user_nome'] = nome or email.split('@')[0]
+                return redirect(url_for('dashboard'))
+    return render_template('login.html', modo='cadastro', erro=erro)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 def save_config(dados):
     for k, v in dados.items():
@@ -311,6 +399,7 @@ def now_str():
 # ── rotas ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
+@login_required
 def dashboard():
     pdfs = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
     for p in pdfs:
@@ -404,11 +493,13 @@ def gerar_link(token):
 # ── PDFs ─────────────────────────────────────────────────────────────────────
 
 @app.route('/pdfs')
+@login_required
 def pdfs():
     rows = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
     return render_template('pdfs.html', pdfs=rows)
 
 @app.route('/upload_pdf', methods=['POST'])
+@login_required
 def upload_pdf():
     if 'pdf' not in request.files:
         return jsonify({'ok': False, 'erro': 'Nenhum arquivo enviado'})
@@ -511,6 +602,7 @@ def ver_pdf(token):
     )
 
 @app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
+@login_required
 def atualizar_status_pdf(id):
     d = request.get_json()
     status = d.get('status','')
@@ -521,18 +613,21 @@ def atualizar_status_pdf(id):
     return jsonify({'ok': True})
 
 @app.route('/deletar_pdf/<int:id>', methods=['POST'])
+@login_required
 def deletar_pdf(id):
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
     return redirect('/')
 
 @app.route('/deletar_pdf_ajax/<int:id>', methods=['POST'])
+@login_required
 def deletar_pdf_ajax(id):
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
     return jsonify({'ok': True})
 
 @app.route('/reler_valor/<int:id>', methods=['POST'])
+@login_required
 def reler_valor(id):
     """Reextrai o valor total do PDF e atualiza no banco."""
     sql = 'SELECT arquivo FROM pdfs WHERE id=%s' if USE_PG else 'SELECT arquivo FROM pdfs WHERE id=?'
@@ -548,6 +643,7 @@ def reler_valor(id):
 # ── configurações ─────────────────────────────────────────────────────────────
 
 @app.route('/configuracoes', methods=['GET', 'POST'])
+@login_required
 def configuracoes():
     if request.method == 'POST':
         save_config(request.get_json())

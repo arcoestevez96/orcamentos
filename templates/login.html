@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if modo == 'cadastro' %}Criar Conta{% else %}Entrar{% endif %} · OrcEVeja</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OrcEVeja">
+<meta name="theme-color" content="#7c3aed">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .card {
+    background: #1a1d27;
+    border: 1px solid #2e3250;
+    border-radius: 18px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .logo .icon { font-size: 2.8rem; }
+  .logo h1 { font-size: 1.5rem; font-weight: 700; margin-top: .4rem; }
+  .logo p  { color: #64748b; font-size: .88rem; margin-top: .3rem; }
+
+  .form-group { margin-bottom: 1rem; }
+  label {
+    display: block;
+    font-size: .82rem;
+    color: #94a3b8;
+    font-weight: 500;
+    margin-bottom: .4rem;
+  }
+  input {
+    width: 100%;
+    background: #0f1117;
+    border: 1px solid #2e3250;
+    border-radius: 10px;
+    color: #e2e8f0;
+    padding: .75rem 1rem;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color .15s;
+    -webkit-appearance: none;
+  }
+  input:focus { outline: none; border-color: #4f6ef7; }
+
+  .btn-submit {
+    width: 100%;
+    background: #4f6ef7;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: .85rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: .5rem;
+    transition: background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-submit:active { background: #3b5bdb; }
+
+  .erro {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    color: #f87171;
+    border-radius: 8px;
+    padding: .7rem 1rem;
+    font-size: .88rem;
+    margin-bottom: 1rem;
+  }
+
+  .link-alterar {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: .88rem;
+    color: #64748b;
+  }
+  .link-alterar a { color: #818cf8; text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="icon">📋</div>
+    <h1>OrcEVeja</h1>
+    <p>{% if modo == 'cadastro' %}Crie sua conta para começar{% else %}Entre na sua conta{% endif %}</p>
+  </div>
+
+  {% if erro %}
+  <div class="erro">⚠️ {{ erro }}</div>
+  {% endif %}
+
+  <form method="POST">
+    {% if modo == 'cadastro' %}
+    <div class="form-group">
+      <label>Seu nome</label>
+      <input type="text" name="nome" placeholder="Ex: Gabriel Estevez" autocomplete="name">
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" name="email" placeholder="seu@email.com"
+             autocomplete="{% if modo == 'cadastro' %}email{% else %}username{% endif %}"
+             required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" name="senha" placeholder="••••••••"
+             autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}"
+             required>
+    </div>
+
+    {% if modo == 'cadastro' %}
+    <div class="form-group">
+      <label>Confirmar senha</label>
+      <input type="password" name="confirmar" placeholder="••••••••"
+             autocomplete="new-password" required>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn-submit">
+      {% if modo == 'cadastro' %}Criar Conta{% else %}Entrar{% endif %}
+    </button>
+  </form>
+</div>
+
+</body>
+</html>
