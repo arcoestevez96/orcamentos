@@ -127,7 +127,7 @@ def save_config(dados):
             db_exec('UPDATE config SET valor=? WHERE chave=?', (v, k))
 
 def extrair_valor_pdf(dados_bytes):
-    """Extrai o valor total do PDF usando pdfplumber + IA (Claude) ou regex."""
+    """Extrai o valor total do PDF usando pdfplumber + IA (Claude) ou regex robusta."""
     try:
         import pdfplumber
         texto = ''
@@ -138,55 +138,95 @@ def extrair_valor_pdf(dados_bytes):
         if not texto.strip():
             return 0.0
 
-        # Tentar IA primeiro (Claude)
+        # ── Remove espaços entre dígitos (PDFs problemáticos: "1 47.269,58" → "147.269,58")
+        def limpar_texto(t):
+            for _ in range(4):
+                t = re.sub(r'(\d) (\d)', r'\1\2', t)
+            return t
+
+        def parse_brl(s):
+            """Converte string brasileira para float. Ex: '147.269,58' → 147269.58"""
+            s = s.strip().replace(' ', '')
+            if re.fullmatch(r'[\d.]+,\d{2}', s):
+                return float(s.replace('.', '').replace(',', '.'))
+            if re.fullmatch(r'\d+,\d{2}', s):
+                return float(s.replace(',', '.'))
+            return None
+
+        # ── Tentar IA primeiro (Claude)
         anthropic_key = os.environ.get('ANTHROPIC_API_KEY', '')
         if anthropic_key:
             try:
                 import anthropic
                 client = anthropic.Anthropic(api_key=anthropic_key)
                 msg = client.messages.create(
-                    model='claude-haiku-4-5',
-                    max_tokens=100,
+                    model='claude-3-haiku-20240307',
+                    max_tokens=150,
                     messages=[{
                         'role': 'user',
-                        'content': f'Leia este texto de orçamento e retorne APENAS o valor total final em número (ex: 15000.50). Se não encontrar, retorne 0.\n\nTexto:\n{texto[:3000]}'
+                        'content': (
+                            'Analise este orçamento e retorne APENAS o valor total final '
+                            '(geralmente próximo a palavras como TOTAL, TOTAL GERAL, VALOR TOTAL, '
+                            'TOTAL A PAGAR, TOTAL DO ORÇAMENTO).\n'
+                            'Retorne SOMENTE o número no formato brasileiro com vírgula decimal. '
+                            'Exemplo de resposta: 147269,58\n'
+                            'Se não encontrar, retorne: 0\n\n'
+                            f'Texto:\n{limpar_texto(texto)[:4000]}'
+                        )
                     }]
                 )
-                valor_str = msg.content[0].text.strip().replace(',', '.').replace('R$', '').replace(' ', '')
-                valor_str = re.sub(r'[^\d.]', '', valor_str)
-                return float(valor_str) if valor_str else 0.0
+                raw = msg.content[0].text.strip().replace('R$', '').replace(' ', '')
+                # Tenta interpretar como número brasileiro
+                m = re.search(r'([\d]{1,3}(?:\.?\d{3})*,\d{2})', raw)
+                if m:
+                    v = parse_brl(m.group(1))
+                    if v and v > 0:
+                        return v
+                # Fallback: remove tudo exceto dígitos e ponto
+                raw2 = re.sub(r'[^\d.]', '', raw)
+                if raw2 and raw2 != '0':
+                    return float(raw2)
             except Exception:
                 pass
 
-        # Remove espaços entre dígitos (problema comum em PDFs: "1 47.269,58" → "147.269,58")
-        texto_limpo = re.sub(r'(\d) (\d)', r'\1\2', texto)
-        texto_limpo = re.sub(r'(\d) (\d)', r'\1\2', texto_limpo)  # segunda passagem
+        texto_limpo = limpar_texto(texto)
 
-        # Prioridade 1: linhas com TOTAL que têm valores
-        valores_total = []
-        for linha in texto_limpo.splitlines():
-            if re.search(r'TOTAL', linha, re.IGNORECASE):
+        # ── Palavras-chave de total em ordem de prioridade
+        TOTAL_KWS = [
+            r'TOTAL\s+GERAL',
+            r'VALOR\s+TOTAL',
+            r'TOTAL\s+A\s+PAGAR',
+            r'TOTAL\s+DO\s+OR[CÇ]AMENTO',
+            r'TOTAL\s+FINAL',
+            r'GRAND\s+TOTAL',
+            r'TOTAL',
+        ]
+
+        for kw in TOTAL_KWS:
+            for linha in texto_limpo.splitlines():
+                if not re.search(kw, linha, re.IGNORECASE):
+                    continue
+                # Tenta R$ valor
                 nums = re.findall(r'R\$\s*([\d.]+,\d{2})', linha)
+                # Tenta valor com ponto de milhar
                 if not nums:
-                    nums = re.findall(r'([\d]{1,3}(?:\.\d{3})*,\d{2})', linha)
-                for n in nums:
-                    try:
-                        valores_total.append(float(n.replace('.','').replace(',','.')))
-                    except: pass
+                    nums = re.findall(r'([\d]{1,3}(?:\.\d{3})+,\d{2})', linha)
+                # Tenta valor sem ponto de milhar (ex: 15000,00)
+                if not nums:
+                    nums = re.findall(r'(\d{3,},\d{2})', linha)
+                vals = [v for v in [parse_brl(n) for n in nums] if v and v > 0]
+                if vals:
+                    return max(vals)
 
-        if valores_total:
-            return max(valores_total)
+        # ── Fallback: todos os valores monetários, retorna o maior
+        all_nums = re.findall(r'R\$\s*([\d.]+,\d{2})', texto_limpo)
+        if not all_nums:
+            all_nums = re.findall(r'([\d]{1,3}(?:\.\d{3})+,\d{2})', texto_limpo)
+        if not all_nums:
+            all_nums = re.findall(r'(\d{3,},\d{2})', texto_limpo)
+        vals = [v for v in [parse_brl(n) for n in all_nums] if v and v > 0]
+        return max(vals) if vals else 0.0
 
-        # Fallback: maior valor monetário do documento inteiro
-        padroes = re.findall(r'R\$\s*([\d.]+,\d{2})', texto_limpo)
-        if not padroes:
-            padroes = re.findall(r'([\d]{1,3}(?:\.\d{3})*,\d{2})', texto_limpo)
-        valores = []
-        for p in padroes:
-            try:
-                valores.append(float(p.replace('.','').replace(',','.')))
-            except: pass
-        return max(valores) if valores else 0.0
     except Exception:
         return 0.0
 
@@ -462,6 +502,19 @@ def deletar_pdf_ajax(id):
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
     return jsonify({'ok': True})
+
+@app.route('/reler_valor/<int:id>', methods=['POST'])
+def reler_valor(id):
+    """Reextrai o valor total do PDF e atualiza no banco."""
+    sql = 'SELECT arquivo FROM pdfs WHERE id=%s' if USE_PG else 'SELECT arquivo FROM pdfs WHERE id=?'
+    p = db_exec(sql, (id,), fetch='one')
+    if not p or not p['arquivo']:
+        return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
+    dados = bytes(p['arquivo'])
+    valor = extrair_valor_pdf(dados)
+    sql2 = 'UPDATE pdfs SET valor=%s WHERE id=%s' if USE_PG else 'UPDATE pdfs SET valor=? WHERE id=?'
+    db_exec(sql2, (valor, id))
+    return jsonify({'ok': True, 'valor': valor})
 
 # ── configurações ─────────────────────────────────────────────────────────────
 

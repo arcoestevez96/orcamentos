@@ -125,6 +125,7 @@
           <td>
             <div class="actions">
               <a href="/pdf/{{ p.token }}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
+              <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor do PDF" onclick="relerValor({{ p.id }}, this)">🔄</button>
               <button class="btn btn-danger btn-sm" onclick="deletarPdf({{ p.id }}, this)">🗑</button>
             </div>
           </td>
@@ -225,6 +226,37 @@ async function atualizarStatus(id, sel) {
   });
 }
 
+async function relerValor(id, btn) {
+  const titulo = btn.closest('tr').querySelector('td:nth-child(2)')?.textContent?.trim() || 'PDF';
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/reler_valor/' + id, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      // Atualiza valor na linha
+      const tdValor = btn.closest('tr').querySelector('td:nth-child(3)');
+      if (tdValor) {
+        if (data.valor > 0) {
+          tdValor.innerHTML = `<span style="color:var(--green);font-weight:600">${fmtBRL(data.valor)}</span>`;
+        } else {
+          tdValor.innerHTML = `<span style="color:var(--text2)">—</span>`;
+        }
+      }
+      // Atualiza pdfData e recalcula cards
+      pdfData[id].valor = data.valor || 0;
+      recalcularCards();
+      btn.textContent = '✅';
+      setTimeout(() => { btn.textContent = '🔄'; btn.disabled = false; }, 1500);
+    } else {
+      btn.textContent = '❌';
+      setTimeout(() => { btn.textContent = '🔄'; btn.disabled = false; }, 1500);
+    }
+  } catch {
+    btn.textContent = '🔄'; btn.disabled = false;
+  }
+}
+
 async function deletarPdf(id, btn) {
   if (!confirm('Deletar este orçamento?')) return;
   const res = await fetch('/deletar_pdf_ajax/' + id, { method: 'POST' });
@@ -319,6 +351,7 @@ async function enviarPDF() {
         <td>
           <div class="actions">
             <a href="${data.link}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor do PDF" onclick="relerValor(${data.id}, this)">🔄</button>
             <button class="btn btn-danger btn-sm" onclick="deletarPdf(${data.id}, this)">🗑</button>
           </div>
         </td>`;
