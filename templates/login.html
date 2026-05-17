@@ -26,7 +26,7 @@
   .card {
     background: #1a1d27;
     border: 1px solid #2e3250;
-    border-radius: 18px;
+    border-radius: 20px;
     padding: 2.5rem 2rem;
     width: 100%;
     max-width: 400px;
@@ -40,7 +40,53 @@
   .logo h1 { font-size: 1.5rem; font-weight: 700; margin-top: .4rem; }
   .logo p  { color: #64748b; font-size: .88rem; margin-top: .3rem; }
 
-  .form-group { margin-bottom: 1rem; }
+  /* Social buttons */
+  .sociais { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1.5rem; }
+
+  .btn-social {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    width: 100%;
+    padding: .75rem 1rem;
+    border-radius: 12px;
+    border: 1px solid #2e3250;
+    background: #22263a;
+    color: #e2e8f0;
+    font-size: .95rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color .15s, background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-social:hover   { border-color: #4f6ef7; background: #272b40; }
+  .btn-social:active  { background: #1e2235; }
+  .btn-social .ico    { width: 22px; height: 22px; flex-shrink: 0; }
+  .btn-social .label  { flex: 1; }
+
+  .btn-google { }
+  .btn-facebook { }
+  .btn-apple { }
+
+  /* Divisor */
+  .divisor {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 1.2rem 0;
+    color: #475569;
+    font-size: .82rem;
+  }
+  .divisor::before, .divisor::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #2e3250;
+  }
+
+  /* Form email/senha */
+  .form-group { margin-bottom: .9rem; }
   label {
     display: block;
     font-size: .82rem;
@@ -72,7 +118,7 @@
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    margin-top: .5rem;
+    margin-top: .4rem;
     transition: background .15s;
     -webkit-tap-highlight-color: transparent;
   }
@@ -88,13 +134,16 @@
     margin-bottom: 1rem;
   }
 
-  .link-alterar {
+  .toggle {
     text-align: center;
-    margin-top: 1.5rem;
+    margin-top: 1.4rem;
     font-size: .88rem;
     color: #64748b;
   }
-  .link-alterar a { color: #818cf8; text-decoration: none; font-weight: 500; }
+  .toggle a { color: #818cf8; text-decoration: none; font-weight: 500; }
+
+  /* SVG icons inline */
+  svg { display: block; }
 </style>
 </head>
 <body>
@@ -103,12 +152,54 @@
   <div class="logo">
     <div class="icon">📋</div>
     <h1>OrcEVeja</h1>
-    <p>{% if modo == 'cadastro' %}Crie sua conta para começar{% else %}Entre na sua conta{% endif %}</p>
+    <p>{% if modo == 'cadastro' %}Crie sua conta{% else %}Bem-vindo de volta{% endif %}</p>
   </div>
 
-  {% if erro %}
-  <div class="erro">⚠️ {{ erro }}</div>
+  {% set erro_url = request.args.get('erro', '') %}
+  {% if erro or erro_url %}
+  <div class="erro">
+    ⚠️ {% if erro %}{{ erro }}
+    {% elif erro_url == 'sem_email' %}Não foi possível obter seu email. Tente outro método.
+    {% elif 'nao_configurado' in erro_url %}Este provedor ainda não está configurado.
+    {% elif 'cancelado' in erro_url %}Login cancelado. Tente novamente.
+    {% else %}Erro ao autenticar. Tente novamente.
+    {% endif %}
+  </div>
   {% endif %}
+
+  <!-- Botões sociais -->
+  <div class="sociais">
+
+    <!-- Google -->
+    <a href="/auth/google" class="btn-social btn-google">
+      <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      <span class="label">Continuar com Google</span>
+    </a>
+
+    <!-- Facebook -->
+    <a href="/auth/facebook" class="btn-social btn-facebook">
+      <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" fill="#1877F2"/>
+      </svg>
+      <span class="label">Continuar com Facebook</span>
+    </a>
+
+    <!-- Apple -->
+    <a href="/auth/apple" class="btn-social btn-apple">
+      <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" fill="#fff"/>
+      </svg>
+      <span class="label">Continuar com Apple</span>
+    </a>
+
+  </div>
+
+  <div class="divisor">ou use seu email</div>
 
   <form method="POST">
     {% if modo == 'cadastro' %}
@@ -122,7 +213,7 @@
       <label>Email</label>
       <input type="email" name="email" placeholder="seu@email.com"
              autocomplete="{% if modo == 'cadastro' %}email{% else %}username{% endif %}"
-             required autofocus>
+             required {% if not erro %}autofocus{% endif %}>
     </div>
 
     <div class="form-group">
@@ -144,6 +235,10 @@
       {% if modo == 'cadastro' %}Criar Conta{% else %}Entrar{% endif %}
     </button>
   </form>
+
+  {% if modo == 'login' %}
+  <div class="toggle">Não tem conta? <a href="/cadastro">Criar conta</a></div>
+  {% endif %}
 </div>
 
 </body>

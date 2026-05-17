@@ -78,10 +78,16 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
+                password_hash TEXT,
                 nome TEXT,
-                criado_em TEXT NOT NULL
+                criado_em TEXT NOT NULL,
+                oauth_provider TEXT,
+                oauth_id TEXT,
+                foto TEXT
             )''')
+        cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider TEXT')
+        cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_id TEXT')
+        cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS foto TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS valor NUMERIC DEFAULT 0')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
@@ -107,9 +113,12 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
+                password_hash TEXT,
                 nome TEXT,
-                criado_em TEXT NOT NULL
+                criado_em TEXT NOT NULL,
+                oauth_provider TEXT,
+                oauth_id TEXT,
+                foto TEXT
             );
             CREATE TABLE IF NOT EXISTS pdfs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL,
@@ -195,10 +204,11 @@ def cadastro():
                 sql_ins = 'INSERT INTO users(email,password_hash,nome,criado_em) VALUES(%s,%s,%s,%s)' if USE_PG else \
                           'INSERT INTO users(email,password_hash,nome,criado_em) VALUES(?,?,?,?)'
                 db_exec(sql_ins, (email, ph, nome, now_str()))
-                # Salva email nas configurações de notificação automaticamente
                 save_config({'email_remetente': email})
                 session['user_email'] = email
-                session['user_nome'] = nome or email.split('@')[0]
+                session['user_nome']  = nome or email.split('@')[0]
+                session['user_foto']  = ''
+                notificar_admin_novo_usuario(nome or email, email, 'email')
                 return redirect(url_for('dashboard'))
     return render_template('login.html', modo='cadastro', erro=erro)
 
@@ -206,6 +216,166 @@ def cadastro():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+# ── helpers OAuth ─────────────────────────────────────────────────────────────
+
+def notificar_admin_novo_usuario(nome, email, provider):
+    """Notifica o admin quando um novo usuário se cadastra."""
+    cfg = get_config()
+    hora = datetime.now(BRASILIA).strftime('%d/%m/%Y às %H:%M')
+    txt = (f"🆕 Novo cadastro no OrcEVeja!\n\n"
+           f"👤 Nome: {nome}\n"
+           f"📧 Email: {email}\n"
+           f"🔑 Via: {provider.capitalize()}\n"
+           f"🕐 {hora}")
+    threading.Thread(target=lambda: notificar(cfg, txt), daemon=True).start()
+
+def processar_login_social(email, nome, provider, provider_id, foto=None):
+    """Loga ou cria usuário via OAuth e retorna redirect."""
+    if not email:
+        return redirect(url_for('login') + '?erro=sem_email')
+    sql = 'SELECT * FROM users WHERE email=%s' if USE_PG else 'SELECT * FROM users WHERE email=?'
+    u = db_exec(sql, (email.lower(),), fetch='one')
+    novo = False
+    if not u:
+        # Novo usuário — cria conta
+        sql_ins = ('INSERT INTO users(email,nome,criado_em,oauth_provider,oauth_id,foto) '
+                   'VALUES(%s,%s,%s,%s,%s,%s)') if USE_PG else \
+                  ('INSERT INTO users(email,nome,criado_em,oauth_provider,oauth_id,foto) '
+                   'VALUES(?,?,?,?,?,?)')
+        db_exec(sql_ins, (email.lower(), nome, now_str(), provider, provider_id, foto))
+        u = db_exec(sql, (email.lower(),), fetch='one')
+        novo = True
+    else:
+        # Atualiza foto e provider se necessário
+        sql_up = ('UPDATE users SET foto=%s, oauth_provider=%s WHERE email=%s') if USE_PG else \
+                 ('UPDATE users SET foto=?, oauth_provider=? WHERE email=?')
+        db_exec(sql_up, (foto, provider, email.lower()))
+    session['user_email'] = u['email']
+    session['user_nome']  = u['nome'] or u['email'].split('@')[0]
+    session['user_foto']  = foto or ''
+    if novo:
+        notificar_admin_novo_usuario(nome, email, provider)
+    return redirect(url_for('dashboard'))
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+@app.route('/auth/google')
+def auth_google():
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
+    if not client_id:
+        return redirect(url_for('login') + '?erro=google_nao_configurado')
+    base = get_base_url()
+    params = ('client_id=' + client_id +
+              '&redirect_uri=' + base + '/auth/google/callback' +
+              '&response_type=code'
+              '&scope=openid%20email%20profile'
+              '&prompt=select_account')
+    return redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params)
+
+@app.route('/auth/google/callback')
+def auth_google_callback():
+    code = request.args.get('code', '')
+    if not code:
+        return redirect(url_for('login') + '?erro=google_cancelado')
+    base = get_base_url()
+    try:
+        tok = requests.post('https://oauth2.googleapis.com/token', data={
+            'code': code,
+            'client_id':     os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+            'redirect_uri':  base + '/auth/google/callback',
+            'grant_type':    'authorization_code',
+        }, timeout=15).json()
+        info = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',
+            headers={'Authorization': 'Bearer ' + tok.get('access_token', '')},
+            timeout=15).json()
+        return processar_login_social(
+            email=info.get('email', ''), nome=info.get('name', ''),
+            provider='google', provider_id=info.get('sub', ''),
+            foto=info.get('picture', ''))
+    except Exception as e:
+        return redirect(url_for('login') + '?erro=google_erro')
+
+# ── Facebook OAuth ────────────────────────────────────────────────────────────
+
+@app.route('/auth/facebook')
+def auth_facebook():
+    app_id = os.environ.get('FACEBOOK_APP_ID', '')
+    if not app_id:
+        return redirect(url_for('login') + '?erro=facebook_nao_configurado')
+    base = get_base_url()
+    params = ('client_id=' + app_id +
+              '&redirect_uri=' + base + '/auth/facebook/callback' +
+              '&scope=email,public_profile')
+    return redirect('https://www.facebook.com/v20.0/dialog/oauth?' + params)
+
+@app.route('/auth/facebook/callback')
+def auth_facebook_callback():
+    code = request.args.get('code', '')
+    if not code:
+        return redirect(url_for('login') + '?erro=facebook_cancelado')
+    base = get_base_url()
+    try:
+        tok = requests.get('https://graph.facebook.com/v20.0/oauth/access_token', params={
+            'client_id':     os.environ.get('FACEBOOK_APP_ID', ''),
+            'client_secret': os.environ.get('FACEBOOK_APP_SECRET', ''),
+            'redirect_uri':  base + '/auth/facebook/callback',
+            'code': code,
+        }, timeout=15).json()
+        access_token = tok.get('access_token', '')
+        info = requests.get('https://graph.facebook.com/me', params={
+            'fields': 'id,name,email,picture.type(large)',
+            'access_token': access_token,
+        }, timeout=15).json()
+        foto = info.get('picture', {}).get('data', {}).get('url', '')
+        return processar_login_social(
+            email=info.get('email', ''), nome=info.get('name', ''),
+            provider='facebook', provider_id=info.get('id', ''), foto=foto)
+    except Exception:
+        return redirect(url_for('login') + '?erro=facebook_erro')
+
+# ── Apple Sign In ─────────────────────────────────────────────────────────────
+
+@app.route('/auth/apple')
+def auth_apple():
+    client_id = os.environ.get('APPLE_CLIENT_ID', '')
+    if not client_id:
+        return redirect(url_for('login') + '?erro=apple_nao_configurado')
+    base = get_base_url()
+    params = ('client_id=' + client_id +
+              '&redirect_uri=' + base + '/auth/apple/callback' +
+              '&response_type=code%20id_token'
+              '&scope=name%20email'
+              '&response_mode=form_post')
+    return redirect('https://appleid.apple.com/auth/authorize?' + params)
+
+@app.route('/auth/apple/callback', methods=['POST'])
+def auth_apple_callback():
+    import jwt as pyjwt
+    code    = request.form.get('code', '')
+    id_token= request.form.get('id_token', '')
+    user_json = request.form.get('user', '{}')
+    if not code and not id_token:
+        return redirect(url_for('login') + '?erro=apple_cancelado')
+    try:
+        # Decodifica id_token sem verificação (apenas para obter email/sub)
+        payload = pyjwt.decode(id_token, options={"verify_signature": False})
+        email   = payload.get('email', '')
+        sub     = payload.get('sub', '')
+        # O nome só vem na primeira vez via campo 'user'
+        try:
+            u_data = json.loads(user_json)
+            fn = u_data.get('name', {}).get('firstName', '')
+            ln = u_data.get('name', {}).get('lastName', '')
+            nome = f"{fn} {ln}".strip() or email.split('@')[0]
+        except Exception:
+            nome = email.split('@')[0]
+        return processar_login_social(
+            email=email, nome=nome,
+            provider='apple', provider_id=sub)
+    except Exception:
+        return redirect(url_for('login') + '?erro=apple_erro')
 
 def save_config(dados):
     for k, v in dados.items():
