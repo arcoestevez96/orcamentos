@@ -897,13 +897,11 @@ def upload_pdf():
         pdf_snapshot = bytes(dados)
         def _enviar_cliente(pdf=pdf_snapshot, fn=fname, cap=caption):
             try:
-                ok, resp = notificar_zapi_documento(
+                notificar_zapi_documento(
                     cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
                     phone, pdf, fn, cap)
-                # fallback: se Z-API não suportar documento, envia o link de texto
-                if not ok:
-                    notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
-                                   phone, f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO SOLICITADO.\n\n{link}")
+                notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
+                               phone, link)
             except Exception:
                 pass
         threading.Thread(target=_enviar_cliente, daemon=True).start()
@@ -1082,12 +1080,11 @@ def renovar_link(id):
         pdf_snap = bytes(arquivo_novo)
         def _reenviar(pdf=pdf_snap, fn=fname, cap=caption):
             try:
-                ok, _ = notificar_zapi_documento(
+                notificar_zapi_documento(
                     cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
                     phone, pdf, fn, cap)
-                if not ok:
-                    notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
-                                   phone, f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO ATUALIZADO.\n\n{link}")
+                notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
+                               phone, link)
             except Exception:
                 pass
         threading.Thread(target=_reenviar, daemon=True).start()
