@@ -96,21 +96,34 @@
     <div class="config-section">
       <div class="section-title">✈️ Notificação via Telegram</div>
       <div class="info-box">
-        Receba uma mensagem no Telegram toda vez que um cliente abrir seu orçamento ou PDF.<br><br>
-        <strong>Token do Bot:</strong> obtido ao criar o bot no @BotFather<br>
-        <strong>Seu Chat ID:</strong> o número único da sua conversa com o bot
+        <strong>Como conectar em 3 passos:</strong><br><br>
+        <strong>1.</strong> Abra o Telegram e busque por <strong>@BotFather</strong><br>
+        <strong>2.</strong> Envie <code>/newbot</code>, escolha um nome e copie o token<br>
+        <strong>3.</strong> Cole o token abaixo e clique em <strong>Conectar</strong> — depois abra o bot e mande qualquer mensagem
       </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Token do Bot</label>
-          <input type="text" id="telegram_token" value="{{ cfg.telegram_token }}" placeholder="Ex: 8600023036:AAGbrp...">
-        </div>
-        <div class="form-group">
-          <label>Seu Chat ID</label>
-          <input type="text" id="telegram_chat_id" value="{{ cfg.telegram_chat_id }}" placeholder="Ex: 1584819175">
-        </div>
+      <div class="form-group" style="margin-bottom:.8rem">
+        <label>Token do Bot (obtido no @BotFather)</label>
+        <input type="text" id="telegram_token" value="{{ cfg.telegram_token }}" placeholder="Ex: 8600023036:AAGbrp...">
       </div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:.8rem" onclick="testarTelegram()">✈️ Testar Telegram</button>
+      <input type="hidden" id="telegram_chat_id" value="{{ cfg.telegram_chat_id }}">
+
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.8rem;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="conectarTelegram()">🔗 Conectar Telegram</button>
+        <button class="btn btn-secondary btn-sm" onclick="testarTelegram()">📨 Testar</button>
+        <span id="tg-status" style="font-size:.82rem;color:var(--text2)">
+          {% if cfg.telegram_chat_id %}✅ Conectado{% else %}⚪ Não conectado{% endif %}
+        </span>
+      </div>
+
+      <div id="tg-instrucao" style="display:none;margin-top:1rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:1rem;font-size:.88rem">
+        <strong style="color:#4ade80">✅ Bot registrado!</strong><br><br>
+        Agora abra o bot no Telegram e mande qualquer mensagem (ex: <em>oi</em>):<br><br>
+        <a id="tg-link" href="#" target="_blank"
+           style="display:inline-block;margin-top:.4rem;background:#229ED9;color:#fff;padding:.5rem 1rem;border-radius:8px;font-weight:600;text-decoration:none">
+          ✈️ Abrir Bot no Telegram
+        </a>
+        <p style="color:var(--text2);margin-top:.6rem;font-size:.8rem">Após enviar a mensagem você receberá uma confirmação e as notificações estarão ativas.</p>
+      </div>
     </div>
 
     <div class="config-section">
@@ -206,10 +219,42 @@ async function testarZapi() {
   }
 }
 
+async function conectarTelegram() {
+  const token = document.getElementById('telegram_token').value.trim();
+  if (!token) return alert('Cole o token do bot primeiro.');
+  // Salva o token antes de conectar
+  await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ telegram_token: token }) });
+  const btn = document.querySelector('[onclick="conectarTelegram()"]');
+  btn.textContent = '⏳ Conectando...'; btn.disabled = true;
+  try {
+    const res = await fetch('/telegram/conectar', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('tg-link').href = data.link;
+      document.getElementById('tg-instrucao').style.display = 'block';
+      document.getElementById('tg-status').textContent = '🔗 Aguardando mensagem no bot...';
+      // Fica verificando se o chat_id chegou
+      const intervalo = setInterval(async () => {
+        const s = await fetch('/telegram/status').then(r => r.json());
+        if (s.conectado) {
+          clearInterval(intervalo);
+          document.getElementById('tg-status').textContent = '✅ Conectado!';
+          document.getElementById('tg-status').style.color = '#4ade80';
+        }
+      }, 3000);
+    } else {
+      alert('❌ ' + data.erro);
+    }
+  } finally {
+    btn.textContent = '🔗 Conectar Telegram'; btn.disabled = false;
+  }
+}
+
 async function testarTelegram() {
   const token = document.getElementById('telegram_token').value.trim();
   const chat_id = document.getElementById('telegram_chat_id').value.trim();
-  if (!token || !chat_id) return alert('Preencha o Token e o Chat ID primeiro e clique em Salvar.');
+  if (!token || !chat_id) return alert('Conecte o Telegram primeiro antes de testar.');
   const btn = document.querySelector('[onclick="testarTelegram()"]');
   btn.textContent = '⏳ Enviando...'; btn.disabled = true;
   try {
@@ -221,7 +266,7 @@ async function testarTelegram() {
     if (data.ok) alert('✅ Mensagem enviada! Verifique seu Telegram.');
     else alert('❌ Erro: ' + (data.erro || data.resposta));
   } finally {
-    btn.textContent = '✈️ Testar Telegram'; btn.disabled = false;
+    btn.textContent = '📨 Testar'; btn.disabled = false;
   }
 }
 

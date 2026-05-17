@@ -27,6 +27,65 @@
 .stat-card.fechou    .value { color:#4ade80; }
 .stat-card.negociando .value { color:#fbbf24; }
 .stat-card.perdido   .value { color:#f87171; }
+
+/* Abas de filtro */
+.filtros-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .75rem;
+  flex-wrap: wrap;
+}
+.abas {
+  display: flex;
+  gap: .3rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.abas::-webkit-scrollbar { display: none; }
+.aba {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 99px;
+  padding: .35rem .75rem;
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.aba:hover { border-color: var(--accent); color: var(--text); }
+.aba.ativa { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cnt {
+  background: rgba(255,255,255,.15);
+  border-radius: 99px;
+  padding: .05rem .4rem;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.aba.ativa .cnt { background: rgba(255,255,255,.25); }
+.sort-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 8px;
+  padding: .35rem .6rem;
+  font-size: .8rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+@media (max-width: 720px) {
+  .filtros-bar { flex-direction: column; align-items: stretch; }
+  .sort-select { width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -81,6 +140,29 @@
   </div>
 
   {% if pdfs %}
+  <!-- Abas de filtro + ordenação -->
+  <div class="filtros-bar">
+    <div class="abas" id="abas">
+      <button class="aba ativa" data-filtro="todos">Todos <span class="cnt" id="cnt-aba-todos">{{ pdfs|length }}</span></button>
+      <button class="aba" data-filtro="enviado">📤 Enviado <span class="cnt" id="cnt-aba-enviado">{{ pdfs|selectattr('status','equalto','enviado')|list|length }}</span></button>
+      <button class="aba" data-filtro="aberto">👁 Visto <span class="cnt" id="cnt-aba-aberto">{{ pdfs|selectattr('status','equalto','aberto')|list|length }}</span></button>
+      <button class="aba" data-filtro="negociando">🤝 Neg. <span class="cnt" id="cnt-aba-negociando">{{ pdfs|selectattr('status','equalto','negociando')|list|length }}</span></button>
+      <button class="aba" data-filtro="fechou">✅ Fechou <span class="cnt" id="cnt-aba-fechou">{{ pdfs|selectattr('status','equalto','fechou')|list|length }}</span></button>
+      <button class="aba" data-filtro="perdido">❌ Perdido <span class="cnt" id="cnt-aba-perdido">{{ pdfs|selectattr('status','equalto','perdido')|list|length }}</span></button>
+    </div>
+    <select class="sort-select" id="sort-sel" onchange="aplicarFiltro()">
+      <option value="recente">↓ Mais recente</option>
+      <option value="aberto">↓ Último aberto</option>
+      <option value="valor">↓ Maior valor</option>
+      <option value="nome">↓ Nome A–Z</option>
+    </select>
+  </div>
+  <div id="empty-filtro" style="display:none" class="empty">
+    <div class="icon">🔍</div>
+    <h3>Nenhum resultado</h3>
+    <p>Nenhum orçamento nessa categoria.</p>
+  </div>
+
   <div class="table-card">
     <table>
       <thead>
@@ -366,6 +448,61 @@ async function enviarPDF() {
 document.getElementById('modalUpload').addEventListener('click', e => {
   if (e.target === document.getElementById('modalUpload')) fecharUpload();
 });
+
+// ── Filtro + ordenação ───────────────────────────────────────────────────────
+let filtroAtivo = 'todos';
+
+document.querySelectorAll('.aba').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.aba').forEach(b => b.classList.remove('ativa'));
+    btn.classList.add('ativa');
+    filtroAtivo = btn.dataset.filtro;
+    aplicarFiltro();
+  });
+});
+
+function aplicarFiltro() {
+  const sort   = document.getElementById('sort-sel').value;
+  const tbody  = document.getElementById('tbody-pdfs');
+  if (!tbody) return;
+
+  const rows = Array.from(tbody.querySelectorAll('tr[id^="row-"]'));
+
+  // Filtra
+  let visiveis = rows.filter(tr => {
+    if (filtroAtivo === 'todos') return true;
+    const sel = tr.querySelector('.status-select');
+    return sel && sel.value === filtroAtivo;
+  });
+
+  // Ordena
+  visiveis.sort((a, b) => {
+    const id = r => parseInt(r.id.replace('row-',''));
+    if (sort === 'recente') return id(b) - id(a);
+    if (sort === 'aberto') {
+      const dt = r => r.querySelector('[data-label="Aberturas"] small')?.textContent || '';
+      return dt(b).localeCompare(dt(a));
+    }
+    if (sort === 'valor') {
+      const val = r => pdfData[parseInt(r.id.replace('row-',''))]?.valor || 0;
+      return val(b) - val(a);
+    }
+    if (sort === 'nome') {
+      const nm = r => r.querySelector('td strong')?.textContent?.toLowerCase() || '';
+      return nm(a).localeCompare(nm(b));
+    }
+    return 0;
+  });
+
+  // Oculta todas as linhas
+  rows.forEach(tr => tr.style.display = 'none');
+  // Mostra as visíveis na ordem certa
+  visiveis.forEach(tr => { tr.style.display = ''; tbody.appendChild(tr); });
+
+  // Empty state
+  document.getElementById('empty-filtro').style.display = visiveis.length === 0 ? '' : 'none';
+  document.querySelector('.table-card').style.display = visiveis.length === 0 ? 'none' : '';
+}
 
 // Registra Service Worker para PWA
 if ('serviceWorker' in navigator) {

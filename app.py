@@ -640,6 +640,65 @@ def reler_valor(id):
     db_exec(sql2, (valor, id))
     return jsonify({'ok': True, 'valor': valor})
 
+# ── Telegram webhook (público — chamado pelo servidor do Telegram) ─────────────
+
+@app.route('/telegram/webhook', methods=['POST'])
+def telegram_webhook():
+    """Recebe mensagens do bot e auto-registra o chat_id do usuário."""
+    try:
+        data = request.get_json(silent=True) or {}
+        message = data.get('message') or data.get('edited_message') or {}
+        chat = message.get('chat', {})
+        chat_id = str(chat.get('id', ''))
+        if chat_id:
+            save_config({'telegram_chat_id': chat_id})
+            cfg = get_config()
+            token = cfg.get('telegram_token', '')
+            if token:
+                nome = message.get('from', {}).get('first_name', 'você')
+                empresa = cfg.get('empresa_nome', 'OrcEVeja')
+                resposta = (f"✅ Olá, {nome}! Tudo certo.\n\n"
+                            f"Você receberá notificações do *{empresa}* sempre que um cliente abrir um orçamento. 📋")
+                requests.post(
+                    f'https://api.telegram.org/bot{token}/sendMessage',
+                    json={'chat_id': chat_id, 'text': resposta, 'parse_mode': 'Markdown'},
+                    timeout=10
+                )
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
+@app.route('/telegram/conectar', methods=['POST'])
+@login_required
+def telegram_conectar():
+    """Registra o webhook do bot e retorna o link para o usuário abrir."""
+    cfg = get_config()
+    token = cfg.get('telegram_token', '').strip()
+    if not token:
+        return jsonify({'ok': False, 'erro': 'Cole o token do bot primeiro.'})
+    try:
+        info = requests.get(f'https://api.telegram.org/bot{token}/getMe', timeout=10).json()
+        if not info.get('ok'):
+            return jsonify({'ok': False, 'erro': 'Token inválido. Verifique e tente novamente.'})
+        username = info['result']['username']
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)})
+    base = get_base_url()
+    wh = requests.post(f'https://api.telegram.org/bot{token}/setWebhook',
+                       json={'url': f'{base}/telegram/webhook'}, timeout=10).json()
+    if not wh.get('ok'):
+        return jsonify({'ok': False, 'erro': 'Falha ao registrar: ' + wh.get('description', '')})
+    return jsonify({'ok': True, 'username': username,
+                    'link': f'https://t.me/{username}',
+                    'conectado': bool(cfg.get('telegram_chat_id'))})
+
+@app.route('/telegram/status', methods=['GET'])
+@login_required
+def telegram_status():
+    cfg = get_config()
+    return jsonify({'chat_id': cfg.get('telegram_chat_id', ''),
+                    'conectado': bool(cfg.get('telegram_chat_id'))})
+
 # ── configurações ─────────────────────────────────────────────────────────────
 
 @app.route('/configuracoes', methods=['GET', 'POST'])
