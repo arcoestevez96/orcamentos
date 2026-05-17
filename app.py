@@ -88,6 +88,9 @@ def init_db():
         cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider TEXT')
         cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_id TEXT')
         cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS foto TEXT')
+        cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TEXT')
+        cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT \'trial\'')
+        cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS valor NUMERIC DEFAULT 0')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
@@ -119,7 +122,10 @@ def init_db():
                 criado_em TEXT NOT NULL,
                 oauth_provider TEXT,
                 oauth_id TEXT,
-                foto TEXT
+                foto TEXT,
+                trial_ends_at TEXT,
+                subscription_status TEXT DEFAULT 'trial',
+                subscription_ends_at TEXT
             );
             CREATE TABLE IF NOT EXISTS pdfs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL,
@@ -155,11 +161,57 @@ def usuario_existe():
     r = db_exec('SELECT id FROM users LIMIT 1', fetch='one')
     return r is not None
 
+def get_user_by_email(email):
+    sql = 'SELECT * FROM users WHERE email=%s' if USE_PG else 'SELECT * FROM users WHERE email=?'
+    return db_exec(sql, (email,), fetch='one')
+
+def has_access(user):
+    """True se usuário tem trial ativo ou assinatura ativa."""
+    if not user:
+        return False
+    status = user.get('subscription_status') or 'trial'
+    if status == 'ativo':
+        ends = user.get('subscription_ends_at')
+        if ends:
+            try:
+                end = datetime.strptime(ends[:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=BRASILIA)
+                return datetime.now(BRASILIA) <= end
+            except Exception:
+                pass
+        return True
+    # Verifica período de trial
+    trial_ends = user.get('trial_ends_at')
+    if not trial_ends:
+        return True  # usuários antigos sem trial_ends_at têm acesso livre
+    try:
+        end = datetime.strptime(trial_ends[:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=BRASILIA)
+        return datetime.now(BRASILIA) <= end
+    except Exception:
+        return True
+
+def dias_trial_restantes(user):
+    if not user or user.get('subscription_status') == 'ativo':
+        return None
+    trial_ends = user.get('trial_ends_at')
+    if not trial_ends:
+        return None
+    try:
+        end = datetime.strptime(trial_ends[:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=BRASILIA)
+        delta = end - datetime.now(BRASILIA)
+        return max(0, delta.days)
+    except Exception:
+        return None
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        from flask import g
         if not session.get('user_email'):
             return redirect(url_for('login'))
+        u = get_user_by_email(session['user_email'])
+        if not has_access(u):
+            return redirect(url_for('paywall'))
+        g.current_user = u
         return f(*args, **kwargs)
     return decorated
 
@@ -206,7 +258,12 @@ def cadastro():
                 ph = generate_password_hash(senha)
                 sql_ins = 'INSERT INTO users(email,password_hash,nome,criado_em) VALUES(%s,%s,%s,%s)' if USE_PG else \
                           'INSERT INTO users(email,password_hash,nome,criado_em) VALUES(?,?,?,?)'
+                from datetime import timedelta
+                trial_end = (datetime.now(BRASILIA) + timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
                 db_exec(sql_ins, (email, ph, nome, now_str()))
+                sql_trial = 'UPDATE users SET trial_ends_at=%s, subscription_status=%s WHERE email=%s' if USE_PG else \
+                            'UPDATE users SET trial_ends_at=?, subscription_status=? WHERE email=?'
+                db_exec(sql_trial, (trial_end, 'trial', email))
                 save_config({'email_remetente': email})
                 session['user_email'] = email
                 session['user_nome']  = nome or email.split('@')[0]
@@ -242,11 +299,13 @@ def processar_login_social(email, nome, provider, provider_id, foto=None):
     novo = False
     if not u:
         # Novo usuário — cria conta
-        sql_ins = ('INSERT INTO users(email,nome,criado_em,oauth_provider,oauth_id,foto) '
-                   'VALUES(%s,%s,%s,%s,%s,%s)') if USE_PG else \
-                  ('INSERT INTO users(email,nome,criado_em,oauth_provider,oauth_id,foto) '
-                   'VALUES(?,?,?,?,?,?)')
-        db_exec(sql_ins, (email.lower(), nome, now_str(), provider, provider_id, foto))
+        from datetime import timedelta
+        trial_end = (datetime.now(BRASILIA) + timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
+        sql_ins = ('INSERT INTO users(email,nome,criado_em,oauth_provider,oauth_id,foto,trial_ends_at,subscription_status) '
+                   'VALUES(%s,%s,%s,%s,%s,%s,%s,%s)') if USE_PG else \
+                  ('INSERT INTO users(email,nome,criado_em,oauth_provider,oauth_id,foto,trial_ends_at,subscription_status) '
+                   'VALUES(?,?,?,?,?,?,?,?)')
+        db_exec(sql_ins, (email.lower(), nome, now_str(), provider, provider_id, foto, trial_end, 'trial'))
         u = db_exec(sql, (email.lower(),), fetch='one')
         novo = True
     else:
@@ -675,10 +734,14 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    from flask import g
     pdfs = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
     for p in pdfs:
         p['valor'] = float(p['valor'] or 0)
-    return render_template('dashboard.html', pdfs=pdfs)
+    u = g.current_user
+    dias = dias_trial_restantes(u)
+    return render_template('dashboard.html', pdfs=pdfs, dias_trial=dias,
+                           subscription_status=u.get('subscription_status') if u else None)
 
 @app.route('/criar', methods=['GET', 'POST'])
 def criar():
@@ -1091,6 +1154,113 @@ def testar_email():
 def ping():
     """Health check — usado por serviços externos para manter o servidor acordado."""
     return jsonify({'ok': True, 'status': 'alive'})
+
+# ── pagamento (Mercado Pago) ──────────────────────────────────────────────────
+
+@app.route('/paywall')
+def paywall():
+    if not session.get('user_email'):
+        return redirect(url_for('login'))
+    falha    = request.args.get('falha', '')
+    pendente = request.args.get('pendente', '')
+    return render_template('paywall.html', falha=falha, pendente=pendente)
+
+@app.route('/assinar', methods=['POST'])
+def assinar():
+    if not session.get('user_email'):
+        return redirect(url_for('login'))
+    plano = request.form.get('plano', 'mensal')
+    mp_token = os.environ.get('MP_ACCESS_TOKEN', '')
+    if not mp_token:
+        return redirect(url_for('paywall') + '?falha=sem_token')
+    try:
+        import mercadopago
+        sdk = mercadopago.SDK(mp_token)
+        preco  = 180.00 if plano == 'anual' else 19.90
+        titulo = 'Orce & Veja Pro — Anual' if plano == 'anual' else 'Orce & Veja Pro — Mensal'
+        base   = get_base_url()
+        pref   = sdk.preference().create({
+            'items': [{'title': titulo, 'quantity': 1, 'unit_price': preco, 'currency_id': 'BRL'}],
+            'payer': {'email': session['user_email']},
+            'external_reference': f"{session['user_email']}|{plano}",
+            'back_urls': {
+                'success': f"{base}/pagamento/sucesso",
+                'failure': f"{base}/pagamento/falha",
+                'pending': f"{base}/pagamento/pendente",
+            },
+            'auto_return': 'approved',
+            'notification_url': f"{base}/webhook/mp",
+            'statement_descriptor': 'ORCE E VEJA',
+        })
+        checkout_url = pref['response'].get('init_point', '')
+        if not checkout_url:
+            return redirect(url_for('paywall') + '?falha=1')
+        return redirect(checkout_url)
+    except Exception as e:
+        return redirect(url_for('paywall') + '?falha=1')
+
+@app.route('/pagamento/sucesso')
+def pagamento_sucesso():
+    payment_id = request.args.get('payment_id', '')
+    status     = request.args.get('status', '')
+    email      = session.get('user_email', '')
+    if status == 'approved' and payment_id and email:
+        try:
+            import mercadopago
+            from datetime import timedelta
+            sdk     = mercadopago.SDK(os.environ.get('MP_ACCESS_TOKEN', ''))
+            payment = sdk.payment().get(payment_id)['response']
+            if payment.get('status') == 'approved':
+                ext = payment.get('external_reference', '')
+                plano = ext.split('|')[1] if '|' in ext else 'mensal'
+                dias  = 365 if plano == 'anual' else 30
+                ends  = (datetime.now(BRASILIA) + timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')
+                sql   = 'UPDATE users SET subscription_status=%s, subscription_ends_at=%s WHERE email=%s' if USE_PG else \
+                        'UPDATE users SET subscription_status=?, subscription_ends_at=? WHERE email=?'
+                db_exec(sql, ('ativo', ends, email.lower()))
+        except Exception:
+            pass
+    return redirect(url_for('dashboard') + '?pagamento=ok')
+
+@app.route('/pagamento/falha')
+def pagamento_falha():
+    return redirect(url_for('paywall') + '?falha=1')
+
+@app.route('/pagamento/pendente')
+def pagamento_pendente():
+    return redirect(url_for('paywall') + '?pendente=1')
+
+@app.route('/webhook/mp', methods=['POST'])
+def webhook_mp():
+    """Webhook do Mercado Pago — confirma pagamento e libera acesso."""
+    from datetime import timedelta
+    data     = request.get_json(silent=True) or {}
+    topic    = data.get('type') or request.args.get('topic', '')
+    res_id   = (data.get('data') or {}).get('id') or request.args.get('id', '')
+    if not res_id or topic not in ('payment', 'merchant_order', ''):
+        return jsonify({'ok': True})
+    try:
+        import mercadopago
+        sdk     = mercadopago.SDK(os.environ.get('MP_ACCESS_TOKEN', ''))
+        payment = sdk.payment().get(res_id)['response']
+        if payment.get('status') == 'approved':
+            ext   = payment.get('external_reference', '')
+            email = ext.split('|')[0] if '|' in ext else ''
+            plano = ext.split('|')[1] if '|' in ext else 'mensal'
+            if email:
+                dias = 365 if plano == 'anual' else 30
+                ends = (datetime.now(BRASILIA) + timedelta(days=dias)).strftime('%Y-%m-%d %H:%M:%S')
+                sql  = 'UPDATE users SET subscription_status=%s, subscription_ends_at=%s WHERE email=%s' if USE_PG else \
+                       'UPDATE users SET subscription_status=?, subscription_ends_at=? WHERE email=?'
+                db_exec(sql, ('ativo', ends, email.lower()))
+                # Notifica admin
+                cfg = get_config()
+                hora = datetime.now(BRASILIA).strftime('%d/%m/%Y às %H:%M')
+                txt  = f"💳 Nova assinatura! {email} assinou o plano {plano} às {hora}"
+                threading.Thread(target=lambda: notificar(cfg, txt), daemon=True).start()
+    except Exception:
+        pass
+    return jsonify({'ok': True})
 
 if __name__ == '__main__':
     init_db()

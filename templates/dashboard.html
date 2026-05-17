@@ -100,6 +100,30 @@
 </nav>
 
 <div class="container">
+
+  {% if subscription_status == 'trial' and dias_trial is not none %}
+  <div style="background:linear-gradient(135deg,#1A4B8C,#2D7DD2);border-radius:12px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">⏳</span>
+      <div>
+        {% if dias_trial == 0 %}
+        <span style="color:#fff;font-weight:700;font-size:14px;">Seu trial acaba hoje!</span>
+        <span style="color:rgba(255,255,255,.75);font-size:13px;margin-left:6px;">Assine para não perder o acesso.</span>
+        {% elif dias_trial == 1 %}
+        <span style="color:#fff;font-weight:700;font-size:14px;">Falta 1 dia de trial.</span>
+        <span style="color:rgba(255,255,255,.75);font-size:13px;margin-left:6px;">Assine agora e continue sem interrupção.</span>
+        {% else %}
+        <span style="color:#fff;font-weight:700;font-size:14px;">{{ dias_trial }} dias de trial restantes.</span>
+        <span style="color:rgba(255,255,255,.75);font-size:13px;margin-left:6px;">Explore tudo que o Orce &amp; Veja oferece.</span>
+        {% endif %}
+      </div>
+    </div>
+    <a href="/paywall" style="background:#fff;color:#1A4B8C;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap;flex-shrink:0;">
+      Ver planos →
+    </a>
+  </div>
+  {% endif %}
+
   <div class="page-header">
     <div>
       <h1>Seus Orçamentos</h1>
