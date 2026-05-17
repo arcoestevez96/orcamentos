@@ -55,23 +55,23 @@
   <div class="stats">
     <div class="stat-card">
       <div class="label">📋 Total de Orçamentos</div>
-      <div class="value accent">{{ pdfs | length }}</div>
-      <div style="font-size:.8rem;color:var(--accent);margin-top:.2rem">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
+      <div class="value accent" id="cnt-total">{{ pdfs | length }}</div>
+      <div style="font-size:.8rem;color:var(--accent);margin-top:.2rem" id="val-total">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
     </div>
     <div class="stat-card fechou">
       <div class="label">✅ Fechados</div>
-      <div class="value">{{ fechados | length }}</div>
-      <div style="font-size:.8rem;color:#4ade80;margin-top:.2rem">R$ {{ "%.2f"|format(total_fechado) | replace('.', ',') }}</div>
+      <div class="value" id="cnt-fechou">{{ fechados | length }}</div>
+      <div style="font-size:.8rem;color:#4ade80;margin-top:.2rem" id="val-fechou">R$ {{ "%.2f"|format(total_fechado) | replace('.', ',') }}</div>
     </div>
     <div class="stat-card negociando">
       <div class="label">🤝 Negociando</div>
-      <div class="value">{{ negociando | length }}</div>
-      <div style="font-size:.8rem;color:#fbbf24;margin-top:.2rem">R$ {{ "%.2f"|format(total_negoc) | replace('.', ',') }}</div>
+      <div class="value" id="cnt-negociando">{{ negociando | length }}</div>
+      <div style="font-size:.8rem;color:#fbbf24;margin-top:.2rem" id="val-negociando">R$ {{ "%.2f"|format(total_negoc) | replace('.', ',') }}</div>
     </div>
     <div class="stat-card perdido">
       <div class="label">❌ Perdidos</div>
-      <div class="value">{{ perdidos | length }}</div>
-      <div style="font-size:.8rem;color:#f87171;margin-top:.2rem">R$ {{ "%.2f"|format(total_perdido) | replace('.', ',') }}</div>
+      <div class="value" id="cnt-perdido">{{ perdidos | length }}</div>
+      <div style="font-size:.8rem;color:#f87171;margin-top:.2rem" id="val-perdido">R$ {{ "%.2f"|format(total_perdido) | replace('.', ',') }}</div>
     </div>
   </div>
 
@@ -143,9 +143,42 @@
 </div>
 
 <script>
+// Mapa de valores por PDF: { id: { status, valor } }
+const pdfs = {
+  {% for p in pdfs %}
+  {{ p.id }}: { status: '{{ p.status }}', valor: {{ p.valor or 0 }} },
+  {% endfor %}
+};
+
+function fmtBRL(v) {
+  return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function recalcularCards() {
+  let total = 0, cntFechou = 0, valFechou = 0,
+      cntNeg = 0, valNeg = 0, cntPerd = 0, valPerd = 0;
+
+  Object.values(pdfs).forEach(p => {
+    total += p.valor;
+    if (p.status === 'fechou')     { cntFechou++; valFechou += p.valor; }
+    if (p.status === 'negociando') { cntNeg++;    valNeg    += p.valor; }
+    if (p.status === 'perdido')    { cntPerd++;   valPerd   += p.valor; }
+  });
+
+  document.getElementById('val-total').textContent     = fmtBRL(total);
+  document.getElementById('cnt-fechou').textContent    = cntFechou;
+  document.getElementById('val-fechou').textContent    = fmtBRL(valFechou);
+  document.getElementById('cnt-negociando').textContent= cntNeg;
+  document.getElementById('val-negociando').textContent= fmtBRL(valNeg);
+  document.getElementById('cnt-perdido').textContent   = cntPerd;
+  document.getElementById('val-perdido').textContent   = fmtBRL(valPerd);
+}
+
 async function atualizarStatus(id, sel) {
   const status = sel.value;
   sel.className = 'status-select ' + status;
+  pdfs[id].status = status;
+  recalcularCards();
   await fetch('/atualizar_status_pdf/' + id, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
