@@ -415,7 +415,7 @@ def upload_pdf():
     f = request.files['pdf']
     if not f.filename.lower().endswith('.pdf'):
         return jsonify({'ok': False, 'erro': 'Apenas PDFs são aceitos'})
-    dados = f.read()
+    dados_originais = f.read()
     token = str(uuid.uuid4()).replace('-','')[:16]
     filename = secure_filename(f.filename)
     valor_manual = request.form.get('valor', '').replace('R$','').replace('.','').replace(',','.').strip()
@@ -423,7 +423,9 @@ def upload_pdf():
     except: valor = None
     # Se não informou valor manualmente, tenta extrair do PDF com IA
     if not valor:
-        valor = extrair_valor_pdf(dados) or 0.0
+        valor = extrair_valor_pdf(dados_originais) or 0.0
+    # Comprime o PDF para abertura mais rápida
+    dados = comprimir_pdf(dados_originais)
     if USE_PG:
         import psycopg2
         db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
@@ -452,11 +454,30 @@ def upload_pdf():
 
     return jsonify({'ok': True, 'token': token, 'link': link, 'id': db_exec('SELECT id FROM pdfs WHERE token=%s' if USE_PG else 'SELECT id FROM pdfs WHERE token=?', (token,), fetch='one')['id'], 'valor': valor, 'titulo': request.form.get('titulo', filename), 'tel': cliente_tel})
 
+def comprimir_pdf(dados_bytes):
+    """Comprime o PDF removendo objetos duplicados e comprimindo streams."""
+    try:
+        from pypdf import PdfReader, PdfWriter
+        reader = PdfReader(io.BytesIO(dados_bytes))
+        writer = PdfWriter()
+        for page in reader.pages:
+            page.compress_content_streams()
+            writer.add_page(page)
+        writer.compress_identical_objects(remove_identicals=True, remove_orphans=True)
+        out = io.BytesIO()
+        writer.write(out)
+        compressed = out.getvalue()
+        # Só usa a versão comprimida se for menor
+        return compressed if len(compressed) < len(dados_bytes) else dados_bytes
+    except Exception:
+        return dados_bytes
+
 @app.route('/pdf/<token>')
 def ver_pdf(token):
+    """Registra abertura e serve o PDF direto — abre no visualizador nativo do dispositivo."""
     sql = 'SELECT * FROM pdfs WHERE token=%s' if USE_PG else 'SELECT * FROM pdfs WHERE token=?'
     p = db_exec(sql, (token,), fetch='one')
-    if not p: return 'PDF não encontrado.', 404
+    if not p: return 'Orçamento não encontrado.', 404
     cfg = get_config()
     aberturas = (p['aberturas'] or 0) + 1
     primeira = p['status'] == 'enviado'
@@ -478,19 +499,16 @@ def ver_pdf(token):
             <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>"""
     notificar(cfg, txt, html_notif)
-    titulo = p['titulo'] or p['filename'] or 'Orçamento'
-    empresa = cfg.get('empresa_nome', '') or 'Orçamento'
-    return render_template('viewer_pdf.html', token=token, titulo=titulo, empresa=empresa)
-
-@app.route('/pdf_raw/<token>')
-def pdf_raw(token):
-    """Serve o arquivo PDF puro (sem rastreamento — já registrado em /pdf/<token>)."""
-    sql = 'SELECT arquivo, filename FROM pdfs WHERE token=%s' if USE_PG else 'SELECT arquivo, filename FROM pdfs WHERE token=?'
-    p = db_exec(sql, (token,), fetch='one')
-    if not p or not p['arquivo']: return 'PDF não encontrado.', 404
-    arquivo = bytes(p['arquivo'])
-    return Response(arquivo, mimetype='application/pdf',
-        headers={'Content-Disposition': f'inline; filename="{p["filename"]}"'})
+    arquivo = bytes(p['arquivo']) if p['arquivo'] else b''
+    filename = (p['filename'] or 'orcamento.pdf').replace('"', '')
+    return Response(
+        arquivo,
+        mimetype='application/pdf',
+        headers={
+            'Content-Disposition': f'inline; filename="{filename}"',
+            'Cache-Control': 'no-store',
+        }
+    )
 
 @app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
 def atualizar_status_pdf(id):
