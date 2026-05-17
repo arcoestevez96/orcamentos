@@ -692,6 +692,24 @@ def notificar_zapi(instance, token, client_token, phone, msg):
     except Exception as e:
         return False, str(e)
 
+def notificar_zapi_documento(instance, token, client_token, phone, pdf_bytes, filename, caption=''):
+    """Envia arquivo PDF diretamente via WhatsApp usando Z-API (com tracker embutido)."""
+    try:
+        import base64
+        url = f"https://api.z-api.io/instances/{instance}/token/{token}/send-document"
+        headers = {'Content-Type': 'application/json', 'Client-Token': client_token}
+        b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        payload = {
+            'phone': phone,
+            'document': f'data:application/pdf;base64,{b64}',
+            'fileName': filename,
+            'caption': caption,
+        }
+        r = requests.post(url, json=payload, headers=headers, timeout=60)
+        return r.status_code == 200, r.text
+    except Exception as e:
+        return False, str(e)
+
 def notificar(cfg, txt, html=None):
     def _enviar():
         try:
@@ -870,14 +888,22 @@ def upload_pdf():
     cliente_tel = request.form.get('cliente_telefone', '').strip()
     titulo = request.form.get('titulo', filename)
 
-    # Enviar link automaticamente para o WhatsApp do cliente via Z-API
+    # Enviar arquivo PDF diretamente via WhatsApp (com rastreador embutido)
     cfg = get_config()
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
-        msg_cliente = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO SOLICITADO.\n\n{link}"
-        def _enviar_cliente():
+        caption = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO SOLICITADO."
+        fname   = filename or 'orcamento.pdf'
+        pdf_snapshot = bytes(dados)
+        def _enviar_cliente(pdf=pdf_snapshot, fn=fname, cap=caption):
             try:
-                notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], phone, msg_cliente)
+                ok, resp = notificar_zapi_documento(
+                    cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
+                    phone, pdf, fn, cap)
+                # fallback: se Z-API não suportar documento, envia o link de texto
+                if not ok:
+                    notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
+                                   phone, f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO SOLICITADO.\n\n{link}")
             except Exception:
                 pass
         threading.Thread(target=_enviar_cliente, daemon=True).start()
@@ -1025,22 +1051,46 @@ def renovar_link(id):
         return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
 
     novo_token = str(uuid.uuid4()).replace('-','')[:16]
-    sql_up = 'UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL WHERE id=%s' if USE_PG else \
-             'UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL WHERE id=?'
-    db_exec(sql_up, (novo_token, now_str(), 'enviado', id))
+
+    # Busca o arquivo para re-embutir o tracker com o novo token
+    sql_arq = 'SELECT arquivo, filename FROM pdfs WHERE id=%s' if USE_PG else \
+              'SELECT arquivo, filename FROM pdfs WHERE id=?'
+    arq_row = db_exec(sql_arq, (id,), fetch='one')
+    arquivo_atual = bytes(arq_row['arquivo']) if arq_row and arq_row['arquivo'] else b''
+    fname = (arq_row.get('filename') or 'orcamento.pdf') if arq_row else 'orcamento.pdf'
+
+    novo_tracking_url = f"{get_base_url()}/track/{novo_token}"
+    arquivo_novo = embed_tracker_pdf(arquivo_atual, novo_tracking_url)
+
+    if USE_PG:
+        import psycopg2
+        db_exec('UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL, arquivo=%s WHERE id=%s',
+                (novo_token, now_str(), 'enviado', psycopg2.Binary(arquivo_novo), id))
+    else:
+        db_exec('UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL, arquivo=? WHERE id=?',
+                (novo_token, now_str(), 'enviado', arquivo_novo, id))
+
     link = f"{get_base_url()}/pdf/{novo_token}"
 
-    # Envia novo link automaticamente para o WhatsApp do cliente
+    # Envia arquivo PDF atualizado diretamente via WhatsApp
     cfg = get_config()
     cliente_tel  = (p.get('cliente_telefone') or '').strip()
     cliente_nome = p.get('cliente_nome', 'Cliente')
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
-        phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
-        msg = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO ATUALIZADO.\n\n{link}"
-        threading.Thread(
-            target=lambda: notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'],
-                                          cfg['zapi_client_token'], phone, msg),
-            daemon=True).start()
+        phone   = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
+        caption = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO ATUALIZADO."
+        pdf_snap = bytes(arquivo_novo)
+        def _reenviar(pdf=pdf_snap, fn=fname, cap=caption):
+            try:
+                ok, _ = notificar_zapi_documento(
+                    cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
+                    phone, pdf, fn, cap)
+                if not ok:
+                    notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
+                                   phone, f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO ATUALIZADO.\n\n{link}")
+            except Exception:
+                pass
+        threading.Thread(target=_reenviar, daemon=True).start()
 
     return jsonify({'ok': True, 'token': novo_token, 'link': link,
                     'enviado_wpp': bool(cliente_tel)})
