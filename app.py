@@ -318,7 +318,7 @@ def upload_pdf():
     cfg = get_config()
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
-        msg_cliente = f"Olá {cliente_nome}! 👋\nSegue o link do seu orçamento *{titulo}*:\n\n{link}\n\nQualquer dúvida estou à disposição!"
+        msg_cliente = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO SOLICITADO.\n\n{link}"
         def _enviar_cliente():
             try:
                 notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], phone, msg_cliente)
