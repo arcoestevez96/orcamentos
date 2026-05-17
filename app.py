@@ -852,8 +852,10 @@ def upload_pdf():
     # Se não informou valor manualmente, tenta extrair do PDF com IA
     if not valor:
         valor = extrair_valor_pdf(dados_originais) or 0.0
-    # Comprime o PDF para abertura mais rápida
+    # Comprime o PDF e emite rastreador embutido no arquivo
     dados = comprimir_pdf(dados_originais)
+    tracking_url = f"{get_base_url()}/track/{token}"
+    dados = embed_tracker_pdf(dados, tracking_url)
     if USE_PG:
         import psycopg2
         db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
@@ -895,12 +897,61 @@ def comprimir_pdf(dados_bytes):
         out = io.BytesIO()
         writer.write(out)
         compressed = out.getvalue()
-        # Só usa a versão comprimida se for menor
         return compressed if len(compressed) < len(dados_bytes) else dados_bytes
     except Exception:
         return dados_bytes
 
+def embed_tracker_pdf(dados_bytes, tracking_url):
+    """Injeta JavaScript no PDF que dispara ao abrir, rastreando downloads compartilhados."""
+    try:
+        from pypdf import PdfReader, PdfWriter
+        reader = PdfReader(io.BytesIO(dados_bytes))
+        writer = PdfWriter()
+        for page in reader.pages:
+            writer.add_page(page)
+        # submitForm dispara silenciosamente sem abrir browser (Acrobat, Foxit, etc.)
+        js = f'this.submitForm({{cURL:"{tracking_url}",cSubmitAs:"FDF",bEmpty:true}});'
+        writer.add_js(js)
+        out = io.BytesIO()
+        writer.write(out)
+        return out.getvalue()
+    except Exception:
+        return dados_bytes
+
 PRAZO_HORAS = 48  # link expira após 48h
+
+@app.route('/track/<token>', methods=['GET', 'POST'])
+def track_pdf(token):
+    """Recebe ping do rastreador embutido no PDF baixado/compartilhado."""
+    sql = 'SELECT * FROM pdfs WHERE token=%s' if USE_PG else 'SELECT * FROM pdfs WHERE token=?'
+    p = db_exec(sql, (token,), fetch='one')
+    if not p:
+        return '', 204
+    aberturas = (p['aberturas'] or 0) + 1
+    primeira  = p['status'] == 'enviado'
+    if USE_PG:
+        db_exec("UPDATE pdfs SET aberturas=%s,aberto_em=%s,status=%s WHERE token=%s",
+            (aberturas, now_str(), 'aberto', token))
+    else:
+        db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
+            (aberturas, now_str(), 'aberto', token))
+    agora = datetime.now(BRASILIA)
+    hora  = agora.strftime('%H:%M')
+    cfg   = get_config()
+    if primeira:
+        txt = f"👁 {p['cliente_nome']} abriu '{p['titulo']}' (arquivo baixado) pela 1ª vez às {hora}!"
+        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
+            <h2 style="color:#16a34a">👁 PDF Visualizado!</h2>
+            <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>.<br>
+            <small style="color:#64748b">Aberto via arquivo baixado/compartilhado</small></p></div>"""
+    else:
+        txt = f"🔄 {p['cliente_nome']} abriu novamente '{p['titulo']}' (arquivo) às {hora}. Total: {aberturas}x"
+        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">
+            <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
+            <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong><br>
+            <small style="color:#64748b">Aberto via arquivo baixado/compartilhado</small></p></div>"""
+    threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
+    return '', 204
 
 @app.route('/pdf/<token>')
 def ver_pdf(token):
