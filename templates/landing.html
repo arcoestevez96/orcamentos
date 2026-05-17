@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="ORCEVEJA — Envie o orçamento, saiba quando o cliente abrir, ligue na hora certa. Feche mais vendas." />
-  <title>ORCEVEJA — Envie. Veja quando abrir. Feche.</title>
+  <meta name="description" content="Orce & Veja — Envie o orçamento, saiba quando o cliente abrir, ligue na hora certa. Feche mais vendas." />
+  <title>Orce & Veja — Envie. Veja quando abrir. Feche.</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -162,9 +162,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, var(--azul), var(--azul-claro));
       border-radius: 8px;
-      color: white;
+      flex-shrink: 0;
+    }
+    .logo-amp {
+      color: var(--azul-claro);
+      font-weight: 800;
+      font-style: italic;
     }
     .nav-links {
       display: flex;
@@ -1057,21 +1061,27 @@
     <div class="container nav-inner">
       <a href="#" class="logo">
         <span class="logo-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <path d="M14 2v6h6"/>
-            <circle cx="12" cy="15" r="1.4"/>
-            <path d="M8 15c1-2 2.5-3 4-3s3 1 4 3c-1 2-2.5 3-4 3s-3-1-4-3z"/>
+          <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="9" fill="#1A4B8C"/>
+            <!-- document shadow -->
+            <rect x="10" y="7" width="16" height="20" rx="2" fill="white" opacity="0.12"/>
+            <!-- document lines -->
+            <rect x="12" y="11" width="10" height="1.5" rx="1" fill="white" opacity="0.35"/>
+            <rect x="12" y="14" width="8" height="1.5" rx="1" fill="white" opacity="0.25"/>
+            <!-- eye -->
+            <path d="M5 26 Q20 17 35 26 Q20 35 5 26Z" fill="white"/>
+            <circle cx="20" cy="26" r="5.5" fill="#1A4B8C"/>
+            <circle cx="22" cy="24" r="2" fill="white"/>
           </svg>
         </span>
-        ORCEVEJA
+        Orce <span class="logo-amp">&amp;</span> Veja
       </a>
 
       <div class="nav-links">
         <a href="#como" class="nav-link">Como funciona</a>
         <a href="#planos" class="nav-link">Planos</a>
-        <a href="/login" target="_blank" rel="noopener" class="nav-link">Entrar</a>
-        <a href="/cadastro" target="_blank" rel="noopener" class="btn btn-primary">Começar grátis →</a>
+        <a href="https://orcamentos-bqf1.onrender.com/login" target="_blank" rel="noopener" class="nav-link">Entrar</a>
+        <a href="https://orcamentos-bqf1.onrender.com/cadastro" target="_blank" rel="noopener" class="btn btn-primary">Começar grátis →</a>
       </div>
 
       <button class="nav-hamburger" id="hamburger" aria-label="Abrir menu">
@@ -1082,8 +1092,8 @@
     <div class="mobile-menu" id="mobileMenu">
       <a href="#como">Como funciona</a>
       <a href="#planos">Planos</a>
-      <a href="/login" target="_blank" rel="noopener">Entrar</a>
-      <a href="/cadastro" target="_blank" rel="noopener" style="color: var(--azul); font-weight: 700;">Começar grátis →</a>
+      <a href="https://orcamentos-bqf1.onrender.com/login" target="_blank" rel="noopener">Entrar</a>
+      <a href="https://orcamentos-bqf1.onrender.com/cadastro" target="_blank" rel="noopener" style="color: var(--azul); font-weight: 700;">Começar grátis →</a>
     </div>
   </nav>
 
@@ -1106,7 +1116,7 @@
         </p>
 
         <div class="hero-ctas">
-          <a href="/cadastro" target="_blank" rel="noopener" class="btn-hero-primary">
+          <a href="https://orcamentos-bqf1.onrender.com/cadastro" target="_blank" rel="noopener" class="btn-hero-primary">
             Testar grátis 3 dias →
           </a>
           <button class="btn-hero-secondary" id="openLoginModal" type="button">
@@ -1129,14 +1139,14 @@
             <div class="push-notif">
               <span class="push-notif-icon">🔔</span>
               <div class="push-notif-body">
-                <div class="push-notif-title">ORCEVEJA</div>
+                <div class="push-notif-title">Orce &amp; Veja</div>
                 <div class="push-notif-text">João Silva abriu seu orçamento!</div>
               </div>
               <div class="push-notif-time">agora</div>
             </div>
 
             <div class="phone-header">
-              <div class="brand">📋 ORCEVEJA</div>
+              <div class="brand">📋 Orce &amp; Veja</div>
               <div class="phone-avatar">G</div>
             </div>
 
@@ -1320,7 +1330,7 @@
                 <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> IA de timing</li>
                 <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 3 dias grátis para testar</li>
               </ul>
-              <a href="/cadastro" target="_blank" rel="noopener" class="plan-cta">Começar 3 dias grátis →</a>
+              <a href="https://orcamentos-bqf1.onrender.com/cadastro" target="_blank" rel="noopener" class="plan-cta">Começar 3 dias grátis →</a>
             </div>
           </div>
         </div>
@@ -1333,11 +1343,11 @@
     <div class="container cta-final-inner">
       <h2>Seu próximo cliente está esperando você ligar.</h2>
       <p>Crie sua conta em 30 segundos. Sem cartão.</p>
-      <a href="/cadastro" target="_blank" rel="noopener" class="btn-white">
+      <a href="https://orcamentos-bqf1.onrender.com/cadastro" target="_blank" rel="noopener" class="btn-white">
         Começar agora →
       </a>
       <div class="cta-final-sub">
-        Já tem conta? <a href="/login" target="_blank" rel="noopener">Entrar →</a>
+        Já tem conta? <a href="https://orcamentos-bqf1.onrender.com/login" target="_blank" rel="noopener">Entrar →</a>
       </div>
     </div>
   </section>
@@ -1348,14 +1358,17 @@
       <div class="footer-brand">
         <a href="#" class="logo">
           <span class="logo-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <path d="M14 2v6h6"/>
-              <circle cx="12" cy="15" r="1.4"/>
-              <path d="M8 15c1-2 2.5-3 4-3s3 1 4 3c-1 2-2.5 3-4 3s-3-1-4-3z"/>
+            <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="9" fill="#1A4B8C"/>
+              <rect x="10" y="7" width="16" height="20" rx="2" fill="white" opacity="0.12"/>
+              <rect x="12" y="11" width="10" height="1.5" rx="1" fill="white" opacity="0.35"/>
+              <rect x="12" y="14" width="8" height="1.5" rx="1" fill="white" opacity="0.25"/>
+              <path d="M5 26 Q20 17 35 26 Q20 35 5 26Z" fill="white"/>
+              <circle cx="20" cy="26" r="5.5" fill="#1A4B8C"/>
+              <circle cx="22" cy="24" r="2" fill="white"/>
             </svg>
           </span>
-          ORCEVEJA
+          Orce <span class="logo-amp">&amp;</span> Veja
         </a>
         <span class="footer-tag">Envie. Veja quando abrir. Feche.</span>
       </div>
@@ -1363,11 +1376,11 @@
       <div class="footer-links">
         <a href="#como">Como funciona</a>
         <a href="#planos">Planos</a>
-        <a href="/login" target="_blank" rel="noopener">Entrar</a>
+        <a href="https://orcamentos-bqf1.onrender.com/login" target="_blank" rel="noopener">Entrar</a>
         <a href="#">Privacidade</a>
       </div>
 
-      <div class="footer-copy">© 2026 ORCEVEJA</div>
+      <div class="footer-copy">© 2026 Orce &amp; Veja</div>
     </div>
   </footer>
 
@@ -1380,19 +1393,22 @@
 
       <div class="modal-head">
         <span class="logo-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <path d="M14 2v6h6"/>
-            <circle cx="12" cy="15" r="1.4"/>
-            <path d="M8 15c1-2 2.5-3 4-3s3 1 4 3c-1 2-2.5 3-4 3s-3-1-4-3z"/>
+          <svg width="28" height="28" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="9" fill="#1A4B8C"/>
+            <rect x="10" y="7" width="16" height="20" rx="2" fill="white" opacity="0.12"/>
+            <rect x="12" y="11" width="10" height="1.5" rx="1" fill="white" opacity="0.35"/>
+            <rect x="12" y="14" width="8" height="1.5" rx="1" fill="white" opacity="0.25"/>
+            <path d="M5 26 Q20 17 35 26 Q20 35 5 26Z" fill="white"/>
+            <circle cx="20" cy="26" r="5.5" fill="#1A4B8C"/>
+            <circle cx="22" cy="24" r="2" fill="white"/>
           </svg>
         </span>
-        <span>ORCEVEJA</span>
+        <span>Orce <span class="logo-amp">&amp;</span> Veja</span>
       </div>
 
       <h3 id="modalTitle">Bem-vindo de volta</h3>
 
-      <a href="/auth/google" class="google-btn">
+      <a href="https://orcamentos-bqf1.onrender.com/auth/google" class="google-btn">
         <svg width="18" height="18" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -1404,7 +1420,7 @@
 
       <div class="divider">ou</div>
 
-      <form method="post" action="/login">
+      <form method="post" action="https://orcamentos-bqf1.onrender.com/login">
         <div class="form-group">
           <label class="form-label" for="email">Email</label>
           <input type="email" name="email" id="email" class="form-input" placeholder="voce@email.com" required autocomplete="email" />
@@ -1417,7 +1433,7 @@
       </form>
 
       <div class="modal-foot">
-        Não tem conta? <a href="/cadastro" target="_blank" rel="noopener">Criar grátis →</a>
+        Não tem conta? <a href="https://orcamentos-bqf1.onrender.com/cadastro" target="_blank" rel="noopener">Criar grátis →</a>
       </div>
     </div>
   </div>
