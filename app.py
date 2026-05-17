@@ -309,7 +309,24 @@ def upload_pdf():
         db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em) VALUES(?,?,?,?,?,?,?,?)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
              request.form.get('titulo', filename), dados, filename, 'enviado', now_str()))
-    return jsonify({'ok': True, 'token': token, 'link': f"{get_base_url()}/pdf/{token}"})
+    link = f"{get_base_url()}/pdf/{token}"
+    cliente_nome = request.form.get('cliente_nome', 'Cliente')
+    cliente_tel = request.form.get('cliente_telefone', '').strip()
+    titulo = request.form.get('titulo', filename)
+
+    # Enviar link automaticamente para o WhatsApp do cliente via Z-API
+    cfg = get_config()
+    if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
+        phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
+        msg_cliente = f"Olá {cliente_nome}! 👋\nSegue o link do seu orçamento *{titulo}*:\n\n{link}\n\nQualquer dúvida estou à disposição!"
+        def _enviar_cliente():
+            try:
+                notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], phone, msg_cliente)
+            except Exception:
+                pass
+        threading.Thread(target=_enviar_cliente, daemon=True).start()
+
+    return jsonify({'ok': True, 'token': token, 'link': link})
 
 @app.route('/pdf/<token>')
 def ver_pdf(token):
