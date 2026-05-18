@@ -3,298 +3,218 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Assine — Orce & Veja</title>
+<title>Assine — ABRIU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Inter', sans-serif;
-    background: #F8FAFC;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    color: #0F172A;
-  }
+body {
+  background: var(--navy);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  position: relative;
+  overflow: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px; right: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(232,68,26,.14) 0%, transparent 65%);
+  pointer-events: none;
+}
 
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 40px;
-    color: #0F172A;
-    text-decoration: none;
-  }
-  .logo-amp { color: #2D7DD2; font-style: italic; }
+.pay-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
+.pay-logo-icon { width: 36px; height: 36px; background: var(--orange); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+.pay-logo-word { font-family: var(--fd); font-weight: 700; font-size: 22px; color: var(--cream); letter-spacing: -.025em; }
+.pay-logo-word b { color: var(--orange); }
 
-  .card {
-    background: #fff;
-    border-radius: 20px;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 8px 40px rgba(15,23,42,0.08);
-    padding: 40px;
-    width: 100%;
-    max-width: 480px;
-  }
+.pay-card {
+  background: var(--navy2);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px;
+  padding: 40px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.4);
+  position: relative;
+  z-index: 1;
+}
 
-  .badge-expired {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #FEF2F2;
-    color: #DC2626;
-    border-radius: 999px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 20px;
-  }
-  .badge-trial {
-    background: #FFF7ED;
-    color: #C2410C;
-  }
-  .badge-pending {
-    background: #FFFBEB;
-    color: #B45309;
-  }
+.pay-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(232,68,26,.12); border: 1px solid rgba(232,68,26,.25);
+  color: var(--orange); border-radius: 99px;
+  padding: 6px 14px; font-size: 12px; font-weight: 500;
+  margin-bottom: 22px; letter-spacing: .04em;
+}
+.pay-badge.pending { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.25); color: #F59E0B; }
+.pay-badge.error   { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.25); color: #F87171; }
 
-  h1 {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.2;
-    margin-bottom: 8px;
-  }
-  .subtitle {
-    font-size: 15px;
-    color: #64748B;
-    margin-bottom: 32px;
-    line-height: 1.5;
-  }
+.pay-h1 { font-family: var(--fd); font-weight: 700; font-size: 26px; color: var(--cream); letter-spacing: -.03em; line-height: 1.2; margin-bottom: 8px; }
+.pay-h1 em { font-style: normal; color: var(--orange); }
+.pay-sub { font-size: 14px; color: rgba(245,240,232,.42); margin-bottom: 32px; line-height: 1.5; }
 
-  /* Toggle Mensal / Anual */
-  .toggle-wrap {
-    display: flex;
-    background: #F1F5F9;
-    border-radius: 10px;
-    padding: 4px;
-    margin-bottom: 24px;
-  }
-  .toggle-btn {
-    flex: 1;
-    padding: 9px 0;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    background: transparent;
-    color: #64748B;
-    transition: all 0.2s;
-    font-family: inherit;
-  }
-  .toggle-btn.active {
-    background: #fff;
-    color: #0F172A;
-    box-shadow: 0 1px 4px rgba(15,23,42,0.10);
-  }
-  .save-tag {
-    background: #D1FAE5;
-    color: #065F46;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 999px;
-    margin-left: 6px;
-  }
+/* Alert */
+.pay-alert {
+  border-radius: var(--r-md); padding: 12px 16px;
+  font-size: 13px; margin-bottom: 22px;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.pay-alert.error   { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #FCA5A5; }
+.pay-alert.pending { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); color: #FCD34D; }
 
-  /* Preço */
-  .price-box {
-    text-align: center;
-    margin-bottom: 28px;
-    padding: 24px 0 20px;
-    border-top: 1px solid #F1F5F9;
-    border-bottom: 1px solid #F1F5F9;
-  }
-  .price-value {
-    font-size: 48px;
-    font-weight: 900;
-    letter-spacing: -0.04em;
-    color: #1A4B8C;
-    line-height: 1;
-  }
-  .price-period {
-    font-size: 14px;
-    color: #64748B;
-    margin-top: 4px;
-  }
-  .price-cobranca {
-    font-size: 12px;
-    color: #94A3B8;
-    margin-top: 2px;
-  }
+/* Toggle billing */
+.toggle-wrap {
+  display: flex; background: rgba(255,255,255,.06);
+  border-radius: var(--r-sm); padding: 4px; margin-bottom: 24px;
+  border: 1px solid rgba(255,255,255,.07);
+}
+.toggle-btn {
+  flex: 1; padding: 9px 0; font-size: 14px; font-weight: 500;
+  border-radius: 6px; border: none; cursor: pointer;
+  background: transparent; color: rgba(245,240,232,.38);
+  transition: all .2s; font-family: var(--fb);
+}
+.toggle-btn.active {
+  background: var(--navy3); color: var(--cream);
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+.save-tag {
+  background: rgba(34,197,94,.15); color: var(--green);
+  font-size: 11px; font-weight: 500; padding: 2px 7px;
+  border-radius: 99px; margin-left: 6px;
+}
 
-  /* Features */
-  .features {
-    list-style: none;
-    margin-bottom: 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .features li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    color: #374151;
-  }
-  .check {
-    width: 20px;
-    height: 20px;
-    background: #D1FAE5;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .check svg { width: 11px; height: 11px; }
+/* Price */
+.price-box {
+  text-align: center; margin-bottom: 28px;
+  padding: 24px 0 20px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.price-value {
+  font-family: var(--fd); font-size: 52px; font-weight: 700;
+  letter-spacing: -.04em; color: var(--cream); line-height: 1;
+}
+.price-value span { font-size: 24px; font-weight: 400; color: rgba(245,240,232,.4); }
+.price-period { font-size: 13px; color: rgba(245,240,232,.35); margin-top: 6px; }
 
-  /* Botão */
-  .btn-assinar {
-    display: block;
-    width: 100%;
-    padding: 16px;
-    background: #1A4B8C;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.2s, transform 0.1s;
-    letter-spacing: -0.01em;
-  }
-  .btn-assinar:hover { background: #0F2D5E; transform: translateY(-1px); }
-  .btn-assinar:active { transform: translateY(0); }
+/* Features */
+.pay-features { list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px; }
+.pay-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: rgba(245,240,232,.6); line-height: 1.45; }
+.feat-check-circle {
+  width: 20px; height: 20px; background: rgba(34,197,94,.15);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.feat-check-circle i { font-size: 11px; color: var(--green); }
 
-  .pagamento-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 14px;
-    font-size: 12px;
-    color: #94A3B8;
-  }
-  .pagamento-info svg { width: 14px; height: 14px; }
+/* CTA */
+.btn-assinar {
+  display: block; width: 100%; padding: 16px;
+  background: var(--orange); color: #fff; border: none;
+  border-radius: var(--r-md); font-size: 16px; font-weight: 500;
+  cursor: pointer; font-family: var(--fb);
+  transition: background .18s, transform .12s, box-shadow .18s;
+  box-shadow: 0 4px 16px rgba(232,68,26,.3);
+  letter-spacing: -.01em;
+}
+.btn-assinar:hover { background: var(--orange2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,68,26,.4); }
+.btn-assinar:active { transform: scale(.99); }
 
-  .alert {
-    background: #FEF2F2;
-    border: 1px solid #FECACA;
-    color: #DC2626;
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-size: 13px;
-    margin-bottom: 20px;
-  }
-  .alert-pending {
-    background: #FFFBEB;
-    border-color: #FDE68A;
-    color: #B45309;
-  }
+.pay-secure {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; margin-top: 16px;
+  font-size: 12px; color: rgba(245,240,232,.25);
+}
+.pay-secure i { font-size: 14px; }
 
-  .footer-link {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 13px;
-    color: #94A3B8;
-  }
-  .footer-link a {
-    color: #1A4B8C;
-    font-weight: 500;
-    text-decoration: none;
-  }
-  .footer-link a:hover { text-decoration: underline; }
+.pay-footer { text-align: center; margin-top: 24px; font-size: 13px; color: rgba(245,240,232,.25); position: relative; z-index: 1; }
+.pay-footer a { color: rgba(245,240,232,.4); transition: color .15s; }
+.pay-footer a:hover { color: var(--cream); }
 </style>
 </head>
 <body>
 
-  <a href="/" class="logo">
-    <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="9" fill="#1A4B8C"/>
-      <rect x="10" y="7" width="16" height="20" rx="2" fill="white" opacity="0.12"/>
-      <rect x="12" y="11" width="10" height="1.5" rx="1" fill="white" opacity="0.35"/>
-      <rect x="12" y="14" width="8" height="1.5" rx="1" fill="white" opacity="0.25"/>
-      <path d="M5 26 Q20 17 35 26 Q20 35 5 26Z" fill="white"/>
-      <circle cx="20" cy="26" r="5.5" fill="#1A4B8C"/>
-      <circle cx="22" cy="24" r="2" fill="white"/>
-    </svg>
-    Orce <span class="logo-amp">&amp;</span> Veja
+  <a href="/" class="pay-logo">
+    <div class="pay-logo-icon">
+      <svg width="20" height="20" viewBox="0 0 30 30" fill="none">
+        <rect x="3" y="7" width="18" height="14" rx="3" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
+        <path d="M6 11h12M6 15h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="23" cy="9" r="5" fill="#22C55E"/>
+        <path d="M21 9l1.5 1.5L25 7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="pay-logo-word">ABRI<b>U</b></span>
   </a>
 
-  <div class="card">
+  <div class="pay-card">
 
     {% if falha %}
-    <div class="alert">
-      ⚠️ O pagamento não foi aprovado. Tente novamente ou use outro método.
+    <div class="pay-alert error">
+      <i class="ti ti-alert-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+      O pagamento não foi aprovado. Tente novamente ou use outro método de pagamento.
     </div>
     {% endif %}
 
     {% if pendente %}
-    <div class="alert alert-pending">
-      ⏳ Seu pagamento está sendo processado. Assim que confirmado, seu acesso será liberado.
+    <div class="pay-alert pending">
+      <i class="ti ti-clock" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+      Seu pagamento está sendo processado. Assim que confirmado, seu acesso será liberado.
     </div>
     {% endif %}
 
-    <div class="badge-expired">
-      ⏰ Período de trial encerrado
+    <div class="pay-badge">
+      <i class="ti ti-clock" style="font-size:13px"></i>
+      Período de teste encerrado
     </div>
 
-    <h1>Continue fechando mais negócios</h1>
-    <p class="subtitle">Seu trial de 3 dias terminou. Assine agora e continue recebendo notificações em tempo real quando seus clientes abrem os orçamentos.</p>
+    <h1 class="pay-h1">Continue fechando<br>mais <em>negócios.</em></h1>
+    <p class="pay-sub">Seu trial terminou. Assine agora e continue recebendo notificações em tempo real quando seus clientes abrem os orçamentos.</p>
 
     <div class="toggle-wrap">
       <button class="toggle-btn active" id="btnMensal" type="button" onclick="selecionarPlano('mensal')">Mensal</button>
       <button class="toggle-btn" id="btnAnual" type="button" onclick="selecionarPlano('anual')">
-        Anual <span class="save-tag">-25%</span>
+        Anual <span class="save-tag">−25%</span>
       </button>
     </div>
 
     <div class="price-box">
-      <div class="price-value" id="precoValor">R$ 19,90</div>
-      <div class="price-period" id="precoPeriodo">/mês</div>
-      <div class="price-cobranca" id="precoCobranca">Cobrado mensalmente · Cancele quando quiser</div>
+      <div class="price-value" id="precoValor">R$ 19<span id="cents">,90/mês</span></div>
+      <div class="price-period" id="precoCobranca">Cobrado mensalmente · Cancele quando quiser</div>
     </div>
 
-    <ul class="features">
-      <li>
-        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+    <ul class="pay-features">
+      <li class="pay-feat">
+        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
         Orçamentos ilimitados
       </li>
-      <li>
-        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-        Notificação via WhatsApp, Gmail e Telegram
+      <li class="pay-feat">
+        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
+        Notificação via WhatsApp + E-mail em &lt;90 segundos
       </li>
-      <li>
-        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-        Rastreamento em tempo real de PDFs
+      <li class="pay-feat">
+        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
+        Rastreamento em tempo real de abertura de PDFs
       </li>
-      <li>
-        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-        Envio automático de link para o cliente via WhatsApp
+      <li class="pay-feat">
+        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
+        Envio automático do orçamento via WhatsApp
       </li>
-      <li>
-        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-        Cancele a qualquer momento
+      <li class="pay-feat">
+        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
+        Pipeline de vendas visual completo
+      </li>
+      <li class="pay-feat">
+        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
+        Cancele a qualquer momento, sem burocracia
       </li>
     </ul>
 
@@ -305,14 +225,14 @@
       </button>
     </form>
 
-    <div class="pagamento-info">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Pagamento seguro · PIX, cartão de crédito e boleto
+    <div class="pay-secure">
+      <i class="ti ti-lock"></i>
+      Pagamento seguro · Stripe · PIX, cartão e boleto
     </div>
   </div>
 
-  <div class="footer-link">
-    <a href="/logout">Sair da conta</a>
+  <div class="pay-footer">
+    <a href="/logout">Sair da conta</a> · <a href="/">Início</a>
   </div>
 
   <script>
@@ -322,12 +242,12 @@
       document.getElementById('btnAnual').classList.toggle('active', plano === 'anual');
 
       if (plano === 'anual') {
-        document.getElementById('precoValor').textContent = 'R$ 15,00';
-        document.getElementById('precoPeriodo').textContent = '/mês';
-        document.getElementById('precoCobranca').textContent = 'R$ 180,00 cobrado anualmente · Cancele quando quiser';
+        document.getElementById('precoValor').childNodes[0].textContent = 'R$ 14';
+        document.getElementById('cents').textContent = ',90/mês';
+        document.getElementById('precoCobranca').textContent = 'R$ 178,80 cobrado anualmente · Cancele quando quiser';
       } else {
-        document.getElementById('precoValor').textContent = 'R$ 19,90';
-        document.getElementById('precoPeriodo').textContent = '/mês';
+        document.getElementById('precoValor').childNodes[0].textContent = 'R$ 19';
+        document.getElementById('cents').textContent = ',90/mês';
         document.getElementById('precoCobranca').textContent = 'Cobrado mensalmente · Cancele quando quiser';
       }
     }
