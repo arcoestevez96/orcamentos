@@ -18,3 +18,5 @@ jobs:
             exit 1
           fi
           echo "✅ App acordado e respondendo"
+          # Aquece www também (redireciona para apex, mas mantém o serviço acordado)
+          curl -s -o /dev/null -L https://www.abriu.app.br/ping || true
