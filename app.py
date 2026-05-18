@@ -282,7 +282,7 @@ def init_db():
                      ('gmail_refresh_token',''),('gmail_email','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         con.commit()
-        con.close()
+        _get_pg_pool().putconn(con)
     else:
         import sqlite3
         db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
