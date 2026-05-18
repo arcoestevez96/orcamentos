@@ -333,6 +333,10 @@ select.action-btn {
                     WhatsApp
                   </a>
                   {% endif %}
+                  <button onclick="verRastreio({{ p.id }}, '{{ p.cliente_nome }}')" class="action-btn" title="Ver quem abriu">
+                    <i class="ti ti-map-pin" style="font-size:12px"></i>
+                    Rastreio
+                  </button>
                 </div>
               </td>
             </tr>
@@ -507,6 +511,106 @@ evtSource.addEventListener('abriu', e => {
 const spinStyle = document.createElement('style');
 spinStyle.textContent = '@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
+
+async function verRastreio(id, nome) {
+  document.getElementById('rastreio-titulo').textContent = 'Rastreio · ' + nome;
+  document.getElementById('rastreio-sub').textContent = 'Carregando...';
+  document.getElementById('rastreio-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)"><i class="ti ti-loader-2" style="font-size:28px;animation:spin .7s linear infinite"></i><p style="margin-top:12px;font-size:14px">Buscando acessos...</p></div>';
+  document.getElementById('rastreio-modal').style.display = 'flex';
+
+  const r = await fetch('/acessos_pdf/' + id);
+  const acessos = await r.json();
+
+  const sub = document.getElementById('rastreio-sub');
+  const body = document.getElementById('rastreio-body');
+
+  if (!acessos.length) {
+    sub.textContent = 'Nenhum acesso registrado ainda';
+    body.innerHTML = '<div style="text-align:center;padding:48px 24px"><div style="width:56px;height:56px;border-radius:16px;background:rgba(232,68,26,.08);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--orange)"><i class="ti ti-eye-off" style="font-size:26px"></i></div><p style="font-size:14px;color:var(--gray)">O PDF ainda não foi aberto.</p></div>';
+    return;
+  }
+
+  const ips = [...new Set(acessos.map(a => a.ip).filter(Boolean))];
+  sub.textContent = acessos.length + ' acesso(s) · ' + ips.length + ' dispositivo(s) único(s)' + (ips.length > 1 ? ' — ⚠️ possível repasse' : '');
+
+  let alertHtml = '';
+  if (ips.length > 1) {
+    alertHtml = `<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px">
+      <i class="ti ti-alert-triangle" style="font-size:18px;color:#F59E0B;flex-shrink:0;margin-top:1px"></i>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#92400E;margin-bottom:2px">PDF acessado por ${ips.length} dispositivos diferentes</div>
+        <div style="font-size:12px;color:#92400E;opacity:.8">O orçamento pode ter sido repassado para outras pessoas.</div>
+      </div>
+    </div>`;
+  }
+
+  const ipMap = {};
+  let ipCnt = 0;
+  acessos.forEach(a => {
+    if (a.ip && !ipMap[a.ip]) { ipMap[a.ip] = ++ipCnt; }
+  });
+
+  const items = acessos.map((a, i) => {
+    const isCliente = ipMap[a.ip] === 1;
+    const deviceIcon = a.dispositivo === 'mobile' ? 'ti-device-mobile' : a.dispositivo === 'tablet' ? 'ti-device-ipad' : 'ti-device-laptop';
+    const fonteLabel = a.fonte === 'arquivo' ? '<span style="background:rgba(99,102,241,.1);color:#4338CA;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px">via arquivo</span>' : '<span style="background:rgba(34,197,94,.1);color:#15803D;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px">via link</span>';
+    const locStr = [a.cidade, a.regiao, a.pais].filter(Boolean).join(', ') || 'Localização desconhecida';
+    const quemLabel = isCliente
+      ? '<span style="background:#DCFCE7;color:#173404;font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px"><i class="ti ti-user-check" style="font-size:11px"></i> Provável cliente</span>'
+      : `<span style="background:#FEF3C7;color:#633806;font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px"><i class="ti ti-user-question" style="font-size:11px"></i> Outro contato #${ipMap[a.ip]}</span>`;
+    const hora = a.criado_em ? a.criado_em.slice(0,16).replace('T',' ') : '—';
+    return `<div style="border:1px solid rgba(13,27,42,.08);border-radius:14px;padding:16px;margin-bottom:10px${!isCliente ? ';border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)' : ''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:${isCliente ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;color:${isCliente ? 'var(--green)' : '#F59E0B'};flex-shrink:0">
+            <i class="ti ${deviceIcon}" style="font-size:18px"></i>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy)">${a.sistema || 'Dispositivo'}</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:1px">${a.operadora || ''}</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:12px;color:var(--gray)">${hora}</div>
+          <div style="margin-top:4px">${fonteLabel}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray)">
+          <i class="ti ti-map-pin" style="font-size:13px;color:var(--orange)"></i>
+          ${locStr}
+        </div>
+        ${quemLabel}
+      </div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = alertHtml + items;
+}
 </script>
+
+<!-- MODAL RASTREIO -->
+<div id="rastreio-modal" style="display:none;position:fixed;inset:0;background:rgba(13,27,42,.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--white);border-radius:24px;padding:0;max-width:560px;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+
+    <!-- Header -->
+    <div style="padding:24px 28px;border-bottom:1px solid rgba(13,27,42,.08);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h3 style="font-family:var(--fd);font-weight:700;font-size:18px;color:var(--navy);letter-spacing:-.02em" id="rastreio-titulo">Rastreio de acessos</h3>
+        <p style="font-size:12px;color:var(--gray);margin-top:3px" id="rastreio-sub">Carregando...</p>
+      </div>
+      <button onclick="document.getElementById('rastreio-modal').style.display='none'" style="background:rgba(13,27,42,.06);border:none;cursor:pointer;color:var(--gray);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">×</button>
+    </div>
+
+    <!-- Body -->
+    <div style="overflow-y:auto;flex:1;padding:24px 28px" id="rastreio-body">
+      <div style="text-align:center;padding:40px;color:var(--gray)">
+        <i class="ti ti-loader-2" style="font-size:28px;animation:spin .7s linear infinite"></i>
+        <p style="margin-top:12px;font-size:14px">Buscando acessos...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

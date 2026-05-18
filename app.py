@@ -93,6 +93,22 @@ def init_db():
         cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS valor NUMERIC DEFAULT 0')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS user_id INTEGER')
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS pdf_acessos (
+                id SERIAL PRIMARY KEY,
+                pdf_id INTEGER,
+                token TEXT,
+                ip TEXT,
+                user_agent TEXT,
+                dispositivo TEXT,
+                sistema TEXT,
+                cidade TEXT,
+                regiao TEXT,
+                pais TEXT,
+                operadora TEXT,
+                fonte TEXT,
+                criado_em TEXT
+            )''')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
@@ -133,6 +149,21 @@ def init_db():
                 cliente_nome TEXT NOT NULL, cliente_telefone TEXT, titulo TEXT NOT NULL,
                 arquivo BLOB, filename TEXT, status TEXT DEFAULT 'enviado',
                 criado_em TEXT NOT NULL, aberto_em TEXT, aberturas INTEGER DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS pdf_acessos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pdf_id INTEGER,
+                token TEXT,
+                ip TEXT,
+                user_agent TEXT,
+                dispositivo TEXT,
+                sistema TEXT,
+                cidade TEXT,
+                regiao TEXT,
+                pais TEXT,
+                operadora TEXT,
+                fonte TEXT,
+                criado_em TEXT
             );
             INSERT OR IGNORE INTO config VALUES ("whatsapp_numero","");
             INSERT OR IGNORE INTO config VALUES ("whatsapp_apikey","");
@@ -747,6 +778,54 @@ def calcular_total(itens):
 def now_str():
     return datetime.now(BRASILIA).strftime('%Y-%m-%d %H:%M:%S')
 
+# ── rastreio de acessos ──────────────────────────────────────────────────────
+
+def detectar_dispositivo(ua):
+    ua = (ua or '').lower()
+    if 'ipad' in ua or 'tablet' in ua: return 'tablet'
+    if 'mobile' in ua or 'android' in ua or 'iphone' in ua: return 'mobile'
+    return 'desktop'
+
+def detectar_sistema(ua):
+    ua = (ua or '').lower()
+    if 'iphone' in ua: return 'iPhone'
+    if 'ipad' in ua: return 'iPad'
+    if 'android' in ua: return 'Android'
+    if 'windows' in ua: return 'Windows'
+    if 'mac os' in ua: return 'Mac'
+    if 'linux' in ua: return 'Linux'
+    return 'Desconhecido'
+
+def geolocate_ip(ip):
+    try:
+        import urllib.request, json as _json
+        if not ip or ip in ('127.0.0.1','::1') or ip.startswith(('192.168.','10.','172.')):
+            return {'cidade':'Local','regiao':'','pais':'BR','operadora':''}
+        with urllib.request.urlopen(f'http://ip-api.com/json/{ip}?fields=status,city,regionName,countryCode,isp', timeout=3) as r:
+            d = _json.loads(r.read())
+        if d.get('status') == 'success':
+            return {'cidade': d.get('city',''), 'regiao': d.get('regionName',''), 'pais': d.get('countryCode',''), 'operadora': d.get('isp','')}
+    except Exception:
+        pass
+    return {'cidade':'','regiao':'','pais':'','operadora':''}
+
+def registrar_acesso(pdf_id, token, ip, ua, fonte):
+    """Registra acesso com geo em background thread."""
+    def _worker():
+        try:
+            geo = geolocate_ip(ip)
+            disp = detectar_dispositivo(ua)
+            sis  = detectar_sistema(ua)
+            if USE_PG:
+                db_exec('INSERT INTO pdf_acessos(pdf_id,token,ip,user_agent,dispositivo,sistema,cidade,regiao,pais,operadora,fonte,criado_em) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                    (pdf_id, token, ip, (ua or '')[:500], disp, sis, geo['cidade'], geo['regiao'], geo['pais'], geo['operadora'], fonte, now_str()))
+            else:
+                db_exec('INSERT INTO pdf_acessos(pdf_id,token,ip,user_agent,dispositivo,sistema,cidade,regiao,pais,operadora,fonte,criado_em) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                    (pdf_id, token, ip, (ua or '')[:500], disp, sis, geo['cidade'], geo['regiao'], geo['pais'], geo['operadora'], fonte, now_str()))
+        except Exception:
+            pass
+    threading.Thread(target=_worker, daemon=True).start()
+
 # ── rotas ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
@@ -985,6 +1064,9 @@ def track_pdf(token):
     p = db_exec(sql, (token,), fetch='one')
     if not p:
         return '', 204
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+    ua = request.headers.get('User-Agent', '')
+    registrar_acesso(p['id'], token, ip, ua, 'arquivo')
     aberturas = (p['aberturas'] or 0) + 1
     primeira  = p['status'] == 'enviado'
     if USE_PG:
@@ -1045,6 +1127,9 @@ def ver_pdf(token):
                                titulo=p['titulo'], empresa=empresa), 410
 
     # ── Registra abertura normal ─────────────────────────────────────────────
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+    ua = request.headers.get('User-Agent', '')
+    registrar_acesso(p['id'], token, ip, ua, 'link')
     aberturas = (p['aberturas'] or 0) + 1
     primeira  = p['status'] == 'enviado'
     if USE_PG:
@@ -1156,6 +1241,38 @@ def deletar_pdf_ajax(id):
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
     return jsonify({'ok': True})
+
+@app.route('/acessos_pdf/<int:id>')
+@login_required
+def acessos_pdf(id):
+    from flask import g
+    uid = g.current_user['id']
+    sql_chk = 'SELECT id FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else 'SELECT id FROM pdfs WHERE id=? AND user_id=?'
+    if not db_exec(sql_chk, (id, uid), fetch='one'):
+        return jsonify([])
+    sql = 'SELECT ip,dispositivo,sistema,cidade,regiao,pais,operadora,fonte,criado_em FROM pdf_acessos WHERE pdf_id=%s ORDER BY criado_em ASC' if USE_PG else \
+          'SELECT ip,dispositivo,sistema,cidade,regiao,pais,operadora,fonte,criado_em FROM pdf_acessos WHERE pdf_id=? ORDER BY criado_em ASC'
+    rows = db_exec(sql, (id,), fetch='all') or []
+    ips_vistos = []
+    result = []
+    for r in rows:
+        ip = r['ip'] or ''
+        novo_ip = ip not in ips_vistos and ip != ''
+        if ip: ips_vistos.append(ip)
+        result.append({
+            'ip': ip,
+            'dispositivo': r['dispositivo'],
+            'sistema': r['sistema'],
+            'cidade': r['cidade'],
+            'regiao': r['regiao'],
+            'pais': r['pais'],
+            'operadora': r['operadora'],
+            'fonte': r['fonte'],
+            'criado_em': r['criado_em'],
+            'novo_ip': novo_ip,
+            'indice_ip': ips_vistos.index(ip) + 1 if ip in ips_vistos else 1
+        })
+    return jsonify(result)
 
 @app.route('/reler_valor/<int:id>', methods=['POST'])
 @login_required
