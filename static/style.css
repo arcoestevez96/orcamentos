@@ -1,13 +1,13 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #0f1117;
-  --bg3:      #16192a;
+  --navy:       #0f1117;
+  --navy-soft:      #16192a;
   --surface:  #1a1d27;
   --surface2: #22263a;
   --border:   #2e3250;
-  --accent:   #4f6ef7;
-  --accent2:  #6c8aff;
+  --orange:   #f97316;
+  --orange-light:  #fb923c;
   --green:    #22c55e;
   --yellow:   #f59e0b;
   --red:      #ef4444;
@@ -19,13 +19,13 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg);
+  background: var(--navy);
   color: var(--text);
   min-height: 100vh;
   -webkit-text-size-adjust: 100%;
 }
 
-a { color: var(--accent2); text-decoration: none; }
+a { color: var(--orange-light); text-decoration: none; }
 
 /* ── NAV ── */
 nav {
@@ -60,8 +60,8 @@ nav a {
 }
 nav a:hover, nav a.active { color: var(--text); background: var(--surface2); }
 nav .ml-auto { margin-left: auto; }
-.btn-nav { background: var(--accent); color: #fff !important; font-weight: 600; }
-.btn-nav:hover { background: var(--accent2) !important; }
+.btn-nav { background: var(--orange); color: #fff !important; font-weight: 600; }
+.btn-nav:hover { background: var(--orange-light) !important; }
 
 /* ── CONTAINER ── */
 .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
@@ -92,7 +92,7 @@ nav .ml-auto { margin-left: auto; }
 }
 .stat-card .label { font-size: .75rem; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .35rem; }
 .stat-card .value { font-size: 1.7rem; font-weight: 700; }
-.stat-card .value.accent { color: var(--accent2); }
+.stat-card .value.accent { color: var(--orange-light); }
 
 /* ── TABLE — desktop ── */
 .table-card {
@@ -149,10 +149,10 @@ nav .ml-auto { margin-left: auto; }
   transition: all .15s;
   white-space: nowrap;
 }
-.btn-primary   { background: var(--accent);  color: #fff; }
-.btn-primary:hover { background: var(--accent2); }
+.btn-primary   { background: var(--orange);  color: #fff; }
+.btn-primary:hover { background: var(--orange-light); }
 .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-.btn-secondary:hover { border-color: var(--accent); color: var(--accent2); }
+.btn-secondary:hover { border-color: var(--orange); color: var(--orange-light); }
 .btn-danger    { background: rgba(239,68,68,.1); color: var(--red); border: 1px solid rgba(239,68,68,.2); }
 .btn-danger:hover  { background: rgba(239,68,68,.2); }
 .btn-green     { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.2); }
@@ -161,7 +161,7 @@ nav .ml-auto { margin-left: auto; }
 
 /* ── STATUS SELECT ── */
 .status-select {
-  background: var(--bg3);
+  background: var(--navy-soft);
   color: var(--text1);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -189,7 +189,7 @@ nav .ml-auto { margin-left: auto; }
 .form-group.full { grid-column: 1 / -1; }
 label { font-size: .82rem; color: var(--text2); font-weight: 500; }
 input, textarea, select {
-  background: var(--bg);
+  background: var(--navy);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -199,7 +199,7 @@ input, textarea, select {
   transition: border-color .15s;
   width: 100%;
 }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--orange); }
 textarea { resize: vertical; min-height: 80px; }
 .section-title {
   font-size: 1rem;
@@ -247,12 +247,12 @@ textarea { resize: vertical; min-height: 80px; }
   flex-wrap: wrap;
 }
 .link-box {
-  background: var(--bg);
+  background: var(--navy);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: .8rem 1rem;
   font-size: .85rem;
-  color: var(--accent2);
+  color: var(--orange-light);
   word-break: break-all;
   margin-bottom: 1rem;
 }
@@ -270,7 +270,7 @@ textarea { resize: vertical; min-height: 80px; }
   line-height: 1.6;
   margin-bottom: 1rem;
 }
-.info-box strong { color: var(--accent2); }
+.info-box strong { color: var(--orange-light); }
 
 /* ── EMPTY ── */
 .empty { text-align: center; padding: 3rem 2rem; color: var(--text2); }

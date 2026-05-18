@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta property="og:title" content="OrcEVeja">
+<meta property="og:description" content="Orçamentos e PDFs rastreáveis com notificações de abertura.">
+<meta property="og:image" content="https://www.abriu.app.br/static/icons/icon-512.png">
+<meta property="og:url" content="https://www.abriu.app.br/">
 <title>{% if modo == 'cadastro' %}Criar Conta{% else %}Entrar{% endif %} · OrcEVeja</title>
 <link rel="manifest" href="/static/manifest.json">
 <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
@@ -202,6 +208,7 @@
   <div class="divisor">ou use seu email</div>
 
   <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if modo == 'cadastro' %}
     <div class="form-group">
       <label>Seu nome</label>

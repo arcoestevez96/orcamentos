@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta property="og:title" content="OrcEVeja">
+<meta property="og:description" content="Orçamentos e PDFs rastreáveis com notificações de abertura.">
+<meta property="og:image" content="https://www.abriu.app.br/static/icons/icon-512.png">
+<meta property="og:url" content="https://www.abriu.app.br/">
 <title>Configurações</title>
 <link rel="stylesheet" href="/static/style.css">
 <link rel="manifest" href="/static/manifest.json">
@@ -192,12 +198,13 @@
 </div>
 
 <script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 async function testarGmail() {
   const btn = document.querySelector('[onclick="testarGmail()"]');
   btn.textContent = '⏳ Enviando...'; btn.disabled = true;
   try {
     const res = await fetch('/testar_email', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
       body: JSON.stringify({ gmail_oauth: true })
     });
     const data = await res.json();
@@ -213,7 +220,7 @@ async function testarGmail() {
 
 async function desconectarGmail() {
   if (!confirm('Desconectar o Gmail? Você não receberá mais notificações por email.')) return;
-  await fetch('/auth/gmail/disconnect', { method: 'POST' });
+  await fetch('/auth/gmail/disconnect', { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN} });
   document.getElementById('gmail-conectado').style.display = 'none';
   document.getElementById('gmail-desconectado').style.display = 'block';
 }
@@ -228,7 +235,7 @@ async function testarZapi() {
   btn.textContent = '⏳ Enviando...'; btn.disabled = true;
   try {
     const res = await fetch('/testar_zapi', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
       body: JSON.stringify({ instance, token, client_token, phone })
     });
     const data = await res.json();
@@ -243,12 +250,12 @@ async function conectarTelegram() {
   const token = document.getElementById('telegram_token').value.trim();
   if (!token) return alert('Cole o token do bot primeiro.');
   // Salva o token antes de conectar
-  await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'},
+  await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF_TOKEN},
     body: JSON.stringify({ telegram_token: token }) });
   const btn = document.querySelector('[onclick="conectarTelegram()"]');
   btn.textContent = '⏳ Conectando...'; btn.disabled = true;
   try {
-    const res = await fetch('/telegram/conectar', { method: 'POST' });
+    const res = await fetch('/telegram/conectar', { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN} });
     const data = await res.json();
     if (data.ok) {
       document.getElementById('tg-link').href = data.link;
@@ -279,7 +286,7 @@ async function testarTelegram() {
   btn.textContent = '⏳ Enviando...'; btn.disabled = true;
   try {
     const res = await fetch('/testar_telegram', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
       body: JSON.stringify({ token, chat_id })
     });
     const data = await res.json();
@@ -303,7 +310,7 @@ async function salvar() {
     zapi_client_token: document.getElementById('zapi_client_token').value.trim(),
     zapi_phone: document.getElementById('zapi_phone').value.trim(),
   };
-  const res = await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
+  const res = await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF_TOKEN}, body: JSON.stringify(dados) });
   const data = await res.json();
   if (data.ok) alert('✅ Configurações salvas!');
 }
@@ -318,7 +325,7 @@ async function testarWhatsApp() {
   try {
     const res = await fetch('/testar_whatsapp', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
       body: JSON.stringify({ numero, apikey })
     });
     const data = await res.json();

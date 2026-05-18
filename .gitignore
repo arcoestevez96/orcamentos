@@ -3,3 +3,6 @@ uploads/
 __pycache__/
 *.pyc
 .env
+DEBUG_REPORT.md
+.venv/
+.pycache-test/

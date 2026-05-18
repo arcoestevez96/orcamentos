@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta property="og:title" content="OrcEVeja">
+<meta property="og:description" content="Orçamentos e PDFs rastreáveis com notificações de abertura.">
+<meta property="og:image" content="https://www.abriu.app.br/static/icons/icon-512.png">
+<meta property="og:url" content="https://www.abriu.app.br/">
 <title>{{ 'Editar' if orcamento else 'Novo' }} Orçamento</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -86,6 +92,7 @@
 </div>
 
 <script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const orcamentoInicial = {{ orcamento.itens | tojson if orcamento else '[]' }};
 let etapas = orcamentoInicial.length ? orcamentoInicial : [];
 
@@ -187,7 +194,7 @@ async function salvar() {
   };
 
   const url = {{ '"' + '/editar/' + orcamento.id|string + '"' if orcamento else '"/criar"' }};
-  const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
+  const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF_TOKEN}, body: JSON.stringify(dados) });
   const data = await res.json();
   if (data.ok) window.location.href = '/';
 }

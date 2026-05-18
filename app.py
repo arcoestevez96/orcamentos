@@ -1,22 +1,47 @@
-import os, json, uuid, requests, smtplib, threading, re, io, base64
+import os, json, uuid, requests, smtplib, threading, re, io, base64, logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from functools import wraps
 
 BRASILIA = ZoneInfo('America/Sao_Paulo')
-from flask import Flask, render_template, request, redirect, jsonify, send_file, Response, session, url_for, flash
+from flask import Flask, render_template, request, redirect, jsonify, Response, session, url_for
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import io
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+try:
+    from flask_compress import Compress
+    Compress(app)
+except ImportError:
+    logger.warning("flask-compress não instalado; respostas sem compressão")
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-app.secret_key = os.environ.get('SECRET_KEY', 'orceveja-secret-2025-local')
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['WTF_CSRF_TIME_LIMIT'] = None
+
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY não configurada")
+if len(SECRET_KEY) < 32:
+    raise RuntimeError("SECRET_KEY deve ter pelo menos 32 caracteres")
+app.secret_key = SECRET_KEY
+
+csrf = CSRFProtect(app)
+limiter = Limiter(app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_PG = bool(DATABASE_URL)
+ALLOWED_MIMES = {'application/pdf'}
+MAX_STORAGE_PER_USER = int(os.environ.get('MAX_STORAGE_PER_USER', str(250 * 1024 * 1024)))
 
 # ── banco de dados ──────────────────────────────────────────────────────────
 
@@ -142,6 +167,10 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("gmail_refresh_token","");
             INSERT OR IGNORE INTO config VALUES ("gmail_email","");
         ''')
+        try:
+            con.execute('ALTER TABLE pdfs ADD COLUMN valor REAL DEFAULT 0')
+        except sqlite3.OperationalError:
+            pass
         con.commit()
         con.close()
 
@@ -164,6 +193,7 @@ def login_required(f):
     return decorated
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     # Se ainda não tem usuário cadastrado, redireciona para cadastro
     if not usuario_existe():
@@ -182,6 +212,7 @@ def login():
     return render_template('login.html', modo='login', erro=erro)
 
 @app.route('/cadastro', methods=['GET', 'POST'])
+@limiter.limit("3 per minute", methods=["POST"])
 def cadastro():
     # Cadastro só permitido se ainda não há usuário
     if usuario_existe() and not session.get('user_email'):
@@ -354,6 +385,7 @@ def auth_apple():
     return redirect('https://appleid.apple.com/auth/authorize?' + params)
 
 @app.route('/auth/apple/callback', methods=['POST'])
+@csrf.exempt
 def auth_apple_callback():
     import jwt as pyjwt
     code    = request.form.get('code', '')
@@ -664,6 +696,39 @@ def calcular_total(itens):
 def now_str():
     return datetime.now(BRASILIA).strftime('%Y-%m-%d %H:%M:%S')
 
+def validate_pdf_file(file_storage):
+    head = file_storage.stream.read(1024)
+    file_storage.stream.seek(0)
+    try:
+        import magic
+        mime = magic.from_buffer(head, mime=True)
+        if mime in ALLOWED_MIMES:
+            return True
+    except Exception as exc:
+        logger.warning("Falha ao validar MIME com python-magic: %s", exc)
+    return head.startswith(b'%PDF-')
+
+def current_user_storage_bytes():
+    row = db_exec('SELECT COALESCE(SUM(LENGTH(arquivo)), 0) AS total FROM pdfs', fetch='one')
+    return int(row['total'] or 0) if row else 0
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://cdn.jsdelivr.net; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'"
+    )
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
 # ── rotas ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
@@ -675,6 +740,7 @@ def dashboard():
     return render_template('dashboard.html', pdfs=pdfs)
 
 @app.route('/criar', methods=['GET', 'POST'])
+@login_required
 def criar():
     if request.method == 'POST':
         d = request.get_json()
@@ -693,6 +759,7 @@ def criar():
     return render_template('criar.html', orcamento=None)
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar(id):
     if request.method == 'POST':
         d = request.get_json()
@@ -710,6 +777,7 @@ def editar(id):
     return render_template('criar.html', orcamento=o)
 
 @app.route('/deletar/<int:id>', methods=['POST'])
+@login_required
 def deletar(id):
     sql = 'DELETE FROM orcamentos WHERE id=%s' if USE_PG else 'DELETE FROM orcamentos WHERE id=?'
     db_exec(sql, (id,))
@@ -738,6 +806,7 @@ def ver(token):
     return render_template('orcamento.html', o=o)
 
 @app.route('/marcar_enviado/<int:id>', methods=['POST'])
+@login_required
 def marcar_enviado(id):
     sql = "UPDATE orcamentos SET status='enviado' WHERE id=%s" if USE_PG else \
           "UPDATE orcamentos SET status='enviado' WHERE id=?"
@@ -745,6 +814,7 @@ def marcar_enviado(id):
     return jsonify({'ok': True})
 
 @app.route('/atualizar_status/<int:id>', methods=['POST'])
+@login_required
 def atualizar_status(id):
     d = request.get_json()
     status = d.get('status','')
@@ -774,7 +844,11 @@ def upload_pdf():
     f = request.files['pdf']
     if not f.filename.lower().endswith('.pdf'):
         return jsonify({'ok': False, 'erro': 'Apenas PDFs são aceitos'})
+    if not validate_pdf_file(f):
+        return jsonify({'ok': False, 'erro': 'Arquivo inválido. Envie um PDF real.'}), 400
     dados_originais = f.read()
+    if current_user_storage_bytes() + len(dados_originais) > MAX_STORAGE_PER_USER:
+        return jsonify({'ok': False, 'erro': 'Limite de armazenamento atingido para este usuário.'}), 413
     token = str(uuid.uuid4()).replace('-','')[:16]
     filename = secure_filename(f.filename)
     valor_manual = request.form.get('valor', '').replace('R$','').replace('.','').replace(',','.').strip()
@@ -967,6 +1041,7 @@ def reler_valor(id):
 # ── Telegram webhook (público — chamado pelo servidor do Telegram) ─────────────
 
 @app.route('/telegram/webhook', methods=['POST'])
+@csrf.exempt
 def telegram_webhook():
     """Recebe mensagens do bot e auto-registra o chat_id do usuário."""
     try:
@@ -1034,6 +1109,7 @@ def configuracoes():
     return render_template('configuracoes.html', cfg=get_config())
 
 @app.route('/testar_whatsapp', methods=['POST'])
+@login_required
 def testar_whatsapp():
     d = request.get_json()
     numero, apikey = d.get('numero','').strip(), d.get('apikey','').strip()
@@ -1043,6 +1119,7 @@ def testar_whatsapp():
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_zapi', methods=['POST'])
+@login_required
 def testar_zapi():
     d = request.get_json()
     instance = d.get('instance','').strip()
@@ -1055,6 +1132,7 @@ def testar_zapi():
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_telegram', methods=['POST'])
+@login_required
 def testar_telegram():
     d = request.get_json()
     token, chat_id = d.get('token','').strip(), d.get('chat_id','').strip()
@@ -1064,6 +1142,7 @@ def testar_telegram():
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_email', methods=['POST'])
+@login_required
 def testar_email():
     d = request.get_json()
     html = '<div style="font-family:sans-serif;padding:2rem"><h2 style="color:#16a34a">✅ Email funcionando!</h2><p>Notificações do OrcEVeja configuradas com sucesso via Gmail.</p></div>'
@@ -1086,10 +1165,21 @@ def ping():
     """Health check — usado por serviços externos para manter o servidor acordado."""
     return jsonify({'ok': True, 'status': 'alive'})
 
+@app.route('/healthz')
+def health_check():
+    return {'status': 'healthy', 'service': 'abriu'}, 200
+
+@app.route('/robots.txt')
+def robots_txt():
+    return app.send_static_file('robots.txt')
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    return app.send_static_file('sitemap.xml')
+
 if __name__ == '__main__':
     init_db()
-    print('\n✅ App de Orçamentos iniciado!')
-    print('👉 Acesse: http://localhost:5000\n')
+    logger.info('App de Orçamentos iniciado em http://localhost:5000')
     app.run(debug=False, port=5000)
 
 # Para produção (gunicorn)

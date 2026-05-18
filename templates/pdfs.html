@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta property="og:title" content="OrcEVeja">
+<meta property="og:description" content="Orçamentos e PDFs rastreáveis com notificações de abertura.">
+<meta property="og:image" content="https://www.abriu.app.br/static/icons/icon-512.png">
+<meta property="og:url" content="https://www.abriu.app.br/">
 <title>PDFs Rastreados</title>
 <link rel="stylesheet" href="/static/style.css">
 <link rel="manifest" href="/static/manifest.json">
@@ -75,6 +81,7 @@
               <button class="btn btn-green btn-sm" onclick="copiarLink('{{ p.token }}')">🔗 Copiar Link</button>
               <button class="btn btn-secondary btn-sm" onclick="whatsappLink('{{ p.token }}', '{{ p.cliente_telefone }}')">💬</button>
               <form method="POST" action="/deletar_pdf/{{ p.id }}" onsubmit="return confirm('Deletar este PDF?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn btn-danger btn-sm">🗑</button>
               </form>
             </div>
@@ -150,6 +157,7 @@
 </div>
 
 <script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const BASE_URL = '{{ request.host_url.rstrip("/") }}';
 let linkAtualModal = '';
 let telModal = '';
@@ -187,7 +195,7 @@ async function enviarPDF() {
   fd.append('cliente_telefone', document.getElementById('up_cliente_tel').value.trim());
   fd.append('titulo', document.getElementById('up_titulo').value.trim() || arquivo.name);
   fd.append('valor', document.getElementById('up_valor').value.trim());
-  const res = await fetch('/upload_pdf', { method: 'POST', body: fd });
+  const res = await fetch('/upload_pdf', { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN}, body: fd });
   const data = await res.json();
   document.getElementById('btnEnviar').textContent = '📤 Enviar e Gerar Link';
   document.getElementById('btnEnviar').disabled = false;

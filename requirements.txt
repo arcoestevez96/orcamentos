@@ -3,7 +3,12 @@ requests==2.32.3
 gunicorn==23.0.0
 psycopg2-binary==2.9.10
 werkzeug==3.1.8
-pdfplumber==0.11.4
+pdfplumber>=0.11.5
 pypdf==5.1.0
 PyJWT==2.9.0
-anthropic==0.40.0
+anthropic>=0.102.0
+pywebpush>=2.0.1
+flask-compress>=1.17.1
+flask-wtf>=1.2.1
+flask-limiter>=3.8.0
+python-magic>=0.4.27

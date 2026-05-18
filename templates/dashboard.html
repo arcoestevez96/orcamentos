@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta property="og:title" content="OrcEVeja">
+<meta property="og:description" content="Orçamentos e PDFs rastreáveis com notificações de abertura.">
+<meta property="og:image" content="https://www.abriu.app.br/static/icons/icon-512.png">
+<meta property="og:url" content="https://www.abriu.app.br/">
 <title>Orçamentos</title>
 <link rel="stylesheet" href="/static/style.css">
 <link rel="manifest" href="/static/manifest.json">
@@ -14,7 +20,7 @@
 <meta name="theme-color" content="#7c3aed">
 <style>
 .status-select {
-  background: var(--bg3); color: var(--text1);
+  background: var(--navy-soft); color: var(--text1);
   border: 1px solid var(--border); border-radius: 8px;
   padding: .35rem .6rem; font-size: .82rem;
   cursor: pointer; outline: none; width: 100%;
@@ -62,8 +68,8 @@
   white-space: nowrap;
   transition: all .15s;
 }
-.aba:hover { border-color: var(--accent); color: var(--text); }
-.aba.ativa { background: var(--accent); border-color: var(--accent); color: #fff; }
+.aba:hover { border-color: var(--orange); color: var(--text); }
+.aba.ativa { background: var(--orange); border-color: var(--orange); color: #fff; }
 .cnt {
   background: rgba(255,255,255,.15);
   border-radius: 99px;
@@ -120,7 +126,7 @@
     <div class="stat-card">
       <div class="label">📋 Total</div>
       <div class="value accent" id="cnt-total">{{ pdfs | length }}</div>
-      <div style="font-size:.8rem;color:var(--accent);margin-top:.2rem" id="val-total">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
+      <div style="font-size:.8rem;color:var(--orange);margin-top:.2rem" id="val-total">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
     </div>
     <div class="stat-card fechou">
       <div class="label">✅ Fechados</div>
@@ -208,8 +214,8 @@
           <td data-label="Ações">
             <div class="actions">
               <a href="/pdf/{{ p.token }}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
-              <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink({{ p.id }}, this)">🔁</button>
-              <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor({{ p.id }}, this)">🔄</button>
+              <button class="btn btn-sm" style="background:var(--navy-soft);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink({{ p.id }}, this)">🔁</button>
+              <button class="btn btn-sm" style="background:var(--navy-soft);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor({{ p.id }}, this)">🔄</button>
               <button class="btn btn-danger btn-sm" onclick="deletarPdf({{ p.id }}, this)">🗑</button>
             </div>
           </td>
@@ -272,6 +278,7 @@
 </div>
 
 <script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 const pdfData = {
   {% for p in pdfs %}
   {{ p.id }}: { status: '{{ p.status }}', valor: {{ p.valor or 0 }} },
@@ -305,7 +312,7 @@ async function atualizarStatus(id, sel) {
   pdfData[id].status = sel.value;
   recalcularCards();
   await fetch('/atualizar_status_pdf/' + id, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
+    method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF_TOKEN},
     body: JSON.stringify({ status: sel.value })
   });
 }
@@ -314,7 +321,7 @@ async function renovarLink(id, btn) {
   if (!confirm('Gerar novo link de 48h para este orçamento?\nO link antigo vai parar de funcionar.')) return;
   btn.textContent = '⏳'; btn.disabled = true;
   try {
-    const res  = await fetch('/renovar_link/' + id, { method: 'POST' });
+    const res  = await fetch('/renovar_link/' + id, { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN} });
     const data = await res.json();
     if (data.ok) {
       // Atualiza o botão Ver com o novo link
@@ -337,7 +344,7 @@ async function relerValor(id, btn) {
   btn.textContent = '⏳';
   btn.disabled = true;
   try {
-    const res = await fetch('/reler_valor/' + id, { method: 'POST' });
+    const res = await fetch('/reler_valor/' + id, { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN} });
     const data = await res.json();
     if (data.ok) {
       // Atualiza valor na linha
@@ -365,7 +372,7 @@ async function relerValor(id, btn) {
 
 async function deletarPdf(id, btn) {
   if (!confirm('Deletar este orçamento?')) return;
-  const res = await fetch('/deletar_pdf_ajax/' + id, { method: 'POST' });
+  const res = await fetch('/deletar_pdf_ajax/' + id, { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN} });
   const data = await res.json();
   if (data.ok) {
     document.getElementById('row-' + id).remove();
@@ -414,7 +421,7 @@ async function enviarPDF() {
   fd.append('titulo', document.getElementById('up_titulo').value.trim() || arquivo.name);
   fd.append('valor', document.getElementById('up_valor').value.trim());
 
-  const res = await fetch('/upload_pdf', { method: 'POST', body: fd });
+  const res = await fetch('/upload_pdf', { method: 'POST', headers: {'X-CSRFToken': CSRF_TOKEN}, body: fd });
   const data = await res.json();
 
   btn.textContent = '📤 Enviar e Gerar Link'; btn.disabled = false;
@@ -457,8 +464,8 @@ async function enviarPDF() {
         <td data-label="Ações">
           <div class="actions">
             <a href="${data.link}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
-            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink(${data.id}, this)">🔁</button>
-            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor(${data.id}, this)">🔄</button>
+            <button class="btn btn-sm" style="background:var(--navy-soft);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink(${data.id}, this)">🔁</button>
+            <button class="btn btn-sm" style="background:var(--navy-soft);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor(${data.id}, this)">🔄</button>
             <button class="btn btn-danger btn-sm" onclick="deletarPdf(${data.id}, this)">🗑</button>
           </div>
         </td>`;
@@ -557,7 +564,7 @@ if ('serviceWorker' in navigator) {
   style.textContent = `
     .ptr-spinner {
       width:20px;height:20px;border-radius:50%;
-      border:2.5px solid var(--border);border-top-color:var(--accent2);
+      border:2.5px solid var(--border);border-top-color:var(--orange-light);
       flex-shrink:0;
     }
     .ptr-spinner.spin { animation:ptr-spin .6s linear infinite; }
