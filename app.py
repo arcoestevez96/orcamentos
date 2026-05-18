@@ -1,4 +1,4 @@
-import os, json, uuid, requests, smtplib, threading, re, io, base64
+import os, json, uuid, requests, smtplib, threading, re, io, base64, queue
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from functools import wraps
@@ -17,6 +17,20 @@ app.secret_key = os.environ.get('SECRET_KEY', 'orceveja-secret-2025-local')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_PG = bool(DATABASE_URL)
+
+# ── SSE — filas por usuário ───────────────────────────────────────────────────
+_sse_lock   = threading.Lock()
+_sse_queues = {}   # user_id (int) -> list[queue.Queue]
+
+def sse_push(user_id, event, data):
+    """Envia evento SSE apenas para as conexões do usuário dono do PDF."""
+    with _sse_lock:
+        filas = list(_sse_queues.get(int(user_id), []))
+    for q in filas:
+        try:
+            q.put_nowait({'event': event, 'data': data})
+        except queue.Full:
+            pass
 
 # ── banco de dados ──────────────────────────────────────────────────────────
 
@@ -540,6 +554,59 @@ def save_config(dados):
             db_exec('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT(chave) DO UPDATE SET valor=EXCLUDED.valor', (k, v))
         else:
             db_exec('INSERT OR REPLACE INTO config(chave,valor) VALUES(?,?)', (k, v))
+
+# ── config por usuário ────────────────────────────────────────────────────────
+
+def _ensure_user_config_table():
+    """Cria a tabela user_config se não existir (migração lazy)."""
+    if USE_PG:
+        db_exec('''CREATE TABLE IF NOT EXISTS user_config (
+            user_id INTEGER NOT NULL,
+            chave   TEXT NOT NULL,
+            valor   TEXT,
+            PRIMARY KEY (user_id, chave)
+        )''')
+    else:
+        db_exec('''CREATE TABLE IF NOT EXISTS user_config (
+            user_id INTEGER NOT NULL,
+            chave   TEXT NOT NULL,
+            valor   TEXT,
+            PRIMARY KEY (user_id, chave)
+        )''')
+
+_user_config_table_ready = False
+def _uctable():
+    global _user_config_table_ready
+    if not _user_config_table_ready:
+        _ensure_user_config_table()
+        _user_config_table_ready = True
+
+def get_user_config(user_id):
+    _uctable()
+    sql = 'SELECT chave, valor FROM user_config WHERE user_id=%s' if USE_PG else \
+          'SELECT chave, valor FROM user_config WHERE user_id=?'
+    rows = db_exec(sql, (user_id,), fetch='all') or []
+    return {r['chave']: r['valor'] for r in rows}
+
+def save_user_config(user_id, dados):
+    _uctable()
+    for k, v in dados.items():
+        if USE_PG:
+            db_exec('INSERT INTO user_config(user_id,chave,valor) VALUES(%s,%s,%s) '
+                    'ON CONFLICT(user_id,chave) DO UPDATE SET valor=EXCLUDED.valor', (user_id, k, v))
+        else:
+            db_exec('INSERT OR REPLACE INTO user_config(user_id,chave,valor) VALUES(?,?,?)', (user_id, k, v))
+
+def user_config_completo(user_id):
+    """True se o usuário já configurou pelo menos um canal de notificação."""
+    cfg = get_user_config(user_id)
+    return bool(
+        (cfg.get('zapi_instance') and cfg.get('zapi_phone')) or
+        cfg.get('whatsapp_numero') or
+        cfg.get('telegram_chat_id') or
+        cfg.get('gmail_refresh_token') or
+        cfg.get('email_remetente')
+    )
 
 def extrair_valor_pdf(dados_bytes):
     """Extrai o valor total do PDF usando pdfplumber + IA (Claude) ou regex robusta."""
@@ -1168,9 +1235,10 @@ def track_pdf(token):
     else:
         db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
             (aberturas, now_str(), 'aberto', token))
-    agora = datetime.now(BRASILIA)
-    hora  = agora.strftime('%H:%M')
-    cfg   = get_config()
+    agora   = datetime.now(BRASILIA)
+    hora    = agora.strftime('%H:%M')
+    owner   = p.get('user_id')
+    cfg     = get_user_config(owner) if owner else {}
     if primeira:
         txt = f"👁 {p['cliente_nome']} abriu '{p['titulo']}' (arquivo baixado) pela 1ª vez às {hora}!"
         html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
@@ -1183,6 +1251,8 @@ def track_pdf(token):
             <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong><br>
             <small style="color:#64748b">Aberto via arquivo baixado/compartilhado</small></p></div>"""
+    if owner:
+        sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
     threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
     return '', 204
 
@@ -1214,6 +1284,8 @@ def ver_pdf(token):
             <p><strong>{p['cliente_nome']}</strong> tentou abrir <strong>{p['titulo']}</strong>
             às <strong>{hora}</strong>, mas o link de 48h já venceu.<br><br>
             Acesse o dashboard para gerar um novo link.</p></div>"""
+        owner = p.get('user_id')
+        cfg   = get_user_config(owner) if owner else {}
         threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
         empresa = cfg.get('empresa_nome', 'a empresa')
         return render_template('expirado.html', cliente=p['cliente_nome'],
@@ -1231,7 +1303,9 @@ def ver_pdf(token):
     else:
         db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
             (aberturas, now_str(), 'aberto', token))
-    hora = agora.strftime('%H:%M')
+    hora  = agora.strftime('%H:%M')
+    owner = p.get('user_id')
+    cfg   = get_user_config(owner) if owner else {}
     if primeira:
         txt = f"👁 {p['cliente_nome']} abriu '{p['titulo']}' pela 1ª vez às {hora}!"
         html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
@@ -1242,7 +1316,9 @@ def ver_pdf(token):
         html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">
             <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>"""
-    notificar(cfg, txt, html_notif)
+    if owner:
+        sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
+    threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
     arquivo  = bytes(p['arquivo']) if p['arquivo'] else b''
     filename = (p['filename'] or 'orcamento.pdf').replace('"', '')
     return Response(arquivo, mimetype='application/pdf',
@@ -1445,10 +1521,12 @@ def telegram_status():
 @app.route('/configuracoes', methods=['GET', 'POST'])
 @login_required
 def configuracoes():
+    from flask import g
+    uid = g.current_user['id']
     if request.method == 'POST':
-        save_config(request.get_json())
+        save_user_config(uid, request.get_json())
         return jsonify({'ok': True})
-    return render_template('configuracoes.html', cfg=get_config())
+    return render_template('configuracoes.html', cfg=get_user_config(uid))
 
 @app.route('/testar_whatsapp', methods=['POST'])
 def testar_whatsapp():
@@ -1497,6 +1575,50 @@ def testar_email():
         return jsonify({'ok': False, 'erro': 'Preencha email e senha'})
     ok, erro = notificar_email(email, senha, html)
     return jsonify({'ok': ok, 'erro': erro})
+
+@app.route('/sse')
+@login_required
+def sse():
+    """Server-Sent Events — streaming de notificações em tempo real para o usuário logado."""
+    from flask import g
+    uid = int(g.current_user['id'])
+    q   = queue.Queue(maxsize=20)
+    with _sse_lock:
+        _sse_queues.setdefault(uid, []).append(q)
+
+    # Verifica se o usuário precisa configurar notificações
+    precisa_configurar = not user_config_completo(uid)
+
+    def generate():
+        try:
+            # Evento de boas-vindas / onboarding
+            if precisa_configurar:
+                payload = json.dumps({
+                    'tipo': 'onboarding',
+                    'titulo': 'Configure suas notificações',
+                    'msg': 'Receba alertas no WhatsApp quando o cliente abrir o orçamento.'
+                })
+                yield f'event: aviso\ndata: {payload}\n\n'
+            else:
+                yield ': conectado\n\n'
+
+            while True:
+                try:
+                    msg = q.get(timeout=25)
+                    yield f"event: {msg['event']}\ndata: {json.dumps(msg['data'], ensure_ascii=False)}\n\n"
+                except queue.Empty:
+                    yield ': heartbeat\n\n'
+        finally:
+            with _sse_lock:
+                lst = _sse_queues.get(uid, [])
+                if q in lst:
+                    lst.remove(q)
+                if not lst:
+                    _sse_queues.pop(uid, None)
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',
+                             'Connection': 'keep-alive'})
 
 @app.route('/ping')
 def ping():

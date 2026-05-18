@@ -529,17 +529,30 @@ async function updateStatus(id, status){
 }
 
 /* SSE — live notifications */
-{% if pdfs %}
 const evtSource = new EventSource('/sse');
+
 evtSource.addEventListener('abriu', e => {
   const d = JSON.parse(e.data);
   document.getElementById('nb-name').textContent = d.nome + ' abriu o orçamento!';
-  document.getElementById('nb-sub').textContent  = d.titulo + ' · ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  document.getElementById('nb-sub').textContent  = d.titulo + ' · ' + (d.hora || new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}));
   document.getElementById('notif-banner').classList.add('show');
   setTimeout(() => document.getElementById('notif-banner').classList.remove('show'), 8000);
   setTimeout(() => location.reload(), 3000);
 });
-{% endif %}
+
+evtSource.addEventListener('aviso', e => {
+  const d = JSON.parse(e.data);
+  if (d.tipo === 'onboarding') {
+    const banner = document.getElementById('notif-banner');
+    document.getElementById('nb-name').innerHTML =
+      '⚙️ ' + d.titulo;
+    document.getElementById('nb-sub').innerHTML =
+      d.msg + ' <a href="/configuracoes" style="color:var(--orange);font-weight:600;text-decoration:underline">Configurar agora →</a>';
+    banner.style.borderColor = 'rgba(232,68,26,.4)';
+    banner.classList.add('show');
+    // não auto-fecha — usuário precisa ver
+  }
+});
 
 /* Spin animation for loader */
 const spinStyle = document.createElement('style');
