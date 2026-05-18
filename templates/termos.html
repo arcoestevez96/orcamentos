@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Termos de Uso e Política de Privacidade · ABRIU</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ABRIU">
+<meta name="theme-color" content="#7c3aed">
+<meta name="description" content="Termos de Uso e Política de Privacidade da plataforma ABRIU — rastreamento de abertura de orçamentos em PDF.">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1117;
+  color: #e2e8f0;
+  line-height: 1.7;
+  font-size: 1rem;
+}
+
+a { color: #818cf8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Header ── */
+.top-bar {
+  background: #1a1d27;
+  border-bottom: 1px solid #2e3250;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar .brand { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; text-decoration: none; }
+.top-bar .brand span { color: #818cf8; }
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  color: #94a3b8;
+  text-decoration: none;
+  padding: .4rem .75rem;
+  border-radius: 8px;
+  border: 1px solid #2e3250;
+  background: transparent;
+  transition: border-color .15s, color .15s;
+}
+.btn-back:hover { border-color: #4f6ef7; color: #e2e8f0; text-decoration: none; }
+
+/* ── Layout ── */
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+}
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid #2e3250;
+}
+.hero h1 {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin-bottom: .5rem;
+}
+.hero p { color: #64748b; font-size: .95rem; }
+.badge-lgpd {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  background: rgba(129,140,248,.1);
+  border: 1px solid rgba(129,140,248,.25);
+  color: #a5b4fc;
+  border-radius: 99px;
+  padding: .3rem .9rem;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+/* ── Índice ── */
+.toc {
+  background: #1a1d27;
+  border: 1px solid #2e3250;
+  border-radius: 14px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 3rem;
+}
+.toc h3 { font-size: .85rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+.toc ol { padding-left: 1.25rem; }
+.toc li { margin-bottom: .35rem; font-size: .9rem; }
+.toc a { color: #94a3b8; }
+.toc a:hover { color: #818cf8; }
+
+/* ── Seções ── */
+.section { margin-bottom: 3rem; }
+.section h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 1.25rem;
+  padding-bottom: .6rem;
+  border-bottom: 1px solid #2e3250;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.section h2 .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  background: rgba(79,110,247,.15);
+  border: 1px solid rgba(79,110,247,.3);
+  border-radius: 6px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #818cf8;
+  flex-shrink: 0;
+}
+.section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin: 1.5rem 0 .6rem;
+}
+.section p { color: #94a3b8; margin-bottom: .85rem; font-size: .95rem; }
+.section ul, .section ol { color: #94a3b8; padding-left: 1.5rem; margin-bottom: 1rem; }
+.section li { margin-bottom: .4rem; font-size: .95rem; }
+.section strong { color: #cbd5e1; }
+
+/* ── Destaque LGPD ── */
+.highlight-box {
+  background: rgba(129,140,248,.07);
+  border: 1px solid rgba(129,140,248,.2);
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  margin: 1rem 0;
+}
+.highlight-box p { margin: 0; color: #a5b4fc; font-size: .9rem; }
+
+.warn-box {
+  background: rgba(251,191,36,.06);
+  border: 1px solid rgba(251,191,36,.2);
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  margin: 1rem 0;
+}
+.warn-box p { margin: 0; color: #fbbf24; font-size: .9rem; }
+
+/* ── Tabela de dados ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: .88rem;
+}
+.data-table th {
+  background: #22263a;
+  color: #94a3b8;
+  font-weight: 600;
+  text-align: left;
+  padding: .6rem 1rem;
+  border: 1px solid #2e3250;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.data-table td {
+  padding: .65rem 1rem;
+  border: 1px solid #2e3250;
+  color: #94a3b8;
+  vertical-align: top;
+}
+.data-table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+
+/* ── Direitos ── */
+.rights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .75rem;
+  margin: 1rem 0;
+}
+.right-card {
+  background: #1a1d27;
+  border: 1px solid #2e3250;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+.right-card .r-icon { font-size: 1.3rem; margin-bottom: .4rem; }
+.right-card .r-title { font-size: .85rem; font-weight: 600; color: #cbd5e1; margin-bottom: .3rem; }
+.right-card .r-desc { font-size: .8rem; color: #64748b; }
+
+/* ── Footer ── */
+.doc-footer {
+  text-align: center;
+  color: #475569;
+  font-size: .85rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #2e3250;
+}
+.doc-footer a { color: #64748b; }
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 1.5rem; }
+  .data-table { display: block; overflow-x: auto; }
+  .rights-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="brand">ABRIU<span>.</span></a>
+  <a href="/" class="btn-back">← Voltar ao início</a>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>Termos de Uso & Política de Privacidade</h1>
+    <p>Última atualização: 18 de maio de 2025 &nbsp;·&nbsp; Versão 1.0</p>
+    <div class="badge-lgpd">Conformidade LGPD · GDPR · CCPA</div>
+  </div>
+
+  <!-- ÍNDICE -->
+  <div class="toc">
+    <h3>Índice</h3>
+    <ol>
+      <li><a href="#s1">Identificação e Contato</a></li>
+      <li><a href="#s2">Termos de Uso</a></li>
+      <li><a href="#s3">Dados Coletados</a></li>
+      <li><a href="#s4">Finalidade e Base Legal (LGPD)</a></li>
+      <li><a href="#s5">Cookies e Rastreamento</a></li>
+      <li><a href="#s6">Compartilhamento de Dados</a></li>
+      <li><a href="#s7">Retenção e Exclusão de Dados</a></li>
+      <li><a href="#s8">Segurança</a></li>
+      <li><a href="#s9">Seus Direitos (LGPD · GDPR · CCPA)</a></li>
+      <li><a href="#s10">Transferência Internacional</a></li>
+      <li><a href="#s11">Menores de Idade</a></li>
+      <li><a href="#s12">Alterações nesta Política</a></li>
+      <li><a href="#s13">Lei Aplicável e Foro</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. IDENTIFICAÇÃO -->
+  <div class="section" id="s1">
+    <h2><span class="num">1</span> Identificação e Contato</h2>
+    <p>O serviço <strong>ABRIU</strong>, acessível em <strong>abriu.app.br</strong>, é operado por pessoa jurídica ou física com sede no Brasil. Para fins da Lei Geral de Proteção de Dados (LGPD – Lei n.º 13.709/2018), somos o <strong>Controlador</strong> dos dados pessoais tratados nesta plataforma.</p>
+    <p><strong>Encarregado de Dados (DPO):</strong> contato@abriu.app.br<br>
+    <strong>Canal de privacidade:</strong> privacidade@abriu.app.br<br>
+    <strong>Endereço:</strong> Brasil</p>
+    <div class="highlight-box">
+      <p>Para exercer seus direitos, envie e-mail para <strong>privacidade@abriu.app.br</strong> com o assunto <em>"Direitos LGPD"</em>. Respondemos em até 15 dias corridos.</p>
+    </div>
+  </div>
+
+  <!-- 2. TERMOS DE USO -->
+  <div class="section" id="s2">
+    <h2><span class="num">2</span> Termos de Uso</h2>
+
+    <h3>2.1 Aceitação</h3>
+    <p>Ao criar uma conta ou utilizar qualquer funcionalidade do ABRIU, você declara ter lido e concordado com estes Termos e com nossa Política de Privacidade. Se não concordar, não utilize o serviço.</p>
+
+    <h3>2.2 Descrição do Serviço</h3>
+    <p>O ABRIU é uma plataforma de rastreamento de abertura de orçamentos em PDF. O usuário cadastrado ("Usuário") faz upload de PDFs e compartilha links únicos com seus clientes ("Destinatários"). O sistema registra quando e como o Destinatário abre o documento e notifica o Usuário via WhatsApp, e-mail ou Telegram.</p>
+
+    <h3>2.3 Uso Permitido</h3>
+    <p>O serviço destina-se exclusivamente ao uso comercial legítimo, como envio de orçamentos, propostas e documentos comerciais. É vedado:</p>
+    <ul>
+      <li>Usar o serviço para fins de vigilância não autorizada, assédio ou spam;</li>
+      <li>Compartilhar links de rastreamento sem o conhecimento do Destinatário sobre a existência de rastreamento (veja cláusula 5);</li>
+      <li>Fazer engenharia reversa, scraping ou sobrecarga dos sistemas;</li>
+      <li>Fazer upload de conteúdo ilegal, ofensivo, fraudulento ou que viole direitos de terceiros;</li>
+      <li>Usar o serviço para fins que violem a LGPD ou qualquer lei de proteção de dados aplicável.</li>
+    </ul>
+
+    <h3>2.4 Responsabilidade do Usuário sobre Destinatários</h3>
+    <p>Ao enviar um link rastreado a um Destinatário, o Usuário declara que possui base legal para coletar os metadados de acesso desse Destinatário (IP, dispositivo, horário), em conformidade com o art. 7.º da LGPD. O ABRIU atua como <strong>Operador</strong> em relação a esses dados; o Usuário é o Controlador.</p>
+
+    <h3>2.5 Planos, Pagamento e Cancelamento</h3>
+    <p>Os pagamentos são processados pela <strong>Stripe, Inc.</strong>, empresa com sede nos EUA e certificação PCI-DSS nível 1. Não armazenamos dados de cartão de crédito. O cancelamento pode ser feito a qualquer momento nas configurações da conta. Planos pagos continuam ativos até o fim do período já pago.</p>
+
+    <h3>2.6 Disponibilidade e Limitação de Responsabilidade</h3>
+    <p>O ABRIU é fornecido "como está". Não garantimos disponibilidade ininterrupta. Em nenhuma hipótese seremos responsáveis por danos indiretos, lucros cessantes ou perda de dados decorrentes do uso ou da impossibilidade de uso do serviço.</p>
+
+    <h3>2.7 Propriedade Intelectual</h3>
+    <p>Todo o código, design e marca do ABRIU são de propriedade do operador. Os PDFs enviados pelo Usuário continuam sendo de sua propriedade; concede-nos apenas a licença necessária para armazená-los e exibi-los ao Destinatário.</p>
+
+    <h3>2.8 Rescisão</h3>
+    <p>Podemos suspender ou encerrar contas que violem estes Termos, com ou sem aviso prévio. O Usuário pode encerrar sua conta a qualquer momento pelo e-mail privacidade@abriu.app.br.</p>
+  </div>
+
+  <!-- 3. DADOS COLETADOS -->
+  <div class="section" id="s3">
+    <h2><span class="num">3</span> Dados Coletados</h2>
+
+    <h3>3.1 Dados dos Usuários (quem cria conta)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Dado</th>
+          <th>Fonte</th>
+          <th>Finalidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Nome completo</td>
+          <td>Cadastro / Google / Facebook / Apple</td>
+          <td>Identificação na plataforma</td>
+        </tr>
+        <tr>
+          <td>Endereço de e-mail</td>
+          <td>Cadastro / Login social</td>
+          <td>Autenticação, notificações, suporte</td>
+        </tr>
+        <tr>
+          <td>Foto de perfil</td>
+          <td>Google / Facebook (opcional)</td>
+          <td>Exibição na interface</td>
+        </tr>
+        <tr>
+          <td>Senha (hash bcrypt)</td>
+          <td>Cadastro por e-mail</td>
+          <td>Autenticação segura</td>
+        </tr>
+        <tr>
+          <td>Token de acesso OAuth</td>
+          <td>Google / Facebook / Apple</td>
+          <td>Login federado e envio de e-mail via Gmail</td>
+        </tr>
+        <tr>
+          <td>Dados de pagamento (token)</td>
+          <td>Stripe</td>
+          <td>Processamento de assinatura</td>
+        </tr>
+        <tr>
+          <td>Configurações de notificação</td>
+          <td>Inserção pelo Usuário</td>
+          <td>Envio de alertas por WhatsApp / Telegram / e-mail</td>
+        </tr>
+        <tr>
+          <td>PDFs enviados</td>
+          <td>Upload pelo Usuário</td>
+          <td>Armazenamento e compartilhamento com Destinatários</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>3.2 Dados dos Destinatários (quem abre o link)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Dado</th>
+          <th>Como é coletado</th>
+          <th>Finalidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Endereço IP</td>
+          <td>Requisição HTTP ao abrir o link</td>
+          <td>Localização aproximada e detecção de abertura</td>
+        </tr>
+        <tr>
+          <td>User-Agent (navegador/SO)</td>
+          <td>Cabeçalho HTTP</td>
+          <td>Identificação do dispositivo utilizado</td>
+        </tr>
+        <tr>
+          <td>Data e hora de acesso</td>
+          <td>Servidor</td>
+          <td>Registro de quando o documento foi aberto</td>
+        </tr>
+        <tr>
+          <td>Localização geográfica aproximada</td>
+          <td>Inferida pelo IP (cidade/país)</td>
+          <td>Relatório de abertura para o Usuário</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="warn-box">
+      <p>O Destinatário não precisa criar conta. Os dados acima são coletados automaticamente ao acessar o link. O Usuário (Controlador) é responsável por informar o Destinatário sobre esse rastreamento.</p>
+    </div>
+  </div>
+
+  <!-- 4. BASE LEGAL -->
+  <div class="section" id="s4">
+    <h2><span class="num">4</span> Finalidade e Base Legal (LGPD)</h2>
+    <p>Nos termos do art. 7.º e 11 da LGPD, tratamos dados pessoais com as seguintes bases legais:</p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tratamento</th>
+          <th>Base Legal (LGPD)</th>
+          <th>Equivalente GDPR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Criação e manutenção de conta</td>
+          <td>Art. 7.º, V — execução de contrato</td>
+          <td>Art. 6(1)(b) GDPR</td>
+        </tr>
+        <tr>
+          <td>Envio de notificações de abertura</td>
+          <td>Art. 7.º, V — execução de contrato</td>
+          <td>Art. 6(1)(b) GDPR</td>
+        </tr>
+        <tr>
+          <td>Rastreamento de acesso ao PDF</td>
+          <td>Art. 7.º, I — consentimento; ou Art. 7.º, V — contrato</td>
+          <td>Art. 6(1)(a)/(b) GDPR</td>
+        </tr>
+        <tr>
+          <td>Processamento de pagamento</td>
+          <td>Art. 7.º, V — execução de contrato</td>
+          <td>Art. 6(1)(b) GDPR</td>
+        </tr>
+        <tr>
+          <td>Melhorias da plataforma e analytics</td>
+          <td>Art. 7.º, IX — legítimo interesse</td>
+          <td>Art. 6(1)(f) GDPR</td>
+        </tr>
+        <tr>
+          <td>Cumprimento de obrigação legal</td>
+          <td>Art. 7.º, II — obrigação legal</td>
+          <td>Art. 6(1)(c) GDPR</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 5. COOKIES -->
+  <div class="section" id="s5">
+    <h2><span class="num">5</span> Cookies e Rastreamento</h2>
+
+    <h3>5.1 Cookies de Sessão</h3>
+    <p>Utilizamos cookies de sessão estritamente necessários para manter o Usuário autenticado. Esses cookies são excluídos ao fechar o navegador ou ao clicar em "Sair".</p>
+
+    <h3>5.2 Rastreamento de Abertura de PDF</h3>
+    <p>Quando o Destinatário acessa um link, o servidor registra o acesso. <strong>Não utilizamos pixel de rastreamento invisível</strong> — o registro ocorre na requisição HTTP ao servidor de arquivos. O Destinatário pode verificar o endereço do link antes de clicar.</p>
+
+    <h3>5.3 Sem Cookies de Terceiros para Publicidade</h3>
+    <p>Não utilizamos cookies de publicidade, remarketing ou redes de anúncios. Não vendemos dados comportamentais a terceiros.</p>
+  </div>
+
+  <!-- 6. COMPARTILHAMENTO -->
+  <div class="section" id="s6">
+    <h2><span class="num">6</span> Compartilhamento de Dados</h2>
+    <p>Não vendemos seus dados pessoais. Compartilhamos apenas com os seguintes parceiros, na qualidade de Operadores:</p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Parceiro</th>
+          <th>País</th>
+          <th>Finalidade</th>
+          <th>Salvaguarda</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Render Services, Inc.</td>
+          <td>EUA</td>
+          <td>Hospedagem da aplicação e banco de dados</td>
+          <td>SCCs / DPA</td>
+        </tr>
+        <tr>
+          <td>Stripe, Inc.</td>
+          <td>EUA</td>
+          <td>Processamento de pagamentos</td>
+          <td>SCCs / PCI-DSS</td>
+        </tr>
+        <tr>
+          <td>Google LLC</td>
+          <td>EUA</td>
+          <td>Login social (OAuth) e envio de e-mail (Gmail API)</td>
+          <td>SCCs / Google DPA</td>
+        </tr>
+        <tr>
+          <td>Meta Platforms, Inc.</td>
+          <td>EUA</td>
+          <td>Login social (Facebook OAuth)</td>
+          <td>SCCs / Meta DPA</td>
+        </tr>
+        <tr>
+          <td>Apple Inc.</td>
+          <td>EUA</td>
+          <td>Login social (Sign in with Apple)</td>
+          <td>SCCs / Apple DPA</td>
+        </tr>
+        <tr>
+          <td>Z-API / Telegram</td>
+          <td>Brasil / Global</td>
+          <td>Envio de notificações (configurado pelo Usuário)</td>
+          <td>Dados mínimos — apenas número/chat ID</td>
+        </tr>
+        <tr>
+          <td>Anthropic, PBC</td>
+          <td>EUA</td>
+          <td>Extração de valor total de PDF via IA (quando ANTHROPIC_API_KEY configurada)</td>
+          <td>SCCs / Anthropic DPA</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Podemos divulgar dados pessoais a autoridades competentes quando exigido por lei, decisão judicial ou pela Autoridade Nacional de Proteção de Dados (ANPD).</p>
+  </div>
+
+  <!-- 7. RETENÇÃO -->
+  <div class="section" id="s7">
+    <h2><span class="num">7</span> Retenção e Exclusão de Dados</h2>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Dado</th>
+          <th>Prazo de Retenção</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Dados de conta (nome, e-mail)</td>
+          <td>Até exclusão da conta + 5 anos (obrigação fiscal)</td>
+        </tr>
+        <tr>
+          <td>PDFs enviados</td>
+          <td>Até exclusão pelo Usuário ou encerramento da conta</td>
+        </tr>
+        <tr>
+          <td>Logs de acesso de Destinatários</td>
+          <td>2 anos a partir do acesso</td>
+        </tr>
+        <tr>
+          <td>Registros de pagamento</td>
+          <td>10 anos (Código Tributário Nacional, art. 195)</td>
+        </tr>
+        <tr>
+          <td>Logs de sistema (segurança)</td>
+          <td>6 meses (Marco Civil da Internet, art. 15)</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Após o encerramento da conta, os dados são anonimizados ou excluídos no prazo de 30 dias, salvo quando a retenção for exigida por lei.</p>
+  </div>
+
+  <!-- 8. SEGURANÇA -->
+  <div class="section" id="s8">
+    <h2><span class="num">8</span> Segurança</h2>
+    <p>Adotamos as seguintes medidas técnicas e administrativas para proteger seus dados:</p>
+    <ul>
+      <li>Comunicação criptografada em trânsito via <strong>TLS 1.2+</strong> (HTTPS);</li>
+      <li>Senhas armazenadas com hash <strong>bcrypt</strong> (nunca em texto plano);</li>
+      <li>Autenticação por <strong>Flask-Session</strong> com chave secreta de 256 bits;</li>
+      <li>Banco de dados com acesso restrito por rede privada (Render internal);</li>
+      <li>Uploads de PDF armazenados com tokens UUID aleatórios;</li>
+      <li>Links de acesso expiram e podem ser renovados pelo Usuário.</li>
+    </ul>
+    <p>Em caso de incidente de segurança que possa afetar titulares de dados, notificaremos a ANPD e os titulares afetados no prazo legal de <strong>72 horas</strong> após a ciência do incidente, conforme art. 48 da LGPD.</p>
+  </div>
+
+  <!-- 9. SEUS DIREITOS -->
+  <div class="section" id="s9">
+    <h2><span class="num">9</span> Seus Direitos</h2>
+    <p>A LGPD (art. 18), o GDPR (art. 15–22) e o CCPA garantem aos titulares os seguintes direitos:</p>
+
+    <div class="rights-grid">
+      <div class="right-card">
+        <div class="r-icon">🔍</div>
+        <div class="r-title">Acesso</div>
+        <div class="r-desc">Saber quais dados seus temos e como os usamos.</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">✏️</div>
+        <div class="r-title">Correção</div>
+        <div class="r-desc">Corrigir dados incompletos, inexatos ou desatualizados.</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">🗑️</div>
+        <div class="r-title">Eliminação</div>
+        <div class="r-desc">Solicitar a exclusão de dados desnecessários ou tratados ilegalmente.</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">📦</div>
+        <div class="r-title">Portabilidade</div>
+        <div class="r-desc">Receber seus dados em formato estruturado (JSON/CSV).</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">🚫</div>
+        <div class="r-title">Oposição</div>
+        <div class="r-desc">Opor-se ao tratamento baseado em legítimo interesse.</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">⏸️</div>
+        <div class="r-title">Bloqueio</div>
+        <div class="r-desc">Solicitar o bloqueio temporário de dados desnecessários.</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">ℹ️</div>
+        <div class="r-title">Informação</div>
+        <div class="r-desc">Saber com quais terceiros seus dados foram compartilhados.</div>
+      </div>
+      <div class="right-card">
+        <div class="r-icon">↩️</div>
+        <div class="r-title">Revogação</div>
+        <div class="r-desc">Revogar o consentimento dado, sem prejuízo dos tratamentos anteriores.</div>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <p>Para exercer qualquer direito, envie e-mail para <strong>privacidade@abriu.app.br</strong>. Confirmaremos sua identidade e responderemos em até <strong>15 dias corridos</strong> (LGPD) ou <strong>30 dias</strong> (GDPR). Você também pode registrar reclamação na <strong>ANPD</strong> (gov.br/anpd) ou, para titulares europeus, na autoridade supervisora de seu país.</p>
+    </div>
+
+    <h3>Usuários Californianos (CCPA)</h3>
+    <p>Não vendemos informações pessoais conforme definido pelo California Consumer Privacy Act. Cidadãos da Califórnia podem solicitar acesso e exclusão de dados pelo mesmo canal: privacidade@abriu.app.br.</p>
+  </div>
+
+  <!-- 10. TRANSFERÊNCIA INTERNACIONAL -->
+  <div class="section" id="s10">
+    <h2><span class="num">10</span> Transferência Internacional de Dados</h2>
+    <p>Os servidores da aplicação estão hospedados nos <strong>Estados Unidos</strong> (Render). Para usuários brasileiros, essa transferência é realizada com base no art. 33, II da LGPD (país com grau adequado de proteção reconhecido pela ANPD ou mediante cláusulas contratuais padrão). Para usuários do Espaço Econômico Europeu (EEE), a transferência ocorre com base nas <strong>Cláusulas Contratuais Padrão (SCCs)</strong> aprovadas pela Comissão Europeia.</p>
+  </div>
+
+  <!-- 11. MENORES -->
+  <div class="section" id="s11">
+    <h2><span class="num">11</span> Menores de Idade</h2>
+    <p>O serviço é destinado exclusivamente a pessoas com <strong>18 anos ou mais</strong>. Não coletamos intencionalmente dados de menores de 18 anos. Se tomarmos conhecimento de que um menor nos forneceu dados, excluiremos as informações imediatamente.</p>
+  </div>
+
+  <!-- 12. ALTERAÇÕES -->
+  <div class="section" id="s12">
+    <h2><span class="num">12</span> Alterações nesta Política</h2>
+    <p>Podemos atualizar esta Política periodicamente. Alterações relevantes serão comunicadas por e-mail ou por aviso destacado na plataforma com pelo menos <strong>15 dias de antecedência</strong>. O uso continuado após a vigência das novas condições implica aceitação.</p>
+    <p>O histórico de versões está disponível mediante solicitação a privacidade@abriu.app.br.</p>
+  </div>
+
+  <!-- 13. LEI E FORO -->
+  <div class="section" id="s13">
+    <h2><span class="num">13</span> Lei Aplicável e Foro</h2>
+    <p>Estes Termos são regidos pelas leis da <strong>República Federativa do Brasil</strong>, em especial:</p>
+    <ul>
+      <li>Lei n.º 13.709/2018 – Lei Geral de Proteção de Dados (LGPD);</li>
+      <li>Lei n.º 12.965/2014 – Marco Civil da Internet;</li>
+      <li>Lei n.º 8.078/1990 – Código de Defesa do Consumidor;</li>
+      <li>Lei n.º 10.406/2002 – Código Civil Brasileiro.</li>
+    </ul>
+    <p>Para resolução de conflitos, fica eleito o foro da comarca da sede do operador, com renúncia expressa a qualquer outro, por mais privilegiado que seja. Para consumidores, aplica-se o foro do domicílio do consumidor conforme o CDC.</p>
+    <p>Para usuários do EEE, as obrigações decorrentes do GDPR prevalecem na extensão das disposições aplicáveis.</p>
+  </div>
+
+  <div class="doc-footer">
+    <p>© 2025 ABRIU · <a href="/">abriu.app.br</a> · Todos os direitos reservados</p>
+    <p style="margin-top:.4rem;">Dúvidas? Fale conosco: <a href="mailto:privacidade@abriu.app.br">privacidade@abriu.app.br</a></p>
+  </div>
+
+</div>
+</body>
+</html>

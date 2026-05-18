@@ -1611,7 +1611,11 @@ def configuracoes():
     if request.method == 'POST':
         save_user_config(uid, request.get_json())
         return jsonify({'ok': True})
-    return render_template('configuracoes.html', cfg=get_user_config(uid))
+    u = g.current_user
+    plano = u.get('plano') or 'free'
+    stripe_ok = bool(os.environ.get('STRIPE_SECRET_KEY') and os.environ.get('STRIPE_PRICE_PRO'))
+    return render_template('configuracoes.html', cfg=get_user_config(uid),
+                           plano=plano, stripe_ok=stripe_ok)
 
 @app.route('/testar_whatsapp', methods=['POST'])
 def testar_whatsapp():
@@ -1759,6 +1763,11 @@ def service_worker():
 def ping():
     return jsonify({'ok': True, 'status': 'alive'})
 
+@app.route('/termos')
+@app.route('/privacidade')
+def termos():
+    return render_template('termos.html')
+
 @app.route('/healthz')
 def healthz():
     return jsonify({'status': 'healthy', 'service': 'abriu'}), 200
@@ -1808,6 +1817,32 @@ def paywall():
     falha    = request.args.get('falha', '')
     pendente = request.args.get('pendente', '')
     return render_template('paywall.html', falha=falha, pendente=pendente)
+
+@app.route('/assinar/<plano_id>')
+@login_required
+def assinar_plano(plano_id):
+    """GET redirect para checkout Stripe via card de plano na página de configurações."""
+    if plano_id not in ('pro', 'agency'):
+        return redirect('/configuracoes')
+    price_key = 'STRIPE_PRICE_PRO' if plano_id == 'pro' else 'STRIPE_PRICE_AGENCY'
+    price_id = os.environ.get(price_key, '')
+    secret_key = os.environ.get('STRIPE_SECRET_KEY', '')
+    if not price_id or not secret_key:
+        return redirect('/configuracoes')
+    import stripe as _stripe
+    _stripe.api_key = secret_key
+    u = g.current_user
+    base = get_base_url()
+    sess = _stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        mode='subscription',
+        line_items=[{'price': price_id, 'quantity': 1}],
+        success_url=base + '/stripe/sucesso?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url=base + '/configuracoes?stripe=cancelado',
+        customer_email=u['email'],
+        metadata={'email': u['email'], 'plano': plano_id},
+    )
+    return redirect(sess.url, 303)
 
 @app.route('/assinar', methods=['POST'])
 def assinar():

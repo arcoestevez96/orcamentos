@@ -296,10 +296,69 @@ body { background: var(--cream); }
       </div>
 
       <!-- SAVE -->
-      <div style="display:flex;justify-content:flex-end;padding-bottom:40px">
+      <div style="display:flex;justify-content:flex-end">
         <button class="btn btn-primary" onclick="salvar()">
           <i class="ti ti-device-floppy"></i> Salvar Configurações
         </button>
+      </div>
+
+      <!-- PLANO -->
+      <div class="cfg-card" style="margin-top:16px">
+        <div class="cfg-card__header">
+          <div class="cfg-card__icon" style="background:rgba(79,110,247,.1);color:#818cf8">
+            <i class="ti ti-credit-card"></i>
+          </div>
+          <div>
+            <div class="cfg-card__title">Plano</div>
+            <div class="cfg-card__sub">Gerencie sua assinatura</div>
+          </div>
+        </div>
+
+        {% if plano == 'free' %}
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem">
+          <span style="background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.25);color:#94a3b8;border-radius:99px;padding:.25rem .85rem;font-size:.78rem;font-weight:700">GRATUITO</span>
+          <span style="font-size:.85rem;color:var(--gray)">5 orçamentos/PDFs por mês</span>
+        </div>
+        {% if stripe_ok %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <a href="/assinar/pro" style="display:flex;flex-direction:column;align-items:center;gap:.3rem;background:rgba(79,110,247,.07);border:1px solid rgba(79,110,247,.2);border-radius:12px;padding:1rem;text-decoration:none">
+            <strong style="color:#818cf8">⚡ Pro</strong>
+            <span style="color:var(--gray);font-size:.8rem;text-align:center">Ilimitado · R$19,90/mês</span>
+            <span style="margin-top:.3rem;background:#4f6ef7;color:#fff;border-radius:8px;padding:.3rem .85rem;font-size:.8rem;font-weight:600">Assinar</span>
+          </a>
+          <a href="/assinar/agency" style="display:flex;flex-direction:column;align-items:center;gap:.3rem;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.18);border-radius:12px;padding:1rem;text-decoration:none">
+            <strong style="color:#fbbf24">🏢 Agência</strong>
+            <span style="color:var(--gray);font-size:.8rem;text-align:center">5 usuários · R$59,90/mês</span>
+            <span style="margin-top:.3rem;background:rgba(234,179,8,.15);color:#fbbf24;border:1px solid rgba(234,179,8,.25);border-radius:8px;padding:.3rem .85rem;font-size:.8rem;font-weight:600">Assinar</span>
+          </a>
+        </div>
+        {% endif %}
+
+        {% elif plano == 'pro' %}
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+          <span style="background:rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.3);color:#818cf8;border-radius:99px;padding:.25rem .85rem;font-size:.78rem;font-weight:700">PRO</span>
+          <span style="font-size:.85rem;color:var(--gray)">Orçamentos ilimitados · R$19,90/mês</span>
+        </div>
+        <button onclick="cancelarAssinatura()" class="btn btn-ghost btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.25)">Cancelar assinatura</button>
+
+        {% elif plano == 'agency' %}
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+          <span style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.25);color:#fbbf24;border-radius:99px;padding:.25rem .85rem;font-size:.78rem;font-weight:700">AGÊNCIA</span>
+          <span style="font-size:.85rem;color:var(--gray)">Ilimitado · até 5 usuários · R$59,90/mês</span>
+        </div>
+        <button onclick="cancelarAssinatura()" class="btn btn-ghost btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.25)">Cancelar assinatura</button>
+        {% endif %}
+
+        {% if request.args.get('stripe') == 'cancelado' %}
+        <div style="margin-top:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem 1rem;font-size:.85rem;color:#f87171">
+          Pagamento cancelado. Tente novamente acima.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- FOOTER -->
+      <div style="text-align:center;padding:24px 0 8px;font-size:12px;color:var(--gray);opacity:.6">
+        © 2026 ABRIU · <a href="/termos" style="color:inherit;text-decoration:none">Termos</a> · <a href="/privacidade" style="color:inherit;text-decoration:none">Privacidade</a>
       </div>
 
     </div>
@@ -307,6 +366,14 @@ body { background: var(--cream); }
 </div>
 
 <script>
+async function cancelarAssinatura() {
+  if (!confirm('Cancelar assinatura? O plano permanece ativo até o fim do período pago.')) return;
+  const res = await fetch('/cancelar_assinatura', { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) alert('✅ Cancelamento agendado. Plano ativo até o fim do ciclo.');
+  else alert('❌ Erro: ' + data.erro);
+}
+
 async function testarGmail() {
   const btn = document.querySelector('[onclick="testarGmail()"]');
   const orig = btn.innerHTML; btn.innerHTML = '⏳ Enviando...'; btn.disabled = true;
