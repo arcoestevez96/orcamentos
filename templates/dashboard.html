@@ -385,15 +385,21 @@ select.action-btn {
       <input type="file" id="pdf-input" name="pdf" accept=".pdf">
 
       <div style="margin-top:20px">
-        <div class="form-row">
-          <div class="input-group">
+        <div class="form-row" style="align-items:flex-end">
+          <div class="input-group" style="margin-bottom:0">
             <label class="input-label">Nome do cliente *</label>
-            <input class="input" type="text" name="cliente_nome" placeholder="Ex: João Silva" required>
+            <input class="input" type="text" id="campo-nome" name="cliente_nome" placeholder="Ex: João Silva" required>
           </div>
-          <div class="input-group">
+          <div class="input-group" style="margin-bottom:0">
             <label class="input-label">Telefone (WhatsApp)</label>
-            <input class="input" type="tel" name="cliente_telefone" placeholder="Ex: 71999998888">
+            <input class="input" type="tel" id="campo-tel" name="cliente_telefone" placeholder="Ex: 71999998888">
           </div>
+        </div>
+        <div id="agenda-wrap" style="display:none;margin-top:8px">
+          <button type="button" id="btn-agenda" onclick="abrirAgenda()" class="btn btn-ghost btn-sm" style="gap:6px;color:var(--navy);border-color:rgba(13,27,42,.18)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="12" cy="10" r="3"/></svg>
+            Buscar na agenda
+          </button>
         </div>
         <div class="form-row">
           <div class="input-group">
@@ -431,6 +437,34 @@ select.action-btn {
 </div>
 
 <script>
+/* ── Contact Picker API ───────────────────────────────────── */
+(function(){
+  const supported = ('contacts' in navigator) && ('ContactsManager' in window);
+  if (supported) document.getElementById('agenda-wrap').style.display = 'block';
+})();
+
+async function abrirAgenda() {
+  try {
+    const contacts = await navigator.contacts.select(['name','tel'], { multiple: false });
+    if (!contacts || contacts.length === 0) return;
+    const c = contacts[0];
+    const nomeEl = document.getElementById('campo-nome');
+    const telEl  = document.getElementById('campo-tel');
+    if (c.name && c.name[0])  nomeEl.value = c.name[0];
+    if (c.tel  && c.tel[0]) {
+      // limpa para manter só dígitos, remove +55 se presente
+      let tel = c.tel[0].replace(/\D/g, '');
+      if (tel.startsWith('55') && tel.length >= 12) tel = tel.slice(2);
+      telEl.value = tel;
+    }
+    // foco no próximo campo em branco
+    if (!nomeEl.value) nomeEl.focus();
+    else if (!telEl.value) telEl.focus();
+  } catch(err) {
+    if (err.name !== 'AbortError') console.warn('Agenda:', err);
+  }
+}
+
 /* Drag & drop */
 const dz = document.getElementById('drop-zone');
 const fi = document.getElementById('pdf-input');
