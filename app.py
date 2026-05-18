@@ -21,8 +21,31 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'orceveja-secret-2025-local')
 
+# Gzip em todas as respostas (HTML, JSON, CSS, JS) — reduz ~70% do tamanho
+try:
+    from flask_compress import Compress
+    app.config['COMPRESS_MIMETYPES'] = [
+        'text/html','text/css','application/javascript',
+        'application/json','text/plain'
+    ]
+    app.config['COMPRESS_LEVEL'] = 6
+    app.config['COMPRESS_MIN_SIZE'] = 500
+    Compress(app)
+except ImportError:
+    pass
+
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_PG = bool(DATABASE_URL)
+
+# Cache de estáticos (1 ano para CSS/JS imutáveis, sem cache para SW)
+@app.after_request
+def cache_headers(response):
+    path = request.path
+    if path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    elif path == '/sw.js':
+        response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 # ── SSE — filas por usuário ───────────────────────────────────────────────────
 _sse_lock   = threading.Lock()
@@ -110,12 +133,33 @@ def send_web_push(user_id, title, body, url='/dashboard'):
 
 # ── banco de dados ──────────────────────────────────────────────────────────
 
+# ── Connection pool (PostgreSQL) ─────────────────────────────────────────────
+_pg_pool = None
+_pg_pool_lock = threading.Lock()
+
+def _get_pg_pool():
+    global _pg_pool
+    if _pg_pool is None:
+        with _pg_pool_lock:
+            if _pg_pool is None:
+                import psycopg2.pool
+                # psycogreen torna psycopg2 não-bloqueante dentro do gevent
+                try:
+                    from psycogreen.gevent import patch_psycopg
+                    patch_psycopg()
+                except ImportError:
+                    pass
+                url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+                _pg_pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=2, maxconn=10, dsn=url,
+                    connect_timeout=5,
+                    options='-c statement_timeout=10000'   # 10s max por query
+                )
+    return _pg_pool
+
 def get_db():
     if USE_PG:
-        import psycopg2, psycopg2.extras
-        url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        con = psycopg2.connect(url)
-        return con
+        return _get_pg_pool().getconn()
     else:
         import sqlite3
         db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
@@ -140,7 +184,10 @@ def db_exec(sql, params=(), fetch=None):
             if fetch == 'all': return [dict(r) for r in cur.fetchall()]
             if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
     finally:
-        con.close()
+        if USE_PG:
+            _get_pg_pool().putconn(con)   # devolve ao pool em vez de fechar
+        else:
+            con.close()
 
 def init_db():
     if USE_PG:
@@ -205,6 +252,12 @@ def init_db():
             subscription_json TEXT NOT NULL,
             endpoint TEXT,
             criado_em TEXT
+        )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS user_config (
+            user_id INTEGER NOT NULL,
+            chave   TEXT NOT NULL,
+            valor   TEXT,
+            PRIMARY KEY (user_id, chave)
         )''')
         # Índices para consultas críticas (token lookup e filtro por usuário)
         cur.execute('CREATE INDEX IF NOT EXISTS idx_pdfs_token   ON pdfs(token)')
@@ -273,6 +326,12 @@ def init_db():
                 subscription_json TEXT NOT NULL,
                 endpoint TEXT,
                 criado_em TEXT
+            );
+            CREATE TABLE IF NOT EXISTS user_config (
+                user_id INTEGER NOT NULL,
+                chave   TEXT NOT NULL,
+                valor   TEXT,
+                PRIMARY KEY (user_id, chave)
             );
             INSERT OR IGNORE INTO config VALUES ("whatsapp_numero","");
             INSERT OR IGNORE INTO config VALUES ("whatsapp_apikey","");
@@ -536,40 +595,25 @@ def save_config(dados):
             db_exec('INSERT OR REPLACE INTO config(chave,valor) VALUES(?,?)', (k, v))
 
 # ── config por usuário ────────────────────────────────────────────────────────
-
-def _ensure_user_config_table():
-    """Cria a tabela user_config se não existir (migração lazy)."""
-    if USE_PG:
-        db_exec('''CREATE TABLE IF NOT EXISTS user_config (
-            user_id INTEGER NOT NULL,
-            chave   TEXT NOT NULL,
-            valor   TEXT,
-            PRIMARY KEY (user_id, chave)
-        )''')
-    else:
-        db_exec('''CREATE TABLE IF NOT EXISTS user_config (
-            user_id INTEGER NOT NULL,
-            chave   TEXT NOT NULL,
-            valor   TEXT,
-            PRIMARY KEY (user_id, chave)
-        )''')
-
-_user_config_table_ready = False
-def _uctable():
-    global _user_config_table_ready
-    if not _user_config_table_ready:
-        _ensure_user_config_table()
-        _user_config_table_ready = True
+# Tabela criada em init_db — sem overhead lazy por request
 
 def get_user_config(user_id):
-    _uctable()
+    from flask import g
+    cache_key = f'_ucfg_{user_id}'
+    cached = getattr(g, cache_key, None)
+    if cached is not None:
+        return cached
     sql = 'SELECT chave, valor FROM user_config WHERE user_id=%s' if USE_PG else \
           'SELECT chave, valor FROM user_config WHERE user_id=?'
     rows = db_exec(sql, (user_id,), fetch='all') or []
-    return {r['chave']: r['valor'] for r in rows}
+    result = {r['chave']: r['valor'] for r in rows}
+    try:
+        setattr(g, cache_key, result)   # cache no contexto da requisição
+    except RuntimeError:
+        pass  # fora de contexto de request (ex: background thread)
+    return result
 
 def save_user_config(user_id, dados):
-    _uctable()
     for k, v in dados.items():
         if USE_PG:
             db_exec('INSERT INTO user_config(user_id,chave,valor) VALUES(%s,%s,%s) '
