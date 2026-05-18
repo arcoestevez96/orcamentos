@@ -3,7 +3,7 @@
    abriu.app.br · Rastreio de Orçamentos
    ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* ── TOKENS ─────────────────────────────────────────────────── */
 :root {
@@ -18,8 +18,8 @@
   --gray:    #8A8A9A;
   --gray2:   #4A4A5A;
   --white:   #FFFFFF;
-  --fd: 'Syne', sans-serif;
-  --fb: 'DM Sans', sans-serif;
+  --fd: 'Inter', -apple-system, Arial, sans-serif;
+  --fb: 'Inter', -apple-system, Arial, sans-serif;
   --r-sm: 8px; --r-md: 12px; --r-lg: 20px; --r-xl: 28px;
 }
 
@@ -180,12 +180,12 @@ img, svg { display: block; max-width: 100%; }
 .metric { padding: 20px 22px; border-radius: var(--r-md); position: relative; overflow: hidden; }
 .metric-dark  { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); }
 .metric-light { background: var(--white); border: 1px solid rgba(13,27,42,.08); }
-.metric__label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .38; margin-bottom: 6px; }
+.metric__label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
 .metric__val   { font-family: var(--fd); font-weight: 700; font-size: 28px; letter-spacing: -.03em; line-height: 1; color: var(--cream); }
 .metric__val-orange { color: var(--orange); }
 .metric__val-green  { color: var(--green); }
 .metric__val-dark   { color: var(--navy); }
-.metric__delta { font-size: 11px; opacity: .3; margin-top: 5px; }
+.metric__delta { font-size: 11px; opacity: .45; margin-top: 5px; }
 
 /* ── FLASH MESSAGES ─────────────────────────────────────────── */
 .flash-wrap { padding: 0 28px; max-width: 1120px; margin: 80px auto 0; }
@@ -241,15 +241,15 @@ img, svg { display: block; max-width: 100%; }
 .dash-sidebar__logo-word b { color: var(--orange); }
 
 .dash-nav { display: flex; flex-direction: column; gap: 2px; }
-.dash-nav__section { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: rgba(245,240,232,.2); padding: 14px 12px 4px; }
+.dash-nav__section { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: rgba(245,240,232,.35); padding: 14px 12px 4px; }
 .dash-nav__item {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 12px; border-radius: 8px;
-  font-size: 13px; color: rgba(245,240,232,.38);
+  font-size: 13px; color: rgba(245,240,232,.65);
   cursor: pointer; transition: all .15s; border: none; background: none; width: 100%; text-align: left;
 }
-.dash-nav__item:hover { background: rgba(255,255,255,.05); color: rgba(245,240,232,.7); }
-.dash-nav__item.active { background: rgba(232,68,26,.15); color: var(--orange); }
+.dash-nav__item:hover { background: rgba(255,255,255,.07); color: rgba(245,240,232,.9); }
+.dash-nav__item.active { background: rgba(232,68,26,.18); color: var(--orange); }
 .dash-nav__item i, .dash-nav__item svg { width: 16px; height: 16px; flex-shrink: 0; font-size: 16px; }
 .dash-nav__badge {
   margin-left: auto; min-width: 18px; height: 18px;
@@ -264,8 +264,8 @@ img, svg { display: block; max-width: 100%; }
   background: var(--orange); display: flex; align-items: center; justify-content: center;
   font-family: var(--fd); font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
 }
-.dash-sidebar__username { font-size: 13px; font-weight: 500; color: var(--cream); }
-.dash-sidebar__email { font-size: 11px; color: rgba(245,240,232,.35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.dash-sidebar__username { font-size: 13px; font-weight: 600; color: var(--cream); }
+.dash-sidebar__email { font-size: 11px; color: rgba(245,240,232,.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 
 .dash-main { background: var(--cream); display: flex; flex-direction: column; }
 .dash-topbar {
@@ -280,9 +280,9 @@ img, svg { display: block; max-width: 100%; }
 .table-wrap { background: var(--white); border-radius: var(--r-lg); border: 1px solid rgba(13,27,42,.08); overflow: hidden; }
 .table { width: 100%; border-collapse: collapse; }
 .table th {
-  font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--gray); background: rgba(13,27,42,.02);
-  padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(13,27,42,.07);
+  font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--gray2); background: rgba(13,27,42,.03);
+  padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(13,27,42,.08);
 }
 .table td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid rgba(13,27,42,.05); vertical-align: middle; }
 .table tr:last-child td { border-bottom: none; }

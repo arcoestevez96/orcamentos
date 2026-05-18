@@ -92,6 +92,7 @@ def init_db():
         cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT \'trial\'')
         cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_ends_at TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS valor NUMERIC DEFAULT 0')
+        cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS user_id INTEGER')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
@@ -148,6 +149,12 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("gmail_refresh_token","");
             INSERT OR IGNORE INTO config VALUES ("gmail_email","");
         ''')
+        # Migração: adicionar user_id à tabela pdfs (SQLite não suporta IF NOT EXISTS)
+        try:
+            con.execute('ALTER TABLE pdfs ADD COLUMN user_id INTEGER')
+            con.commit()
+        except Exception:
+            pass
         con.commit()
         con.close()
 
@@ -752,10 +759,13 @@ def index():
 @login_required
 def dashboard():
     from flask import g
-    pdfs = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
+    u = g.current_user
+    uid = u['id']
+    sql = 'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs WHERE user_id=%s ORDER BY criado_em DESC' if USE_PG else \
+          'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs WHERE user_id=? ORDER BY criado_em DESC'
+    pdfs = db_exec(sql, (uid,), fetch='all') or []
     for p in pdfs:
         p['valor'] = float(p['valor'] or 0)
-    u = g.current_user
     dias = dias_trial_restantes(u)
     return render_template('dashboard.html', pdfs=pdfs, dias_trial=dias,
                            subscription_status=u.get('subscription_status') if u else None)
@@ -849,7 +859,11 @@ def gerar_link(token):
 @app.route('/pdfs')
 @login_required
 def pdfs():
-    rows = db_exec('SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas FROM pdfs ORDER BY criado_em DESC', fetch='all') or []
+    from flask import g
+    uid = g.current_user['id']
+    sql = 'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas FROM pdfs WHERE user_id=%s ORDER BY criado_em DESC' if USE_PG else \
+          'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas FROM pdfs WHERE user_id=? ORDER BY criado_em DESC'
+    rows = db_exec(sql, (uid,), fetch='all') or []
     return render_template('pdfs.html', pdfs=rows)
 
 @app.route('/upload_pdf', methods=['POST'])
@@ -873,15 +887,17 @@ def upload_pdf():
     dados = comprimir_pdf(dados_originais)
     tracking_url = f"{get_base_url()}/track/{token}"
     dados = embed_tracker_pdf(dados, tracking_url)
+    from flask import g
+    uid = g.current_user['id']
     if USE_PG:
         import psycopg2
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor,user_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), psycopg2.Binary(dados), filename, 'enviado', now_str(), valor))
+             request.form.get('titulo', filename), psycopg2.Binary(dados), filename, 'enviado', now_str(), valor, uid))
     else:
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor) VALUES(?,?,?,?,?,?,?,?,?)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), dados, filename, 'enviado', now_str(), valor))
+             request.form.get('titulo', filename), dados, filename, 'enviado', now_str(), valor, uid))
     link = f"{get_base_url()}/pdf/{token}"
     cliente_nome = request.form.get('cliente_nome', 'Cliente')
     cliente_tel = request.form.get('cliente_telefone', '').strip()
@@ -1059,10 +1075,12 @@ def ver_pdf(token):
 @login_required
 def renovar_link(id):
     """Gera novo token, reseta prazo de 48h e envia o novo link para o cliente."""
-    # Busca dados do PDF antes de renovar
-    sql_sel = 'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=%s' if USE_PG else \
-              'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=?'
-    p = db_exec(sql_sel, (id,), fetch='one')
+    from flask import g
+    uid = g.current_user['id']
+    # Busca dados do PDF antes de renovar (filtra por user_id para segurança)
+    sql_sel = 'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else \
+              'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=? AND user_id=?'
+    p = db_exec(sql_sel, (id, uid), fetch='one')
     if not p:
         return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
 
@@ -1113,19 +1131,23 @@ def renovar_link(id):
 @app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
 @login_required
 def atualizar_status_pdf(id):
+    from flask import g
+    uid = g.current_user['id']
     d = request.get_json()
     status = d.get('status','')
     if status not in ['enviado','aberto','fechou','negociando','perdido']:
         return jsonify({'ok': False})
-    sql = 'UPDATE pdfs SET status=%s WHERE id=%s' if USE_PG else 'UPDATE pdfs SET status=? WHERE id=?'
-    db_exec(sql, (status, id))
+    sql = 'UPDATE pdfs SET status=%s WHERE id=%s AND user_id=%s' if USE_PG else 'UPDATE pdfs SET status=? WHERE id=? AND user_id=?'
+    db_exec(sql, (status, id, uid))
     return jsonify({'ok': True})
 
 @app.route('/deletar_pdf/<int:id>', methods=['POST'])
 @login_required
 def deletar_pdf(id):
-    sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
-    db_exec(sql, (id,))
+    from flask import g
+    uid = g.current_user['id']
+    sql = 'DELETE FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=? AND user_id=?'
+    db_exec(sql, (id, uid))
     return redirect(url_for('dashboard'))
 
 @app.route('/deletar_pdf_ajax/<int:id>', methods=['POST'])
