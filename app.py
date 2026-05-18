@@ -1,3 +1,9 @@
+# gevent monkey-patch deve ser a primeira coisa — antes de qualquer import
+try:
+    from gevent import monkey as _gm; _gm.patch_all()
+except ImportError:
+    pass
+
 import os, json, uuid, requests, smtplib, threading, re, io, base64, queue
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -200,6 +206,11 @@ def init_db():
             endpoint TEXT,
             criado_em TEXT
         )''')
+        # Índices para consultas críticas (token lookup e filtro por usuário)
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_pdfs_token   ON pdfs(token)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_pdfs_user    ON pdfs(user_id)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_acessos_pdf  ON pdf_acessos(pdf_id)')
+        cur.execute('CREATE INDEX IF NOT EXISTS idx_push_user    ON push_subscriptions(user_id)')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
@@ -277,6 +288,10 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("zapi_phone","");
             INSERT OR IGNORE INTO config VALUES ("gmail_refresh_token","");
             INSERT OR IGNORE INTO config VALUES ("gmail_email","");
+            CREATE INDEX IF NOT EXISTS idx_pdfs_token  ON pdfs(token);
+            CREATE INDEX IF NOT EXISTS idx_pdfs_user   ON pdfs(user_id);
+            CREATE INDEX IF NOT EXISTS idx_acessos_pdf ON pdf_acessos(pdf_id);
+            CREATE INDEX IF NOT EXISTS idx_push_user   ON push_subscriptions(user_id);
         ''')
         # Migração: adicionar user_id à tabela pdfs (SQLite não suporta IF NOT EXISTS)
         try:
@@ -1030,7 +1045,7 @@ def ver(token):
         html = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
             <h2 style="color:#16a34a">👁 Orçamento Visualizado!</h2>
             <p><strong>{o['cliente_nome']}</strong> abriu <strong>{o['titulo']}</strong> às <strong>{hora}</strong>.</p></div>"""
-        notificar(cfg, txt, html)
+        threading.Thread(target=lambda: notificar(cfg, txt, html), daemon=True).start()
         o = db_exec(sql, (token,), fetch='one')
     o['itens'] = json.loads(o['itens'])
     o['total'] = calcular_total(o['itens'])
