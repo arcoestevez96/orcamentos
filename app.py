@@ -235,9 +235,8 @@ def login():
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
-    # Cadastro só permitido se ainda não há usuário
-    if usuario_existe() and not session.get('user_email'):
-        return redirect(url_for('login'))
+    if session.get('user_email'):
+        return redirect(url_for('dashboard'))
     erro = None
     if request.method == 'POST':
         nome  = request.form.get('nome', '').strip()
@@ -926,16 +925,35 @@ def comprimir_pdf(dados_bytes):
         return dados_bytes
 
 def embed_tracker_pdf(dados_bytes, tracking_url):
-    """Injeta JavaScript no PDF que dispara ao abrir, rastreando downloads compartilhados."""
+    """Injeta rastreador no PDF via JS (Acrobat/Foxit) e OpenAction URI (Chrome, Edge)."""
     try:
         from pypdf import PdfReader, PdfWriter
+        from pypdf.generic import (
+            DictionaryObject, NameObject, ArrayObject, create_string_object
+        )
         reader = PdfReader(io.BytesIO(dados_bytes))
         writer = PdfWriter()
         for page in reader.pages:
             writer.add_page(page)
-        # submitForm dispara silenciosamente sem abrir browser (Acrobat, Foxit, etc.)
-        js = f'this.submitForm({{cURL:"{tracking_url}",cSubmitAs:"FDF",bEmpty:true}});'
+
+        # Método 1: JavaScript (Acrobat, Foxit — silencioso)
+        js = (
+            f'try{{'
+            f'this.submitForm({{cURL:"{tracking_url}",cSubmitAs:"HTML",bEmpty:true}});'
+            f'}}catch(e){{'
+            f'try{{app.launchURL("{tracking_url}",true);}}catch(e2){{}}'
+            f'}}'
+        )
         writer.add_js(js)
+
+        # Método 2: OpenAction URI (Chrome PDF viewer, Edge — silencioso na maioria)
+        uri_action = DictionaryObject({
+            NameObject('/Type'): NameObject('/Action'),
+            NameObject('/S'):    NameObject('/URI'),
+            NameObject('/URI'):  create_string_object(tracking_url),
+        })
+        writer._root_object[NameObject('/OpenAction')] = writer._add_object(uri_action)
+
         out = io.BytesIO()
         writer.write(out)
         return out.getvalue()
