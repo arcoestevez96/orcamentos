@@ -153,19 +153,24 @@ def _get_pg_pool():
         with _pg_pool_lock:
             if _pg_pool is None:
                 import psycopg2.pool
-                # psycogreen torna psycopg2 não-bloqueante dentro do gevent
                 try:
                     from psycogreen.gevent import patch_psycopg
                     patch_psycopg()
-                except ImportError:
+                except Exception:
                     pass
                 url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
                 _pg_pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=2, maxconn=10, dsn=url,
-                    connect_timeout=5,
-                    options='-c statement_timeout=10000'   # 10s max por query
+                    minconn=1, maxconn=10, dsn=url,
+                    connect_timeout=10,
+                    options='-c statement_timeout=10000'
                 )
     return _pg_pool
+
+def _pg_connect():
+    """Conexão direta sem pool — usada apenas no init_db."""
+    import psycopg2
+    url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    return psycopg2.connect(url, connect_timeout=30)
 
 def get_db():
     if USE_PG:
@@ -201,7 +206,7 @@ def db_exec(sql, params=(), fetch=None):
 
 def init_db():
     if USE_PG:
-        con = get_db()
+        con = _pg_connect()
         cur = con.cursor()
         cur.execute('''
             CREATE TABLE IF NOT EXISTS orcamentos (
@@ -282,7 +287,7 @@ def init_db():
                      ('gmail_refresh_token',''),('gmail_email','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         con.commit()
-        _get_pg_pool().putconn(con)
+        con.close()
     else:
         import sqlite3
         db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
@@ -1879,4 +1884,7 @@ if __name__ == '__main__':
     app.run(debug=False, port=5000)
 
 # Para produção (gunicorn)
-init_db()
+try:
+    init_db()
+except Exception as _e:
+    print(f'[WARN] init_db falhou no startup: {_e}. O app continuará e tentará novamente na primeira requisição.')
