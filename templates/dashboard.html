@@ -3,641 +3,443 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Orçamentos</title>
-<link rel="stylesheet" href="/static/style.css">
-<link rel="manifest" href="/static/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="OrcEVeja">
-<meta name="theme-color" content="#7c3aed">
+<title>Dashboard — ABRIU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-.status-select {
-  background: var(--bg3); color: var(--text1);
-  border: 1px solid var(--border); border-radius: 8px;
-  padding: .35rem .6rem; font-size: .82rem;
-  cursor: pointer; outline: none; width: 100%;
-}
-.status-select.fechou    { border-color:#16a34a; color:#4ade80; }
-.status-select.negociando{ border-color:#f59e0b; color:#fbbf24; }
-.status-select.perdido   { border-color:#ef4444; color:#f87171; }
-.status-select.aberto    { border-color:#6366f1; color:#a5b4fc; }
-.status-select.enviado   { border-color:#64748b; color:#94a3b8; }
-.stat-card.fechou    .value { color:#4ade80; }
-.stat-card.negociando .value { color:#fbbf24; }
-.stat-card.perdido   .value { color:#f87171; }
+body { background: var(--cream); }
 
-/* Abas de filtro */
-.filtros-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .75rem;
-  margin-bottom: .75rem;
-  flex-wrap: wrap;
-}
-.abas {
-  display: flex;
-  gap: .3rem;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-}
-.abas::-webkit-scrollbar { display: none; }
-.aba {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  border-radius: 99px;
-  padding: .35rem .75rem;
-  font-size: .8rem;
-  font-weight: 500;
+/* Upload area */
+.upload-area {
+  border: 2px dashed rgba(13,27,42,.15); border-radius: var(--r-lg);
+  padding: 40px 24px; text-align: center;
+  background: var(--white); transition: border-color .2s, background .2s;
   cursor: pointer;
-  white-space: nowrap;
-  transition: all .15s;
 }
-.aba:hover { border-color: var(--accent); color: var(--text); }
-.aba.ativa { background: var(--accent); border-color: var(--accent); color: #fff; }
-.cnt {
-  background: rgba(255,255,255,.15);
-  border-radius: 99px;
-  padding: .05rem .4rem;
-  font-size: .72rem;
-  font-weight: 700;
+.upload-area:hover, .upload-area.drag { border-color: var(--orange); background: rgba(232,68,26,.02); }
+.upload-area.drag { border-style: solid; }
+.upload-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(232,68,26,.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--orange); }
+.upload-title { font-family: var(--fd); font-weight: 800; font-size: 18px; color: var(--navy); letter-spacing: -.02em; margin-bottom: 6px; }
+.upload-sub { font-size: 14px; color: var(--gray); margin-bottom: 20px; }
+#pdf-input { display: none; }
+
+/* Form row */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Table actions */
+.action-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 500; padding: 5px 10px;
+  border-radius: 6px; cursor: pointer; transition: all .15s;
+  background: transparent; border: 1px solid rgba(13,27,42,.12); color: var(--navy);
+  font-family: var(--fb);
 }
-.aba.ativa .cnt { background: rgba(255,255,255,.25); }
-.sort-select {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  border-radius: 8px;
-  padding: .35rem .6rem;
-  font-size: .8rem;
-  cursor: pointer;
-  flex-shrink: 0;
+.action-btn:hover { background: rgba(13,27,42,.05); }
+.action-btn-orange { border-color: rgba(232,68,26,.3); color: var(--orange); }
+.action-btn-orange:hover { background: rgba(232,68,26,.06); }
+.action-btn-green { border-color: rgba(34,197,94,.3); color: #15803D; }
+.action-btn-green:hover { background: rgba(34,197,94,.06); }
+
+/* Notification banner */
+.notif-banner {
+  position: fixed; top: 16px; right: 16px; z-index: 999;
+  max-width: 360px; background: var(--navy);
+  border: 1px solid rgba(34,197,94,.3); border-radius: var(--r-lg);
+  padding: 16px 18px; display: none;
+  box-shadow: 0 12px 40px rgba(13,27,42,.5);
+  animation: notifIn .4s ease;
 }
-@media (max-width: 720px) {
-  .filtros-bar { flex-direction: column; align-items: stretch; }
-  .sort-select { width: 100%; }
+.notif-banner.show { display: flex; align-items: flex-start; gap: 12px; }
+.nb-pulse { width: 10px; height: 10px; background: var(--green); border-radius: 50%; flex-shrink: 0; margin-top: 3px; animation: pulse 2s infinite, glow 2s infinite; }
+.nb-name { font-size: 14px; font-weight: 500; color: var(--green); margin-bottom: 2px; }
+.nb-sub  { font-size: 12px; color: rgba(245,240,232,.5); line-height: 1.4; }
+.nb-close { margin-left: auto; color: rgba(245,240,232,.3); cursor: pointer; padding: 0 0 0 8px; background: none; border: none; font-size: 18px; line-height: 1; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 64px 24px; }
+.empty-icon { width: 72px; height: 72px; border-radius: 20px; background: rgba(232,68,26,.08); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--orange); }
+.empty-title { font-family: var(--fd); font-weight: 800; font-size: 20px; color: var(--navy); letter-spacing: -.02em; margin-bottom: 8px; }
+.empty-sub { font-size: 14px; color: var(--gray); max-width: 320px; margin: 0 auto 24px; }
+
+/* Status badge in table header */
+.live-indicator {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: var(--green);
+  background: rgba(34,197,94,.1); padding: 4px 12px; border-radius: 99px;
+  border: 1px solid rgba(34,197,94,.2);
+}
+.live-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+
+/* Trial warning */
+.trial-warn {
+  background: rgba(232,68,26,.08); border: 1px solid rgba(232,68,26,.18);
+  border-radius: var(--r-md); padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin-bottom: 20px;
+}
+.tw-text { font-size: 13px; color: var(--navy); }
+.tw-text b { color: var(--orange); }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .form-row { grid-template-columns: 1fr; }
+  .dash-metrics-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .table-actions { display: none; }
 }
 </style>
 </head>
 <body>
-<nav>
-  <div class="logo"><span>📋</span> Orçamentos</div>
-  <a href="/" class="active">Dashboard</a>
-  <a href="/configuracoes">Configurações</a>
-  <div class="ml-auto" style="display:flex;align-items:center;gap:.6rem">
-    <button class="btn btn-nav" onclick="abrirUpload()">📎 Enviar PDF</button>
-    <a href="/logout" style="color:#64748b;font-size:.82rem;padding:.35rem .6rem;border-radius:6px;border:1px solid #2e3250;white-space:nowrap">Sair</a>
-  </div>
-</nav>
 
-<div class="container">
-
-  {% if subscription_status == 'trial' and dias_trial is not none %}
-  <div style="background:linear-gradient(135deg,#1A4B8C,#2D7DD2);border-radius:12px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:20px;">⏳</span>
-      <div>
-        {% if dias_trial == 0 %}
-        <span style="color:#fff;font-weight:700;font-size:14px;">Seu trial acaba hoje!</span>
-        <span style="color:rgba(255,255,255,.75);font-size:13px;margin-left:6px;">Assine para não perder o acesso.</span>
-        {% elif dias_trial == 1 %}
-        <span style="color:#fff;font-weight:700;font-size:14px;">Falta 1 dia de trial.</span>
-        <span style="color:rgba(255,255,255,.75);font-size:13px;margin-left:6px;">Assine agora e continue sem interrupção.</span>
-        {% else %}
-        <span style="color:#fff;font-weight:700;font-size:14px;">{{ dias_trial }} dias de trial restantes.</span>
-        <span style="color:rgba(255,255,255,.75);font-size:13px;margin-left:6px;">Explore tudo que o Orce &amp; Veja oferece.</span>
-        {% endif %}
-      </div>
-    </div>
-    <a href="/paywall" style="background:#fff;color:#1A4B8C;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap;flex-shrink:0;">
-      Ver planos →
-    </a>
+<!-- NOTIFICATION BANNER (live alerts) -->
+<div class="notif-banner" id="notif-banner">
+  <div class="nb-pulse"></div>
+  <div style="flex:1">
+    <div class="nb-name" id="nb-name">—</div>
+    <div class="nb-sub" id="nb-sub">—</div>
   </div>
-  {% endif %}
-
-  <div class="page-header">
-    <div>
-      <h1>Seus Orçamentos</h1>
-      <p>Acompanhe todos os orçamentos enviados</p>
-    </div>
-    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar PDF</button>
-  </div>
-
-  {% set fechados   = pdfs | selectattr('status', 'equalto', 'fechou')     | list %}
-  {% set negociando = pdfs | selectattr('status', 'equalto', 'negociando') | list %}
-  {% set perdidos   = pdfs | selectattr('status', 'equalto', 'perdido')    | list %}
-  {% set total_geral   = pdfs       | sum(attribute='valor') %}
-  {% set total_fechado = fechados   | sum(attribute='valor') %}
-  {% set total_negoc   = negociando | sum(attribute='valor') %}
-  {% set total_perdido = perdidos   | sum(attribute='valor') %}
-
-  <div class="stats">
-    <div class="stat-card">
-      <div class="label">📋 Total</div>
-      <div class="value accent" id="cnt-total">{{ pdfs | length }}</div>
-      <div style="font-size:.8rem;color:var(--accent);margin-top:.2rem" id="val-total">R$ {{ "%.2f"|format(total_geral) | replace('.', ',') }}</div>
-    </div>
-    <div class="stat-card fechou">
-      <div class="label">✅ Fechados</div>
-      <div class="value" id="cnt-fechou">{{ fechados | length }}</div>
-      <div style="font-size:.8rem;color:#4ade80;margin-top:.2rem" id="val-fechou">R$ {{ "%.2f"|format(total_fechado) | replace('.', ',') }}</div>
-    </div>
-    <div class="stat-card negociando">
-      <div class="label">🤝 Negociando</div>
-      <div class="value" id="cnt-negociando">{{ negociando | length }}</div>
-      <div style="font-size:.8rem;color:#fbbf24;margin-top:.2rem" id="val-negociando">R$ {{ "%.2f"|format(total_negoc) | replace('.', ',') }}</div>
-    </div>
-    <div class="stat-card perdido">
-      <div class="label">❌ Perdidos</div>
-      <div class="value" id="cnt-perdido">{{ perdidos | length }}</div>
-      <div style="font-size:.8rem;color:#f87171;margin-top:.2rem" id="val-perdido">R$ {{ "%.2f"|format(total_perdido) | replace('.', ',') }}</div>
-    </div>
-  </div>
-
-  {% if pdfs %}
-  <!-- Abas de filtro + ordenação -->
-  <div class="filtros-bar">
-    <div class="abas" id="abas">
-      <button class="aba ativa" data-filtro="todos">Todos <span class="cnt" id="cnt-aba-todos">{{ pdfs|length }}</span></button>
-      <button class="aba" data-filtro="enviado">📤 Enviado <span class="cnt" id="cnt-aba-enviado">{{ pdfs|selectattr('status','equalto','enviado')|list|length }}</span></button>
-      <button class="aba" data-filtro="aberto">👁 Visto <span class="cnt" id="cnt-aba-aberto">{{ pdfs|selectattr('status','equalto','aberto')|list|length }}</span></button>
-      <button class="aba" data-filtro="negociando">🤝 Neg. <span class="cnt" id="cnt-aba-negociando">{{ pdfs|selectattr('status','equalto','negociando')|list|length }}</span></button>
-      <button class="aba" data-filtro="fechou">✅ Fechou <span class="cnt" id="cnt-aba-fechou">{{ pdfs|selectattr('status','equalto','fechou')|list|length }}</span></button>
-      <button class="aba" data-filtro="perdido">❌ Perdido <span class="cnt" id="cnt-aba-perdido">{{ pdfs|selectattr('status','equalto','perdido')|list|length }}</span></button>
-    </div>
-    <select class="sort-select" id="sort-sel" onchange="aplicarFiltro()">
-      <option value="recente">↓ Mais recente</option>
-      <option value="aberto">↓ Último aberto</option>
-      <option value="valor">↓ Maior valor</option>
-      <option value="nome">↓ Nome A–Z</option>
-    </select>
-  </div>
-  <div id="empty-filtro" style="display:none" class="empty">
-    <div class="icon">🔍</div>
-    <h3>Nenhum resultado</h3>
-    <p>Nenhum orçamento nessa categoria.</p>
-  </div>
-
-  <div class="table-card">
-    <table>
-      <thead>
-        <tr>
-          <th>Cliente</th>
-          <th>Título</th>
-          <th>Valor</th>
-          <th>Aberturas</th>
-          <th>Enviado em</th>
-          <th>Situação</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbody-pdfs">
-        {% for p in pdfs %}
-        <tr id="row-{{ p.id }}">
-          <td data-label="Cliente">
-            <strong>{{ p.cliente_nome }}</strong>
-            {% if p.cliente_telefone %}<span style="color:var(--text2);font-size:.82rem;margin-left:.4rem">{{ p.cliente_telefone }}</span>{% endif %}
-          </td>
-          <td data-label="Título">{{ p.titulo }}</td>
-          <td data-label="Valor" style="color:var(--green);font-weight:600">
-            {% if p.valor and p.valor > 0 %}R$ {{ "%.2f"|format(p.valor) | replace('.', ',') }}{% else %}<span style="color:var(--text2)">—</span>{% endif %}
-          </td>
-          <td data-label="Aberturas">
-            {% if p.aberturas and p.aberturas > 0 %}
-              <span style="color:#a5b4fc;font-weight:600">{{ p.aberturas }}x</span>
-              {% if p.aberto_em %}<small style="color:var(--text2);font-size:.72rem;margin-left:.3rem">{{ p.aberto_em[:16] }}</small>{% endif %}
-            {% else %}
-              <span style="color:var(--text2)">Não aberto</span>
-            {% endif %}
-          </td>
-          <td data-label="Enviado" style="color:var(--text2);font-size:.85rem">{{ p.criado_em[:10] }}</td>
-          <td data-label="Situação" style="min-width:135px">
-            <select class="status-select {{ p.status }}" onchange="atualizarStatus({{ p.id }}, this)">
-              <option value="enviado"    {% if p.status == 'enviado'    %}selected{% endif %}>📤 Enviado</option>
-              <option value="aberto"     {% if p.status == 'aberto'     %}selected{% endif %}>👁 Visualizado</option>
-              <option value="negociando" {% if p.status == 'negociando' %}selected{% endif %}>🤝 Negociando</option>
-              <option value="fechou"     {% if p.status == 'fechou'     %}selected{% endif %}>✅ Fechou</option>
-              <option value="perdido"    {% if p.status == 'perdido'    %}selected{% endif %}>❌ Perdido</option>
-            </select>
-          </td>
-          <td data-label="Ações">
-            <div class="actions">
-              <a href="/pdf/{{ p.token }}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
-              <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink({{ p.id }}, this)">🔁</button>
-              <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor({{ p.id }}, this)">🔄</button>
-              <button class="btn btn-danger btn-sm" onclick="deletarPdf({{ p.id }}, this)">🗑</button>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <div class="empty" id="empty-state">
-    <div class="icon">📎</div>
-    <h3>Nenhum orçamento ainda</h3>
-    <p>Faça upload de um PDF para começar</p>
-    <br>
-    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar PDF</button>
-  </div>
-  {% endif %}
+  <button class="nb-close" onclick="document.getElementById('notif-banner').classList.remove('show')">×</button>
 </div>
 
-<!-- Modal Upload -->
-<div class="modal-overlay" id="modalUpload">
-  <div class="modal" style="max-width:520px">
-    <h3>📎 Enviar PDF com Rastreamento</h3>
-    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1.2rem">O link será enviado automaticamente para o WhatsApp do cliente.</p>
+<!-- LAYOUT -->
+<div class="dash-layout">
 
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>Nome do Cliente *</label>
-      <input type="text" id="up_nome" placeholder="Ex: João Silva">
-    </div>
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>WhatsApp do Cliente</label>
-      <input type="text" id="up_tel" placeholder="Ex: 71999990000">
-    </div>
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>Título do Orçamento</label>
-      <input type="text" id="up_titulo" placeholder="Ex: Reforma Cozinha">
-    </div>
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>Valor (deixe vazio para a IA ler do PDF)</label>
-      <input type="text" id="up_valor" placeholder="Ex: 15000,00">
-    </div>
-    <div class="form-group" style="margin-bottom:1rem">
-      <label>Arquivo PDF *</label>
-      <input type="file" id="up_arquivo" accept=".pdf" onchange="previewArq(this)">
-      <small id="up_arq_nome" style="color:var(--text2);margin-top:.3rem;display:block"></small>
+  <!-- SIDEBAR -->
+  <aside class="dash-sidebar">
+    <div class="dash-sidebar__top">
+      <div class="dash-sidebar__logo">
+        <div class="dash-sidebar__logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="14" height="12" rx="2.5"/>
+            <path d="M5 9h10M5 12.5h6"/>
+            <circle cx="18.5" cy="7" r="4" fill="#22C55E" stroke="none"/>
+            <path d="M16.8 7l1.2 1.2L20.5 6" stroke="#fff" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <span class="dash-sidebar__logo-word">ABRI<b>U</b></span>
+      </div>
+
+      <nav class="dash-nav">
+        <div class="dash-nav__section">Menu</div>
+        <a href="/dashboard" class="dash-nav__item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+          {% set abertos = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
+          {% if abertos > 0 %}<div class="dash-nav__badge">{{ abertos }}</div>{% endif %}
+        </a>
+        <a href="/dashboard" class="dash-nav__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Orçamentos
+        </a>
+        <div class="dash-nav__section">Conta</div>
+        <a href="/configuracoes" class="dash-nav__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41 1.41M22 12h-2M4 12H2M19.07 19.07l-1.41-1.41M5.34 5.34L3.93 3.93"/></svg>
+          Configurações
+        </a>
+        <a href="/logout" class="dash-nav__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Sair
+        </a>
+      </nav>
     </div>
 
-    <div id="up_resultado" style="display:none;margin-bottom:1rem">
-      <div style="color:var(--green);font-weight:600;margin-bottom:.5rem">✅ PDF enviado! Link gerado:</div>
-      <div class="link-box" id="up_link"></div>
-      <div id="up_valor_lido" style="color:#fbbf24;font-size:.85rem;margin-top:.4rem"></div>
+    <div class="dash-sidebar__bottom">
+      <div class="dash-sidebar__user">
+        <div class="dash-sidebar__avatar">{{ session.get('user_nome', 'U')[0].upper() }}</div>
+        <div>
+          <div class="dash-sidebar__username">{{ session.get('user_nome', 'Usuário') }}</div>
+          <div class="dash-sidebar__email">{{ session.get('user_email', '') }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="dash-main">
+
+    <!-- TOPBAR -->
+    <div class="dash-topbar">
+      <div class="dash-topbar__title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        {% set abertos_agora = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
+        {% if abertos_agora > 0 %}
+        <span class="live-indicator"><span class="live-dot"></span>{{ abertos_agora }} aberto{% if abertos_agora > 1 %}s{% endif %} agora</span>
+        {% endif %}
+        <button onclick="document.getElementById('upload-modal').style.display='flex'" class="btn btn-primary btn-sm">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo orçamento
+        </button>
+      </div>
     </div>
 
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="fecharUpload()">Fechar</button>
-      <button class="btn btn-primary" id="btnEnviar" onclick="enviarPDF()">📤 Enviar e Gerar Link</button>
-      <button class="btn btn-green" id="btnCopiar" style="display:none" onclick="copiarLink()">📋 Copiar Link</button>
+    <div class="dash-content">
+
+      <!-- TRIAL WARNING -->
+      {% if dias_trial is not none and subscription_status == 'trial' %}
+      <div class="trial-warn">
+        <div class="tw-text">
+          {% if dias_trial == 0 %}
+            ⚠️ Seu período de teste <b>expira hoje</b>. Faça upgrade para não perder o acesso.
+          {% elif dias_trial == 1 %}
+            ⚠️ <b>1 dia restante</b> no período de teste. Faça upgrade para continuar.
+          {% else %}
+            🎯 <b>{{ dias_trial }} dias restantes</b> no período de teste gratuito.
+          {% endif %}
+        </div>
+        <a href="/paywall" class="btn btn-primary btn-sm">Fazer upgrade →</a>
+      </div>
+      {% endif %}
+
+      <!-- MÉTRICAS -->
+      {% set total = pdfs | length %}
+      {% set abertos = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
+      {% set fechados = pdfs | selectattr('status', 'equalto', 'fechou') | list | length %}
+      {% set valor_em_aberto = pdfs | selectattr('status', 'in', ['enviado', 'aberto', 'negociando']) | map(attribute='valor') | sum %}
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px" class="dash-metrics-grid">
+        <div class="metric metric-light" style="background:var(--white);border:1px solid rgba(13,27,42,.08)">
+          <div class="metric__label" style="color:var(--gray)">Total enviados</div>
+          <div class="metric__val metric__val-dark">{{ total }}</div>
+          <div class="metric__delta">este período</div>
+        </div>
+        <div class="metric" style="background:var(--navy);border:1px solid rgba(255,255,255,.06)">
+          <div class="metric__label">Abertos agora</div>
+          <div class="metric__val metric__val-orange">{{ abertos }}</div>
+          <div class="metric__delta">ligue agora</div>
+        </div>
+        <div class="metric metric-light" style="background:var(--white);border:1px solid rgba(13,27,42,.08)">
+          <div class="metric__label" style="color:var(--gray)">Fechados</div>
+          <div class="metric__val metric__val-green">{{ fechados }}</div>
+          <div class="metric__delta">contratos assinados</div>
+        </div>
+        <div class="metric metric-light" style="background:var(--white);border:1px solid rgba(13,27,42,.08)">
+          <div class="metric__label" style="color:var(--gray)">Valor em aberto</div>
+          <div class="metric__val metric__val-dark" style="font-size:18px">
+            R$ {{ '{:,.0f}'.format(valor_em_aberto).replace(',', '.') }}
+          </div>
+          <div class="metric__delta">potencial de receita</div>
+        </div>
+      </div>
+
+      <!-- TABELA -->
+      {% if pdfs %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Cliente / Documento</th>
+              <th>Valor</th>
+              <th>Enviado</th>
+              <th>Última abertura</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pdfs %}
+            {% set status = p.status | default('enviado') %}
+            <tr {% if status == 'aberto' %}class="hot"{% endif %} id="row-{{ p.id }}">
+              <td>
+                <div class="table-name">{{ p.cliente_nome }}</div>
+                <div class="table-sub">{{ p.titulo }}{% if p.filename %} · {{ p.filename }}{% endif %}{% if p.aberturas %} · {{ p.aberturas }}x aberto{% endif %}</div>
+              </td>
+              <td>
+                <div class="table-val">
+                  {% if p.valor %}R$ {{ '{:,.2f}'.format(p.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% else %}<span style="color:var(--gray)">—</span>{% endif %}
+                </div>
+              </td>
+              <td>
+                <div class="table-time">{{ p.criado_em[:10] if p.criado_em else '—' }}</div>
+              </td>
+              <td>
+                <div class="table-time">
+                  {% if p.aberto_em %}{{ p.aberto_em[:16].replace('T', ' ') }}{% else %}<span style="color:var(--gray)">Não aberto</span>{% endif %}
+                </div>
+              </td>
+              <td>
+                <select class="action-btn" style="border-radius:6px;padding:5px 8px;font-size:12px;background:var(--white)" onchange="updateStatus({{ p.id }}, this.value)">
+                  <option value="enviado"    {% if status == 'enviado' %}selected{% endif %}>Enviado</option>
+                  <option value="aberto"     {% if status == 'aberto' %}selected{% endif %}>Aberto</option>
+                  <option value="negociando" {% if status == 'negociando' %}selected{% endif %}>Negociando</option>
+                  <option value="fechou"     {% if status == 'fechou' %}selected{% endif %}>Fechado ✓</option>
+                  <option value="perdido"    {% if status == 'perdido' %}selected{% endif %}>Perdido</option>
+                </select>
+              </td>
+              <td class="table-actions">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <button onclick="copyLink('{{ p.token }}')" class="action-btn action-btn-orange" title="Copiar link">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Link
+                  </button>
+                  {% if p.cliente_telefone %}
+                  <a href="https://wa.me/55{{ p.cliente_telefone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}?text=Olá, {{ p.cliente_nome }}! Segue o link do seu orçamento: {{ request.host_url }}pdf/{{ p.token }}" target="_blank" class="action-btn action-btn-green">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+                    WhatsApp
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <h3 class="empty-title">Nenhum orçamento ainda</h3>
+        <p class="empty-sub">Envie seu primeiro PDF e comece a rastrear quando seu cliente abrir.</p>
+        <button onclick="document.getElementById('upload-modal').style.display='flex'" class="btn btn-primary btn-md">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Enviar primeiro orçamento
+        </button>
+      </div>
+      {% endif %}
+
+    </div>
+  </main>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(13,27,42,.8);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--white);border-radius:24px;padding:36px;max-width:520px;width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <h2 style="font-family:var(--fd);font-weight:800;font-size:22px;color:var(--navy);letter-spacing:-.025em">Enviar orçamento</h2>
+      <button onclick="document.getElementById('upload-modal').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:22px;line-height:1;padding:4px">×</button>
+    </div>
+
+    <form id="upload-form" enctype="multipart/form-data">
+      <div class="upload-area" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
+        <div class="upload-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="upload-title" id="drop-text">Arraste o PDF aqui</div>
+        <div class="upload-sub">ou clique para selecionar</div>
+        <span class="btn btn-ghost btn-sm">Selecionar arquivo</span>
+      </div>
+      <input type="file" id="pdf-input" name="pdf" accept=".pdf">
+
+      <div style="margin-top:20px">
+        <div class="form-row">
+          <div class="input-group">
+            <label class="input-label">Nome do cliente *</label>
+            <input class="input" type="text" name="cliente_nome" placeholder="Ex: João Silva" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Telefone (WhatsApp)</label>
+            <input class="input" type="tel" name="cliente_telefone" placeholder="Ex: 71999998888">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="input-group">
+            <label class="input-label">Título do orçamento</label>
+            <input class="input" type="text" name="titulo" placeholder="Ex: Reforma da Cozinha">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Valor (R$) — opcional</label>
+            <input class="input" type="text" name="valor" placeholder="Ex: 48500,00" id="valor-input">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-md" style="width:100%;justify-content:center;margin-top:8px" id="submit-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Enviar e rastrear
+      </button>
+    </form>
+
+    <!-- Resultado pós-upload -->
+    <div id="upload-result" style="display:none;margin-top:20px">
+      <div class="notif notif-green" style="margin-bottom:12px">
+        <div class="notif__dot notif__dot-green"></div>
+        <div>
+          <div class="notif__title" style="color:#15803D">Orçamento enviado e rastreando!</div>
+          <div class="notif__sub" style="color:#15803D">Você será notificado quando o cliente abrir.</div>
+        </div>
+      </div>
+      <div style="background:var(--cream2);border-radius:var(--r-md);padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1;font-size:13px;color:var(--gray);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="result-link">—</div>
+        <button onclick="copyResult()" class="btn btn-primary btn-sm">Copiar link</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-const pdfData = {
-  {% for p in pdfs %}
-  {{ p.id }}: { status: '{{ p.status }}', valor: {{ p.valor or 0 }} },
-  {% endfor %}
-};
+/* Drag & drop */
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('pdf-input');
+const dt = document.getElementById('drop-text');
 
-function fmtBRL(v) {
-  return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+['dragover','dragenter'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if(f){ fi.files = ev.dataTransfer.files; dt.textContent = f.name; } });
+fi.addEventListener('change', () => { if(fi.files[0]) dt.textContent = fi.files[0].name; });
+
+/* Upload */
+document.getElementById('upload-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Enviando…'; btn.disabled = true;
+
+  const fd = new FormData(e.target);
+  try {
+    const r = await fetch('/upload_pdf', { method: 'POST', body: fd });
+    const d = await r.json();
+    if(d.ok){
+      const link = window.location.origin + '/pdf/' + d.token;
+      document.getElementById('result-link').textContent = link;
+      document.getElementById('upload-result').style.display = 'block';
+      window.lastLink = link;
+      btn.textContent = 'Enviado ✓'; btn.style.background = 'var(--green)';
+      setTimeout(() => location.reload(), 2500);
+    } else {
+      alert(d.erro || 'Erro ao enviar.');
+      btn.textContent = 'Enviar e rastrear'; btn.disabled = false;
+    }
+  } catch(err) {
+    alert('Erro de conexão.'); btn.textContent = 'Enviar e rastrear'; btn.disabled = false;
+  }
+});
+
+function copyResult(){ navigator.clipboard.writeText(window.lastLink || ''); }
+
+/* Copy link */
+async function copyLink(token){
+  const link = window.location.origin + '/pdf/' + token;
+  await navigator.clipboard.writeText(link);
+  // Flash feedback
+  const btn = event.currentTarget;
+  const orig = btn.innerHTML;
+  btn.textContent = 'Copiado ✓';
+  setTimeout(() => btn.innerHTML = orig, 1800);
 }
 
-function recalcularCards() {
-  let total = 0, cntF = 0, valF = 0, cntN = 0, valN = 0, cntP = 0, valP = 0;
-  Object.values(pdfData).forEach(p => {
-    total += p.valor;
-    if (p.status === 'fechou')     { cntF++; valF += p.valor; }
-    if (p.status === 'negociando') { cntN++; valN += p.valor; }
-    if (p.status === 'perdido')    { cntP++; valP += p.valor; }
-  });
-  document.getElementById('cnt-total').textContent     = Object.keys(pdfData).length;
-  document.getElementById('val-total').textContent     = fmtBRL(total);
-  document.getElementById('cnt-fechou').textContent    = cntF;
-  document.getElementById('val-fechou').textContent    = fmtBRL(valF);
-  document.getElementById('cnt-negociando').textContent= cntN;
-  document.getElementById('val-negociando').textContent= fmtBRL(valN);
-  document.getElementById('cnt-perdido').textContent   = cntP;
-  document.getElementById('val-perdido').textContent   = fmtBRL(valP);
-}
-
-async function atualizarStatus(id, sel) {
-  sel.className = 'status-select ' + sel.value;
-  pdfData[id].status = sel.value;
-  recalcularCards();
+/* Update status */
+async function updateStatus(id, status){
   await fetch('/atualizar_status_pdf/' + id, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ status: sel.value })
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({status})
   });
 }
 
-async function renovarLink(id, btn) {
-  if (!confirm('Gerar novo link de 48h para este orçamento?\nO link antigo vai parar de funcionar.')) return;
-  btn.textContent = '⏳'; btn.disabled = true;
-  try {
-    const res  = await fetch('/renovar_link/' + id, { method: 'POST' });
-    const data = await res.json();
-    if (data.ok) {
-      // Atualiza o botão Ver com o novo link
-      const tr = btn.closest('tr');
-      const verBtn = tr.querySelector('a[target="_blank"]');
-      if (verBtn) verBtn.href = data.link;
-      // Copia o novo link
-      try { await navigator.clipboard.writeText(data.link); } catch {}
-      btn.textContent = '✅';
-      alert('✅ Novo link gerado e copiado!\n\n' + data.link);
-      setTimeout(() => { btn.textContent = '🔁'; btn.disabled = false; }, 2000);
-    } else {
-      btn.textContent = '🔁'; btn.disabled = false;
-    }
-  } catch { btn.textContent = '🔁'; btn.disabled = false; }
-}
-
-async function relerValor(id, btn) {
-  const titulo = btn.closest('tr').querySelector('td:nth-child(2)')?.textContent?.trim() || 'PDF';
-  btn.textContent = '⏳';
-  btn.disabled = true;
-  try {
-    const res = await fetch('/reler_valor/' + id, { method: 'POST' });
-    const data = await res.json();
-    if (data.ok) {
-      // Atualiza valor na linha
-      const tdValor = btn.closest('tr').querySelector('td:nth-child(3)');
-      if (tdValor) {
-        if (data.valor > 0) {
-          tdValor.innerHTML = `<span style="color:var(--green);font-weight:600">${fmtBRL(data.valor)}</span>`;
-        } else {
-          tdValor.innerHTML = `<span style="color:var(--text2)">—</span>`;
-        }
-      }
-      // Atualiza pdfData e recalcula cards
-      pdfData[id].valor = data.valor || 0;
-      recalcularCards();
-      btn.textContent = '✅';
-      setTimeout(() => { btn.textContent = '🔄'; btn.disabled = false; }, 1500);
-    } else {
-      btn.textContent = '❌';
-      setTimeout(() => { btn.textContent = '🔄'; btn.disabled = false; }, 1500);
-    }
-  } catch {
-    btn.textContent = '🔄'; btn.disabled = false;
-  }
-}
-
-async function deletarPdf(id, btn) {
-  if (!confirm('Deletar este orçamento?')) return;
-  const res = await fetch('/deletar_pdf_ajax/' + id, { method: 'POST' });
-  const data = await res.json();
-  if (data.ok) {
-    document.getElementById('row-' + id).remove();
-    delete pdfData[id];
-    recalcularCards();
-  }
-}
-
-// Upload
-let linkAtual = '';
-function abrirUpload() {
-  document.getElementById('modalUpload').classList.add('show');
-  document.getElementById('up_resultado').style.display = 'none';
-  document.getElementById('btnCopiar').style.display = 'none';
-  document.getElementById('btnEnviar').style.display = '';
-  document.getElementById('btnEnviar').disabled = false;
-  document.getElementById('btnEnviar').textContent = '📤 Enviar e Gerar Link';
-}
-function fecharUpload() {
-  document.getElementById('modalUpload').classList.remove('show');
-}
-function previewArq(input) {
-  const nome = input.files[0]?.name || '';
-  document.getElementById('up_arq_nome').textContent = nome;
-  if (!document.getElementById('up_titulo').value)
-    document.getElementById('up_titulo').value = nome.replace('.pdf','').replace('.PDF','');
-}
-function copiarLink() {
-  navigator.clipboard.writeText(linkAtual);
-  alert('Link copiado!');
-}
-
-async function enviarPDF() {
-  const nome = document.getElementById('up_nome').value.trim();
-  const arquivo = document.getElementById('up_arquivo').files[0];
-  if (!nome) return alert('Preencha o nome do cliente.');
-  if (!arquivo) return alert('Selecione um arquivo PDF.');
-
-  const btn = document.getElementById('btnEnviar');
-  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
-
-  const fd = new FormData();
-  fd.append('pdf', arquivo);
-  fd.append('cliente_nome', nome);
-  fd.append('cliente_telefone', document.getElementById('up_tel').value.trim());
-  fd.append('titulo', document.getElementById('up_titulo').value.trim() || arquivo.name);
-  fd.append('valor', document.getElementById('up_valor').value.trim());
-
-  const res = await fetch('/upload_pdf', { method: 'POST', body: fd });
-  const data = await res.json();
-
-  btn.textContent = '📤 Enviar e Gerar Link'; btn.disabled = false;
-
-  if (data.ok) {
-    linkAtual = data.link;
-    document.getElementById('up_link').textContent = data.link;
-    document.getElementById('up_resultado').style.display = 'block';
-    document.getElementById('btnEnviar').style.display = 'none';
-    document.getElementById('btnCopiar').style.display = '';
-
-    if (data.valor && data.valor > 0)
-      document.getElementById('up_valor_lido').textContent = '🤖 IA leu o valor: ' + fmtBRL(data.valor);
-    else
-      document.getElementById('up_valor_lido').textContent = '';
-
-    // Adiciona nova linha na tabela sem recarregar
-    pdfData[data.id] = { status: 'enviado', valor: data.valor || 0 };
-    recalcularCards();
-
-    const tbody = document.getElementById('tbody-pdfs');
-    if (tbody) {
-      const tr = document.createElement('tr');
-      tr.id = 'row-' + data.id;
-      tr.innerHTML = `
-        <td data-label="Cliente"><strong>${nome}</strong>${data.tel ? '<span style="color:var(--text2);font-size:.82rem;margin-left:.4rem">'+data.tel+'</span>' : ''}</td>
-        <td data-label="Título">${data.titulo}</td>
-        <td data-label="Valor" style="color:var(--green);font-weight:600">${data.valor > 0 ? fmtBRL(data.valor) : '<span style="color:var(--text2)">—</span>'}</td>
-        <td data-label="Aberturas"><span style="color:var(--text2)">Não aberto</span></td>
-        <td data-label="Enviado" style="color:var(--text2);font-size:.85rem">${new Date().toISOString().slice(0,10)}</td>
-        <td data-label="Situação" style="min-width:135px">
-          <select class="status-select enviado" onchange="atualizarStatus(${data.id}, this)">
-            <option value="enviado" selected>📤 Enviado</option>
-            <option value="aberto">👁 Visualizado</option>
-            <option value="negociando">🤝 Negociando</option>
-            <option value="fechou">✅ Fechou</option>
-            <option value="perdido">❌ Perdido</option>
-          </select>
-        </td>
-        <td data-label="Ações">
-          <div class="actions">
-            <a href="${data.link}" target="_blank" class="btn btn-secondary btn-sm">👁 Ver</a>
-            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:#a5b4fc" title="Renovar link (48h)" onclick="renovarLink(${data.id}, this)">🔁</button>
-            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" title="Reler valor" onclick="relerValor(${data.id}, this)">🔄</button>
-            <button class="btn btn-danger btn-sm" onclick="deletarPdf(${data.id}, this)">🗑</button>
-          </div>
-        </td>`;
-      tbody.insertBefore(tr, tbody.firstChild);
-    }
-  } else {
-    alert('Erro: ' + data.erro);
-  }
-}
-
-document.getElementById('modalUpload').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalUpload')) fecharUpload();
+/* SSE — live notifications */
+{% if pdfs %}
+const evtSource = new EventSource('/sse');
+evtSource.addEventListener('abriu', e => {
+  const d = JSON.parse(e.data);
+  document.getElementById('nb-name').textContent = d.nome + ' abriu o orçamento!';
+  document.getElementById('nb-sub').textContent  = d.titulo + ' · ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  document.getElementById('notif-banner').classList.add('show');
+  setTimeout(() => document.getElementById('notif-banner').classList.remove('show'), 8000);
+  // Reload suave da tabela
+  setTimeout(() => location.reload(), 3000);
 });
-
-// ── Filtro + ordenação ───────────────────────────────────────────────────────
-let filtroAtivo = 'todos';
-
-document.querySelectorAll('.aba').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.aba').forEach(b => b.classList.remove('ativa'));
-    btn.classList.add('ativa');
-    filtroAtivo = btn.dataset.filtro;
-    aplicarFiltro();
-  });
-});
-
-function aplicarFiltro() {
-  const sort   = document.getElementById('sort-sel').value;
-  const tbody  = document.getElementById('tbody-pdfs');
-  if (!tbody) return;
-
-  const rows = Array.from(tbody.querySelectorAll('tr[id^="row-"]'));
-
-  // Filtra
-  let visiveis = rows.filter(tr => {
-    if (filtroAtivo === 'todos') return true;
-    const sel = tr.querySelector('.status-select');
-    return sel && sel.value === filtroAtivo;
-  });
-
-  // Ordena
-  visiveis.sort((a, b) => {
-    const id = r => parseInt(r.id.replace('row-',''));
-    if (sort === 'recente') return id(b) - id(a);
-    if (sort === 'aberto') {
-      const dt = r => r.querySelector('[data-label="Aberturas"] small')?.textContent || '';
-      return dt(b).localeCompare(dt(a));
-    }
-    if (sort === 'valor') {
-      const val = r => pdfData[parseInt(r.id.replace('row-',''))]?.valor || 0;
-      return val(b) - val(a);
-    }
-    if (sort === 'nome') {
-      const nm = r => r.querySelector('td strong')?.textContent?.toLowerCase() || '';
-      return nm(a).localeCompare(nm(b));
-    }
-    return 0;
-  });
-
-  // Oculta todas as linhas
-  rows.forEach(tr => tr.style.display = 'none');
-  // Mostra as visíveis na ordem certa
-  visiveis.forEach(tr => { tr.style.display = ''; tbody.appendChild(tr); });
-
-  // Empty state
-  document.getElementById('empty-filtro').style.display = visiveis.length === 0 ? '' : 'none';
-  document.querySelector('.table-card').style.display = visiveis.length === 0 ? 'none' : '';
-}
-
-// Registra Service Worker para PWA
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
-}
-
-// ── Pull-to-refresh ──────────────────────────────────────────────────────────
-(function() {
-  const THRESHOLD = 72;   // px para acionar
-  const MAX_PULL  = 100;  // px máximo de arraste visual
-
-  // Cria indicador visual
-  const indicator = document.createElement('div');
-  indicator.id = 'ptr-indicator';
-  indicator.innerHTML = '<div class="ptr-spinner"></div><span>Solte para atualizar</span>';
-  indicator.style.cssText = [
-    'position:fixed;top:0;left:0;right:0;z-index:9999',
-    'display:flex;align-items:center;justify-content:center;gap:.6rem',
-    'height:56px;background:var(--surface);border-bottom:1px solid var(--border)',
-    'color:var(--text2);font-size:.85rem;font-weight:500',
-    'transform:translateY(-100%);transition:transform .2s ease',
-    'pointer-events:none'
-  ].join(';');
-  document.body.appendChild(indicator);
-
-  // Spinner CSS
-  const style = document.createElement('style');
-  style.textContent = `
-    .ptr-spinner {
-      width:20px;height:20px;border-radius:50%;
-      border:2.5px solid var(--border);border-top-color:var(--accent2);
-      flex-shrink:0;
-    }
-    .ptr-spinner.spin { animation:ptr-spin .6s linear infinite; }
-    @keyframes ptr-spin { to { transform:rotate(360deg); } }
-    body.ptr-pulling { overflow:hidden; }
-  `;
-  document.head.appendChild(style);
-
-  let startY = 0, pulling = false, released = false;
-
-  document.addEventListener('touchstart', e => {
-    if (window.scrollY > 0) return;        // só no topo
-    if (released) return;
-    startY = e.touches[0].clientY;
-    pulling = true;
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if (!pulling || released) return;
-    const delta = Math.min(e.touches[0].clientY - startY, MAX_PULL);
-    if (delta <= 0) return;
-
-    const progress = Math.min(delta / THRESHOLD, 1);
-    const translateY = delta * 0.5;         // segue o dedo com amortecimento
-
-    indicator.style.transform = `translateY(calc(-100% + ${translateY}px))`;
-    indicator.querySelector('span').textContent =
-      delta >= THRESHOLD ? 'Solte para atualizar' : 'Puxe para atualizar';
-
-    const spinner = indicator.querySelector('.ptr-spinner');
-    spinner.style.transform = `rotate(${progress * 360}deg)`;
-    document.body.classList.toggle('ptr-pulling', delta > 8);
-  }, { passive: true });
-
-  document.addEventListener('touchend', () => {
-    if (!pulling || released) return;
-    pulling = false;
-
-    const current = indicator.style.transform;
-    const translateVal = parseFloat((current.match(/\(calc\(-100% \+ ([\d.]+)px\)/) || [])[1] || 0);
-
-    if (translateVal >= THRESHOLD * 0.5) {
-      // Acionou: mostra spinner girando e recarrega
-      released = true;
-      indicator.style.transform = 'translateY(0)';
-      indicator.querySelector('.ptr-spinner').classList.add('spin');
-      indicator.querySelector('span').textContent = 'Atualizando…';
-      document.body.classList.remove('ptr-pulling');
-      setTimeout(() => location.reload(), 500);
-    } else {
-      // Não atingiu threshold: volta
-      indicator.style.transform = 'translateY(-100%)';
-      document.body.classList.remove('ptr-pulling');
-    }
-  });
-})();
+{% endif %}
 </script>
 </body>
 </html>

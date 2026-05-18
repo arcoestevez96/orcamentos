@@ -3,244 +3,154 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% if modo == 'cadastro' %}Criar Conta{% else %}Entrar{% endif %} · OrcEVeja</title>
-<link rel="manifest" href="/static/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="OrcEVeja">
-<meta name="theme-color" content="#7c3aed">
+<title>{% if modo == 'cadastro' %}Criar conta{% else %}Entrar{% endif %} — ABRIU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--navy); min-height: 100svh; display: flex; flex-direction: column; }
+.auth-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 80px 24px 40px;
+}
+.auth-card {
+  width: 100%; max-width: 440px;
+  background: var(--navy2); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px; padding: 40px;
+}
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+.auth-logo-icon { width: 36px; height: 36px; background: var(--orange); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.auth-logo-word { font-family: var(--fd); font-weight: 800; font-size: 22px; color: var(--cream); letter-spacing: -.025em; }
+.auth-logo-word b { color: var(--orange); }
+.auth-title { font-family: var(--fd); font-weight: 800; font-size: 26px; color: var(--cream); letter-spacing: -.03em; margin-bottom: 6px; }
+.auth-title em { font-style: normal; color: var(--orange); }
+.auth-sub { font-size: 14px; color: rgba(245,240,232,.4); margin-bottom: 28px; }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.auth-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+.auth-divider-txt { font-size: 12px; color: rgba(245,240,232,.25); white-space: nowrap; }
+.auth-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #FCA5A5; font-size: 13px; padding: 11px 14px; border-radius: var(--r-sm); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: rgba(245,240,232,.35); }
+.auth-footer a { color: var(--orange); }
+.auth-footer a:hover { text-decoration: underline; }
+.trial-badge {
+  background: rgba(232,68,26,.1); border: 1px solid rgba(232,68,26,.2);
+  border-radius: var(--r-sm); padding: 12px 14px;
+  font-size: 13px; color: rgba(245,240,232,.7); margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.trial-badge-dot { width: 8px; height: 8px; background: var(--orange); border-radius: 50%; flex-shrink: 0; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
-    min-height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
-  }
-
-  .card {
-    background: #1a1d27;
-    border: 1px solid #2e3250;
-    border-radius: 20px;
-    padding: 2.5rem 2rem;
-    width: 100%;
-    max-width: 400px;
-  }
-
-  .logo {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-  .logo .icon { font-size: 2.8rem; }
-  .logo h1 { font-size: 1.5rem; font-weight: 700; margin-top: .4rem; }
-  .logo p  { color: #64748b; font-size: .88rem; margin-top: .3rem; }
-
-  /* Social buttons */
-  .sociais { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1.5rem; }
-
-  .btn-social {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    width: 100%;
-    padding: .75rem 1rem;
-    border-radius: 12px;
-    border: 1px solid #2e3250;
-    background: #22263a;
-    color: #e2e8f0;
-    font-size: .95rem;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    transition: border-color .15s, background .15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .btn-social:hover   { border-color: #4f6ef7; background: #272b40; }
-  .btn-social:active  { background: #1e2235; }
-  .btn-social .ico    { width: 22px; height: 22px; flex-shrink: 0; }
-  .btn-social .label  { flex: 1; }
-
-  .btn-google { }
-  .btn-facebook { }
-  .btn-apple { }
-
-  /* Divisor */
-  .divisor {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    margin: 1.2rem 0;
-    color: #475569;
-    font-size: .82rem;
-  }
-  .divisor::before, .divisor::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #2e3250;
-  }
-
-  /* Form email/senha */
-  .form-group { margin-bottom: .9rem; }
-  label {
-    display: block;
-    font-size: .82rem;
-    color: #94a3b8;
-    font-weight: 500;
-    margin-bottom: .4rem;
-  }
-  input {
-    width: 100%;
-    background: #0f1117;
-    border: 1px solid #2e3250;
-    border-radius: 10px;
-    color: #e2e8f0;
-    padding: .75rem 1rem;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color .15s;
-    -webkit-appearance: none;
-  }
-  input:focus { outline: none; border-color: #4f6ef7; }
-
-  .btn-submit {
-    width: 100%;
-    background: #4f6ef7;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: .85rem;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: .4rem;
-    transition: background .15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .btn-submit:active { background: #3b5bdb; }
-
-  .erro {
-    background: rgba(239,68,68,.1);
-    border: 1px solid rgba(239,68,68,.3);
-    color: #f87171;
-    border-radius: 8px;
-    padding: .7rem 1rem;
-    font-size: .88rem;
-    margin-bottom: 1rem;
-  }
-
-  .toggle {
-    text-align: center;
-    margin-top: 1.4rem;
-    font-size: .88rem;
-    color: #64748b;
-  }
-  .toggle a { color: #818cf8; text-decoration: none; font-weight: 500; }
-
-  /* SVG icons inline */
-  svg { display: block; }
+/* Social buttons */
+.social-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px 20px; border-radius: var(--r-sm);
+  font-size: 14px; font-weight: 500; font-family: var(--fb);
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.05); color: var(--cream);
+  cursor: pointer; transition: background .18s, border-color .18s;
+  margin-bottom: 10px; text-decoration: none;
+}
+.social-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+.social-btn svg { flex-shrink: 0; }
 </style>
 </head>
 <body>
 
-<div class="card">
-  <div class="logo">
-    <div class="icon">📋</div>
-    <h1>OrcEVeja</h1>
-    <p>{% if modo == 'cadastro' %}Crie sua conta{% else %}Bem-vindo de volta{% endif %}</p>
-  </div>
-
-  {% set erro_url = request.args.get('erro', '') %}
-  {% if erro or erro_url %}
-  <div class="erro">
-    ⚠️ {% if erro %}{{ erro }}
-    {% elif erro_url == 'sem_email' %}Não foi possível obter seu email. Tente outro método.
-    {% elif 'nao_configurado' in erro_url %}Este provedor ainda não está configurado.
-    {% elif 'cancelado' in erro_url %}Login cancelado. Tente novamente.
-    {% else %}Erro ao autenticar. Tente novamente.
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- Botões sociais -->
-  <div class="sociais">
-
-    <!-- Google -->
-    <a href="/auth/google" class="btn-social btn-google">
-      <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-      </svg>
-      <span class="label">Continuar com Google</span>
-    </a>
-
-    <!-- Facebook -->
-    <a href="/auth/facebook" class="btn-social btn-facebook">
-      <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" fill="#1877F2"/>
-      </svg>
-      <span class="label">Continuar com Facebook</span>
-    </a>
-
-    <!-- Apple -->
-    <a href="/auth/apple" class="btn-social btn-apple">
-      <svg class="ico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" fill="#fff"/>
-      </svg>
-      <span class="label">Continuar com Apple</span>
-    </a>
-
-  </div>
-
-  <div class="divisor">ou use seu email</div>
-
-  <form method="POST">
-    {% if modo == 'cadastro' %}
-    <div class="form-group">
-      <label>Seu nome</label>
-      <input type="text" name="nome" placeholder="Ex: Gabriel Estevez" autocomplete="name">
-    </div>
-    {% endif %}
-
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" name="email" placeholder="seu@email.com"
-             autocomplete="{% if modo == 'cadastro' %}email{% else %}username{% endif %}"
-             required {% if not erro %}autofocus{% endif %}>
-    </div>
-
-    <div class="form-group">
-      <label>Senha</label>
-      <input type="password" name="senha" placeholder="••••••••"
-             autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}"
-             required>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="14" height="12" rx="2.5"/>
+          <path d="M5 9h10M5 12.5h6"/>
+          <circle cx="18.5" cy="7" r="4" fill="#22C55E" stroke="none"/>
+          <path d="M16.8 7l1.2 1.2L20.5 6" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <span class="auth-logo-word">ABRI<b>U</b></span>
     </div>
 
     {% if modo == 'cadastro' %}
-    <div class="form-group">
-      <label>Confirmar senha</label>
-      <input type="password" name="confirmar" placeholder="••••••••"
-             autocomplete="new-password" required>
+      <h1 class="auth-title">Criar sua <em>conta</em></h1>
+      <p class="auth-sub">3 dias grátis. Sem cartão de crédito.</p>
+      <div class="trial-badge">
+        <div class="trial-badge-dot"></div>
+        Você terá <strong>3 dias grátis</strong> para testar tudo sem compromisso.
+      </div>
+    {% else %}
+      <h1 class="auth-title">Bem-vindo de <em>volta</em></h1>
+      <p class="auth-sub">Entre na sua conta para ver seus orçamentos.</p>
+    {% endif %}
+
+    {% if erro %}
+    <div class="auth-error">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {{ erro }}
     </div>
     {% endif %}
 
-    <button type="submit" class="btn-submit">
-      {% if modo == 'cadastro' %}Criar Conta{% else %}Entrar{% endif %}
-    </button>
-  </form>
+    <!-- Google OAuth -->
+    <a href="/auth/google" class="social-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuar com Google
+    </a>
 
-  {% if modo == 'login' %}
-  <div class="toggle">Não tem conta? <a href="/cadastro">Criar conta</a></div>
-  {% else %}
-  <div class="toggle">Já tem conta? <a href="/login">Entrar</a></div>
-  {% endif %}
+    <div class="auth-divider">
+      <div class="auth-divider-line"></div>
+      <span class="auth-divider-txt">ou use seu email</span>
+      <div class="auth-divider-line"></div>
+    </div>
+
+    <!-- Formulário -->
+    <form method="POST">
+      {% if modo == 'cadastro' %}
+      <div class="input-group">
+        <label class="input-label">Seu nome</label>
+        <input class="input input-dark" type="text" name="nome" placeholder="Ex: Gabriel Estevez" autocomplete="name">
+      </div>
+      {% endif %}
+
+      <div class="input-group">
+        <label class="input-label">E-mail</label>
+        <input class="input input-dark" type="email" name="email" placeholder="seu@email.com" required autocomplete="email">
+      </div>
+
+      <div class="input-group" style="margin-bottom:{% if modo == 'cadastro' %}16{% else %}24{% endif %}px">
+        <label class="input-label">Senha</label>
+        <input class="input input-dark" type="password" name="senha" placeholder="Mínimo 6 caracteres" required autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}">
+      </div>
+
+      {% if modo == 'cadastro' %}
+      <div class="input-group" style="margin-bottom:24px">
+        <label class="input-label">Confirmar senha</label>
+        <input class="input input-dark" type="password" name="confirmar" placeholder="Repita a senha" required autocomplete="new-password">
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-primary btn-md" style="width:100%;justify-content:center">
+        {% if modo == 'cadastro' %}
+          Criar conta grátis →
+        {% else %}
+          Entrar →
+        {% endif %}
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      {% if modo == 'cadastro' %}
+        Já tem conta? <a href="/login">Entrar →</a>
+      {% else %}
+        Não tem conta? <a href="/cadastro">Criar grátis →</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Footer mínimo -->
+<div style="text-align:center;padding:16px;font-size:12px;color:rgba(245,240,232,.2)">
+  © 2026 ABRIU · <a href="/privacidade" style="color:rgba(245,240,232,.25)">Privacidade</a> · <a href="/termos" style="color:rgba(245,240,232,.25)">Termos</a>
 </div>
 
 </body>
