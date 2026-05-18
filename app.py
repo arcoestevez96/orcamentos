@@ -221,6 +221,7 @@ def get_db():
 def db_exec(sql, params=(), fetch=None):
     con = None
     pool = None
+    ok = False
     try:
         if USE_PG:
             pool = _get_pg_pool()
@@ -230,6 +231,7 @@ def db_exec(sql, params=(), fetch=None):
             sql_pg = sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
             cur.execute(sql_pg, params)
             con.commit()
+            ok = True
             if fetch == 'all': return [dict(r) for r in cur.fetchall()]
             if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
         else:
@@ -238,10 +240,15 @@ def db_exec(sql, params=(), fetch=None):
             con.commit()
             if fetch == 'all': return [dict(r) for r in cur.fetchall()]
             if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
+    except Exception:
+        if con and USE_PG:
+            try: con.rollback()
+            except Exception: pass
+        raise
     finally:
         if con:
             if USE_PG and pool:
-                pool.putconn(con)
+                pool.putconn(con, close=not ok)
             else:
                 con.close()
 
@@ -1397,9 +1404,9 @@ PRAZO_HORAS = 48  # link expira após 48h
 @app.route('/track/<token>', methods=['GET', 'POST'])
 def track_pdf(token):
     """Recebe ping do rastreador embutido no PDF baixado/compartilhado."""
-    sql = ('SELECT id,token,cliente_nome,titulo,status,aberturas,user_id FROM pdfs WHERE token=%s'
+    sql = ('SELECT id,token,cliente_nome,titulo,filename,status,aberturas,user_id FROM pdfs WHERE token=%s'
            if USE_PG else
-           'SELECT id,token,cliente_nome,titulo,status,aberturas,user_id FROM pdfs WHERE token=?')
+           'SELECT id,token,cliente_nome,titulo,filename,status,aberturas,user_id FROM pdfs WHERE token=?')
     p = db_exec(sql, (token,), fetch='one')
     if not p:
         return '', 204
@@ -1441,8 +1448,14 @@ def ver_pdf(token):
     """Registra abertura e serve o PDF. Bloqueia e notifica se o link expirou (48h)."""
     from datetime import timedelta
     _meta_cols = 'id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id,arquivo_key'
-    sql = f'SELECT {_meta_cols} FROM pdfs WHERE token=%s' if USE_PG else f'SELECT {_meta_cols} FROM pdfs WHERE token=?'
-    p = db_exec(sql, (token,), fetch='one')
+    try:
+        sql = f'SELECT {_meta_cols} FROM pdfs WHERE token=%s' if USE_PG else f'SELECT {_meta_cols} FROM pdfs WHERE token=?'
+        p = db_exec(sql, (token,), fetch='one')
+    except Exception:
+        # Coluna arquivo_key ainda não existe (migração pendente) — cai para SELECT legado
+        sql = 'SELECT id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id FROM pdfs WHERE token=%s' if USE_PG else \
+              'SELECT id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id FROM pdfs WHERE token=?'
+        p = db_exec(sql, (token,), fetch='one')
     if not p: return 'Orçamento não encontrado.', 404
 
     # ── Verifica expiração (48h após criado_em) ──────────────────────────────
