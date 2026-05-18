@@ -1,0 +1,20 @@
+name: Keep Alive — ABRIU
+
+on:
+  schedule:
+    - cron: '*/13 * * * *'   # a cada 13 minutos (Render dorme em 15)
+  workflow_dispatch:          # permite rodar manualmente pelo GitHub
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping ABRIU
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://abriu.app.br/ping)
+          echo "HTTP $STATUS — $(date -u '+%H:%M:%S UTC')"
+          if [ "$STATUS" != "200" ]; then
+            echo "⚠️ App respondeu com status $STATUS"
+            exit 1
+          fi
+          echo "✅ App acordado e respondendo"
