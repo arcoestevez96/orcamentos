@@ -3,7 +3,9 @@ services:
     name: orcamentos
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --worker-class gevent --workers 2 --worker-connections 500 --timeout 120 --keep-alive 5
+    startCommand: gunicorn app:app --worker-class gevent --workers 1 --worker-connections 100 --timeout 120 --keep-alive 5
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: SECRET_KEY
+        generateValue: true

@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{{ 'Editar' if orcamento else 'Novo' }} Orçamento</title>
 <link rel="stylesheet" href="/static/style.css">
+<script>(function(){const t=document.querySelector('meta[name="csrf-token"]');if(!t)return;const tk=t.content;const _f=window.fetch;window.fetch=function(u,o){o=o||{};if(!['GET','HEAD','OPTIONS'].includes((o.method||'GET').toUpperCase())){o.headers=Object.assign({'X-CSRFToken':tk},o.headers||{});}return _f(u,o);};})();</script>
 </head>
 <body>
 <nav>

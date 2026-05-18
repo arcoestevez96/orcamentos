@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /configuracoes
+Disallow: /criar
+Disallow: /pdfs
+Disallow: /paywall
+Disallow: /login
+Disallow: /cadastro
+
+Sitemap: https://abriu.app.br/sitemap.xml

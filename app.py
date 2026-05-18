@@ -4,10 +4,16 @@ try:
 except ImportError:
     pass
 
-import os, json, uuid, requests, smtplib, threading, re, io, base64, queue
+import logging, os, json, uuid, requests, smtplib, threading, re, io, base64, queue, secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from functools import wraps
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s'
+)
+log = logging.getLogger('abriu')
 
 BRASILIA = ZoneInfo('America/Sao_Paulo')
 from flask import Flask, render_template, request, redirect, jsonify, send_file, Response, session, url_for, flash
@@ -15,13 +21,24 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import io
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-app.secret_key = os.environ.get('SECRET_KEY', 'orceveja-secret-2025-local')
 
-# Gzip em todas as respostas (HTML, JSON, CSS, JS) — reduz ~70% do tamanho
+# ── SECRET_KEY obrigatória ────────────────────────────────────────────────────
+_sk = os.environ.get('SECRET_KEY')
+if not _sk:
+    raise RuntimeError(
+        "SECRET_KEY não configurada. Defina-a em Render > Settings > Environment Variables."
+    )
+app.secret_key = _sk
+
+# ── Cookies de sessão seguros ─────────────────────────────────────────────────
+app.config['SESSION_COOKIE_SECURE']   = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# ── Gzip ──────────────────────────────────────────────────────────────────────
 try:
     from flask_compress import Compress
     app.config['COMPRESS_MIMETYPES'] = [
@@ -34,10 +51,33 @@ try:
 except ImportError:
     pass
 
+# ── CSRF ──────────────────────────────────────────────────────────────────────
+try:
+    from flask_wtf.csrf import CSRFProtect
+    csrf = CSRFProtect(app)
+    app.config['WTF_CSRF_TIME_LIMIT'] = 3600
+except ImportError:
+    csrf = None
+    log.warning('flask-wtf não instalado — proteção CSRF desativada')
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(app=app, key_func=get_remote_address,
+                      default_limits=[], storage_uri='memory://')
+except ImportError:
+    limiter = None
+    log.warning('flask-limiter não instalado — rate limiting desativado')
+
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_PG = bool(DATABASE_URL)
 
-# Redireciona www → apex permanentemente
+def csrf_exempt(f):
+    """Marca uma rota como isenta de CSRF (ex: webhooks externos)."""
+    return csrf.exempt(f) if csrf else f
+
+# ── Redireciona www → apex ────────────────────────────────────────────────────
 @app.before_request
 def redirect_www():
     host = request.host.split(':')[0]
@@ -47,15 +87,29 @@ def redirect_www():
                          .replace(f'http://{host}',  f'https://{apex}', 1)
         return redirect(url, code=301)
 
-# Cache de estáticos (1 ano para CSS/JS imutáveis, sem cache para SW)
+# ── Headers de cache + segurança ──────────────────────────────────────────────
 @app.after_request
-def cache_headers(response):
+def set_response_headers(response):
     path = request.path
     if path.startswith('/static/'):
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     elif path == '/sw.js':
         response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Frame-Options']        = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "frame-src 'none';"
+    )
     return response
+
 
 # ── SSE — filas por usuário ───────────────────────────────────────────────────
 _sse_lock   = threading.Lock()
@@ -105,7 +159,7 @@ def get_vapid_keys():
         save_config({'vapid_private_key': pem, 'vapid_public_key': pub_b64})
         return pem, pub_b64
     except Exception as e:
-        print(f'VAPID key error: {e}')
+        log.error('VAPID key error: %s', e)
         return '', ''
 
 def send_web_push(user_id, title, body, url='/dashboard'):
@@ -138,43 +192,16 @@ def send_web_push(user_id, title, body, url='/dashboard'):
                 db_exec('DELETE FROM push_subscriptions WHERE id=%s' if USE_PG else
                         'DELETE FROM push_subscriptions WHERE id=?', (sid,))
         except Exception as ex:
-            print(f'Web push error: {ex}')
+            log.error('Web push error: %s', ex)
     threading.Thread(target=_worker, daemon=True).start()
 
 # ── banco de dados ──────────────────────────────────────────────────────────
 
-# ── Connection pool (PostgreSQL) ─────────────────────────────────────────────
-_pg_pool = None
-_pg_pool_lock = threading.Lock()
-
-def _get_pg_pool():
-    global _pg_pool
-    if _pg_pool is None:
-        with _pg_pool_lock:
-            if _pg_pool is None:
-                import psycopg2.pool
-                try:
-                    from psycogreen.gevent import patch_psycopg
-                    patch_psycopg()
-                except Exception:
-                    pass
-                url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-                _pg_pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=1, maxconn=10, dsn=url,
-                    connect_timeout=10,
-                    options='-c statement_timeout=10000'
-                )
-    return _pg_pool
-
-def _pg_connect():
-    """Conexão direta sem pool — usada apenas no init_db."""
-    import psycopg2
-    url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    return psycopg2.connect(url, connect_timeout=30)
-
 def get_db():
     if USE_PG:
-        return _get_pg_pool().getconn()
+        import psycopg2
+        url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        return psycopg2.connect(url)
     else:
         import sqlite3
         db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
@@ -183,8 +210,9 @@ def get_db():
         return con
 
 def db_exec(sql, params=(), fetch=None):
-    con = get_db()
+    con = None
     try:
+        con = get_db()
         if USE_PG:
             import psycopg2.extras
             cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -199,14 +227,12 @@ def db_exec(sql, params=(), fetch=None):
             if fetch == 'all': return [dict(r) for r in cur.fetchall()]
             if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
     finally:
-        if USE_PG:
-            _get_pg_pool().putconn(con)   # devolve ao pool em vez de fechar
-        else:
+        if con:
             con.close()
 
 def init_db():
     if USE_PG:
-        con = _pg_connect()
+        con = get_db()
         cur = con.cursor()
         cur.execute('''
             CREATE TABLE IF NOT EXISTS orcamentos (
@@ -440,7 +466,16 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def _rate_limit(limit_str):
+    """Aplica rate limiting se flask-limiter estiver disponível, senão no-op."""
+    def decorator(f):
+        if limiter:
+            return limiter.limit(limit_str)(f)
+        return f
+    return decorator
+
 @app.route('/login', methods=['GET', 'POST'])
+@_rate_limit('10 per minute')
 def login():
     # Se ainda não tem usuário cadastrado, redireciona para cadastro
     if not usuario_existe():
@@ -459,6 +494,7 @@ def login():
     return render_template('login.html', modo='login', erro=erro)
 
 @app.route('/cadastro', methods=['GET', 'POST'])
+@_rate_limit('5 per minute')
 def cadastro():
     if session.get('user_email'):
         return redirect(url_for('dashboard'))
@@ -1153,6 +1189,8 @@ def upload_pdf():
     if not f.filename.lower().endswith('.pdf'):
         return jsonify({'ok': False, 'erro': 'Apenas PDFs são aceitos'})
     dados_originais = f.read()
+    if len(dados_originais) < 4 or dados_originais[:4] != b'%PDF':
+        return jsonify({'ok': False, 'erro': 'Arquivo inválido — não é um PDF real'})
     token = str(uuid.uuid4()).replace('-','')[:16]
     filename = secure_filename(f.filename)
     valor_manual = request.form.get('valor', '').replace('R$','').replace('.','').replace(',','.').strip()
@@ -1505,6 +1543,7 @@ def reler_valor(id):
 # ── Telegram webhook (público — chamado pelo servidor do Telegram) ─────────────
 
 @app.route('/telegram/webhook', methods=['POST'])
+@csrf_exempt
 def telegram_webhook():
     """Recebe mensagens do bot e auto-registra o chat_id do usuário."""
     try:
@@ -1717,8 +1756,19 @@ def service_worker():
 
 @app.route('/ping')
 def ping():
-    """Health check — usado por serviços externos para manter o servidor acordado."""
     return jsonify({'ok': True, 'status': 'alive'})
+
+@app.route('/healthz')
+def healthz():
+    return jsonify({'status': 'healthy', 'service': 'abriu'}), 200
+
+@app.route('/robots.txt')
+def robots():
+    return send_file(os.path.join(app.root_path, 'static', 'robots.txt'), mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_file(os.path.join(app.root_path, 'static', 'sitemap.xml'), mimetype='application/xml')
 
 # ── pagamento (Stripe) ────────────────────────────────────────────────────────
 
@@ -1818,6 +1868,7 @@ def pagamento_falha():
     return redirect(url_for('paywall') + '?falha=1')
 
 @app.route('/webhook/stripe', methods=['POST'])
+@csrf_exempt
 def webhook_stripe():
     """Webhook do Stripe — confirma pagamentos recorrentes e cancelamentos."""
     from datetime import timedelta
@@ -1879,12 +1930,11 @@ def webhook_stripe():
 
 if __name__ == '__main__':
     init_db()
-    print('\n✅ App de Orçamentos iniciado!')
-    print('👉 Acesse: http://localhost:5000\n')
+    log.info('App iniciado em http://localhost:5000')
     app.run(debug=False, port=5000)
 
 # Para produção (gunicorn)
 try:
     init_db()
 except Exception as _e:
-    print(f'[WARN] init_db falhou no startup: {_e}. O app continuará e tentará novamente na primeira requisição.')
+    log.error('init_db falhou no startup: %s', _e)
