@@ -6,40 +6,96 @@
 <title>{% if modo == 'cadastro' %}Criar conta{% else %}Entrar{% endif %} — ABRIU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-body { background: var(--navy); min-height: 100svh; display: flex; flex-direction: column; }
+body {
+  background: var(--navy);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background decoration */
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(232,68,26,.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -100px;
+  left: -100px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(34,197,94,.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
 .auth-wrap {
-  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 80px 24px 40px;
+  position: relative;
+  z-index: 1;
 }
+
 .auth-card {
-  width: 100%; max-width: 440px;
-  background: var(--navy2); border: 1px solid rgba(255,255,255,.08);
-  border-radius: 24px; padding: 40px;
+  width: 100%;
+  max-width: 440px;
+  background: var(--navy2);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.4);
 }
+
 .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
-.auth-logo-icon { width: 36px; height: 36px; background: var(--orange); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.auth-logo-word { font-family: var(--fd); font-weight: 800; font-size: 22px; color: var(--cream); letter-spacing: -.025em; }
+.auth-logo-icon {
+  width: 38px; height: 38px; background: var(--orange); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.auth-logo-word { font-family: var(--fd); font-weight: 700; font-size: 22px; color: var(--cream); letter-spacing: -.025em; }
 .auth-logo-word b { color: var(--orange); }
-.auth-title { font-family: var(--fd); font-weight: 800; font-size: 26px; color: var(--cream); letter-spacing: -.03em; margin-bottom: 6px; }
+
+.auth-title { font-family: var(--fd); font-weight: 700; font-size: 26px; color: var(--cream); letter-spacing: -.03em; margin-bottom: 6px; }
 .auth-title em { font-style: normal; color: var(--orange); }
 .auth-sub { font-size: 14px; color: rgba(245,240,232,.4); margin-bottom: 28px; }
+
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .auth-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,.08); }
 .auth-divider-txt { font-size: 12px; color: rgba(245,240,232,.25); white-space: nowrap; }
-.auth-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #FCA5A5; font-size: 13px; padding: 11px 14px; border-radius: var(--r-sm); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-.auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: rgba(245,240,232,.35); }
-.auth-footer a { color: var(--orange); }
-.auth-footer a:hover { text-decoration: underline; }
-.trial-badge {
-  background: rgba(232,68,26,.1); border: 1px solid rgba(232,68,26,.2);
-  border-radius: var(--r-sm); padding: 12px 14px;
-  font-size: 13px; color: rgba(245,240,232,.7); margin-bottom: 24px;
-  display: flex; align-items: center; gap: 10px;
+
+.auth-error {
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
+  color: #FCA5A5; font-size: 13px; padding: 11px 14px;
+  border-radius: var(--r-sm); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
 }
-.trial-badge-dot { width: 8px; height: 8px; background: var(--orange); border-radius: 50%; flex-shrink: 0; }
+
+.auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: rgba(245,240,232,.35); }
+.auth-footer a { color: var(--orange); font-weight: 500; transition: opacity .15s; }
+.auth-footer a:hover { opacity: .8; }
+
+.trial-badge {
+  background: rgba(232,68,26,.08);
+  border: 1px solid rgba(232,68,26,.2);
+  border-radius: var(--r-md); padding: 13px 15px;
+  font-size: 13px; color: rgba(245,240,232,.65); margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px; line-height: 1.5;
+}
+.trial-badge i { font-size: 18px; color: var(--orange); flex-shrink: 0; }
 
 /* Social buttons */
 .social-btn {
@@ -62,11 +118,11 @@ body { background: var(--navy); min-height: 100svh; display: flex; flex-directio
     <!-- Logo -->
     <div class="auth-logo">
       <div class="auth-logo-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="5" width="14" height="12" rx="2.5"/>
-          <path d="M5 9h10M5 12.5h6"/>
-          <circle cx="18.5" cy="7" r="4" fill="#22C55E" stroke="none"/>
-          <path d="M16.8 7l1.2 1.2L20.5 6" stroke="#fff" stroke-width="1.5"/>
+        <svg width="22" height="22" viewBox="0 0 30 30" fill="none">
+          <rect x="3" y="7" width="18" height="14" rx="3" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
+          <path d="M6 11h12M6 15h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="23" cy="9" r="5" fill="#22C55E"/>
+          <path d="M21 9l1.5 1.5L25 7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
       <span class="auth-logo-word">ABRI<b>U</b></span>
@@ -76,8 +132,8 @@ body { background: var(--navy); min-height: 100svh; display: flex; flex-directio
       <h1 class="auth-title">Criar sua <em>conta</em></h1>
       <p class="auth-sub">3 dias grátis. Sem cartão de crédito.</p>
       <div class="trial-badge">
-        <div class="trial-badge-dot"></div>
-        Você terá <strong>3 dias grátis</strong> para testar tudo sem compromisso.
+        <i class="ti ti-gift"></i>
+        Você terá <strong style="color:var(--orange)">&nbsp;3 dias grátis&nbsp;</strong> para testar tudo sem compromisso.
       </div>
     {% else %}
       <h1 class="auth-title">Bem-vindo de <em>volta</em></h1>
@@ -86,7 +142,7 @@ body { background: var(--navy); min-height: 100svh; display: flex; flex-directio
 
     {% if erro %}
     <div class="auth-error">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <i class="ti ti-alert-circle" style="font-size:16px;flex-shrink:0"></i>
       {{ erro }}
     </div>
     {% endif %}
@@ -131,9 +187,9 @@ body { background: var(--navy); min-height: 100svh; display: flex; flex-directio
 
       <button type="submit" class="btn btn-primary btn-md" style="width:100%;justify-content:center">
         {% if modo == 'cadastro' %}
-          Criar conta grátis →
+          <i class="ti ti-rocket"></i> Criar conta grátis →
         {% else %}
-          Entrar →
+          <i class="ti ti-login"></i> Entrar →
         {% endif %}
       </button>
     </form>
@@ -149,8 +205,8 @@ body { background: var(--navy); min-height: 100svh; display: flex; flex-directio
 </div>
 
 <!-- Footer mínimo -->
-<div style="text-align:center;padding:16px;font-size:12px;color:rgba(245,240,232,.2)">
-  © 2026 ABRIU · <a href="/privacidade" style="color:rgba(245,240,232,.25)">Privacidade</a> · <a href="/termos" style="color:rgba(245,240,232,.25)">Termos</a>
+<div style="text-align:center;padding:16px;font-size:12px;color:rgba(245,240,232,.18);position:relative;z-index:1">
+  © 2026 ABRIU · <a href="/privacidade" style="color:rgba(245,240,232,.22)">Privacidade</a> · <a href="/termos" style="color:rgba(245,240,232,.22)">Termos</a>
 </div>
 
 </body>
