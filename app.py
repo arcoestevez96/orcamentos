@@ -37,6 +37,16 @@ except ImportError:
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_PG = bool(DATABASE_URL)
 
+# Redireciona www → apex permanentemente
+@app.before_request
+def redirect_www():
+    host = request.host.split(':')[0]
+    if host.startswith('www.'):
+        apex = host[4:]
+        url = request.url.replace(f'https://{host}', f'https://{apex}', 1) \
+                         .replace(f'http://{host}',  f'https://{apex}', 1)
+        return redirect(url, code=301)
+
 # Cache de estáticos (1 ano para CSS/JS imutáveis, sem cache para SW)
 @app.after_request
 def cache_headers(response):
