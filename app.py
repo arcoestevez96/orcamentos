@@ -329,6 +329,7 @@ def init_db():
                      ('zapi_instance',''),('zapi_token',''),('zapi_client_token',''),('zapi_phone',''),
                      ('gmail_refresh_token',''),('gmail_email','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
+        cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS arquivo_key TEXT')
         for idx_sql in [
             'CREATE INDEX IF NOT EXISTS idx_pdfs_user_id ON pdfs(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_pdfs_token ON pdfs(token)',
@@ -426,6 +427,11 @@ def init_db():
             con.commit()
         except Exception:
             pass
+        for col_sql in [
+            'ALTER TABLE pdfs ADD COLUMN arquivo_key TEXT',
+        ]:
+            try: con.execute(col_sql)
+            except Exception: pass
         for idx_sql in [
             'CREATE INDEX IF NOT EXISTS idx_pdfs_user_id ON pdfs(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_pdfs_token ON pdfs(token)',
@@ -442,6 +448,52 @@ def init_db():
 def get_config():
     rows = db_exec('SELECT chave, valor FROM config', fetch='all')
     return {r['chave']: r['valor'] for r in rows} if rows else {}
+
+# ── Cloudflare R2 (armazenamento de PDFs) ────────────────────────────────────
+
+def r2_configured():
+    return bool(os.environ.get('R2_ACCOUNT_ID') and
+                os.environ.get('R2_ACCESS_KEY_ID') and
+                os.environ.get('R2_BUCKET_NAME'))
+
+def _r2_client():
+    import boto3
+    account_id = os.environ.get('R2_ACCOUNT_ID', '')
+    return boto3.client(
+        's3',
+        endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+        aws_access_key_id=os.environ.get('R2_ACCESS_KEY_ID', ''),
+        aws_secret_access_key=os.environ.get('R2_SECRET_ACCESS_KEY', ''),
+        region_name='auto',
+    )
+
+def r2_upload(key: str, data: bytes):
+    _r2_client().put_object(
+        Bucket=os.environ.get('R2_BUCKET_NAME', ''),
+        Key=key, Body=data, ContentType='application/pdf')
+
+def r2_download(key: str) -> bytes:
+    resp = _r2_client().get_object(
+        Bucket=os.environ.get('R2_BUCKET_NAME', ''), Key=key)
+    return resp['Body'].read()
+
+def r2_delete(key: str):
+    try:
+        _r2_client().delete_object(
+            Bucket=os.environ.get('R2_BUCKET_NAME', ''), Key=key)
+    except Exception:
+        pass
+
+def r2_url(key: str, expires: int = 7200) -> str:
+    """Retorna URL pública (R2_PUBLIC_URL) ou presigned URL com TTL em segundos."""
+    pub = os.environ.get('R2_PUBLIC_URL', '').rstrip('/')
+    if pub:
+        return f'{pub}/{key}'
+    return _r2_client().generate_presigned_url(
+        'get_object',
+        Params={'Bucket': os.environ.get('R2_BUCKET_NAME', ''), 'Key': key},
+        ExpiresIn=expires,
+    )
 
 # ── autenticação ─────────────────────────────────────────────────────────────
 
@@ -1242,15 +1294,24 @@ def upload_pdf():
     dados = embed_tracker_pdf(dados, tracking_url)
     from flask import g
     uid = g.current_user['id']
+    arquivo_key = None
+    arquivo_db  = None
+    if r2_configured():
+        arquivo_key = f'pdfs/{uid}/{token}.pdf'
+        r2_upload(arquivo_key, dados)
+    else:
+        arquivo_db = dados
     if USE_PG:
         import psycopg2
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor,user_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,arquivo_key,filename,status,criado_em,valor,user_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), psycopg2.Binary(dados), filename, 'enviado', now_str(), valor, uid))
+             request.form.get('titulo', filename), psycopg2.Binary(arquivo_db) if arquivo_db else None,
+             arquivo_key, filename, 'enviado', now_str(), valor, uid))
     else:
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,filename,status,criado_em,valor,user_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,arquivo_key,filename,status,criado_em,valor,user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), dados, filename, 'enviado', now_str(), valor, uid))
+             request.form.get('titulo', filename), arquivo_db,
+             arquivo_key, filename, 'enviado', now_str(), valor, uid))
     link = f"{get_base_url()}/pdf/{token}"
     cliente_nome = request.form.get('cliente_nome', 'Cliente')
     cliente_tel = request.form.get('cliente_telefone', '').strip()
@@ -1336,7 +1397,9 @@ PRAZO_HORAS = 48  # link expira após 48h
 @app.route('/track/<token>', methods=['GET', 'POST'])
 def track_pdf(token):
     """Recebe ping do rastreador embutido no PDF baixado/compartilhado."""
-    sql = 'SELECT * FROM pdfs WHERE token=%s' if USE_PG else 'SELECT * FROM pdfs WHERE token=?'
+    sql = ('SELECT id,token,cliente_nome,titulo,status,aberturas,user_id FROM pdfs WHERE token=%s'
+           if USE_PG else
+           'SELECT id,token,cliente_nome,titulo,status,aberturas,user_id FROM pdfs WHERE token=?')
     p = db_exec(sql, (token,), fetch='one')
     if not p:
         return '', 204
@@ -1377,7 +1440,8 @@ def track_pdf(token):
 def ver_pdf(token):
     """Registra abertura e serve o PDF. Bloqueia e notifica se o link expirou (48h)."""
     from datetime import timedelta
-    sql = 'SELECT * FROM pdfs WHERE token=%s' if USE_PG else 'SELECT * FROM pdfs WHERE token=?'
+    _meta_cols = 'id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id,arquivo_key'
+    sql = f'SELECT {_meta_cols} FROM pdfs WHERE token=%s' if USE_PG else f'SELECT {_meta_cols} FROM pdfs WHERE token=?'
     p = db_exec(sql, (token,), fetch='one')
     if not p: return 'Orçamento não encontrado.', 404
 
@@ -1437,8 +1501,13 @@ def ver_pdf(token):
         sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
         send_web_push(owner, f"👁 {p['cliente_nome']} abriu o orçamento!", p['titulo'])
     threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
-    arquivo  = bytes(p['arquivo']) if p['arquivo'] else b''
     filename = (p['filename'] or 'orcamento.pdf').replace('"', '')
+    if p.get('arquivo_key'):
+        return redirect(r2_url(p['arquivo_key']), 302)
+    # Retrocompatibilidade: PDFs antigos ainda no banco
+    sql_arq = 'SELECT arquivo FROM pdfs WHERE token=%s' if USE_PG else 'SELECT arquivo FROM pdfs WHERE token=?'
+    arq_row = db_exec(sql_arq, (token,), fetch='one')
+    arquivo = bytes(arq_row['arquivo']) if arq_row and arq_row['arquivo'] else b''
     return Response(arquivo, mimetype='application/pdf',
         headers={'Content-Disposition': f'inline; filename="{filename}"',
                  'Cache-Control': 'no-store'})
@@ -1458,23 +1527,41 @@ def renovar_link(id):
 
     novo_token = str(uuid.uuid4()).replace('-','')[:16]
 
-    # Busca o arquivo para re-embutir o tracker com o novo token
-    sql_arq = 'SELECT arquivo, filename FROM pdfs WHERE id=%s' if USE_PG else \
-              'SELECT arquivo, filename FROM pdfs WHERE id=?'
+    # Busca metadados + chave R2 (ou blob legado)
+    sql_arq = ('SELECT arquivo, arquivo_key, filename FROM pdfs WHERE id=%s'
+               if USE_PG else
+               'SELECT arquivo, arquivo_key, filename FROM pdfs WHERE id=?')
     arq_row = db_exec(sql_arq, (id,), fetch='one')
-    arquivo_atual = bytes(arq_row['arquivo']) if arq_row and arq_row['arquivo'] else b''
-    fname = (arq_row.get('filename') or 'orcamento.pdf') if arq_row else 'orcamento.pdf'
+    old_key = (arq_row or {}).get('arquivo_key')
+    fname   = ((arq_row or {}).get('filename') or 'orcamento.pdf')
+    if old_key:
+        arquivo_atual = r2_download(old_key)
+    elif arq_row and arq_row.get('arquivo'):
+        arquivo_atual = bytes(arq_row['arquivo'])
+    else:
+        arquivo_atual = b''
 
     novo_tracking_url = f"{get_base_url()}/track/{novo_token}"
     arquivo_novo = embed_tracker_pdf(arquivo_atual, novo_tracking_url)
 
+    novo_key = None
+    arquivo_novo_db = None
+    if r2_configured():
+        novo_key = f'pdfs/{uid}/{novo_token}.pdf'
+        r2_upload(novo_key, arquivo_novo)
+        if old_key and old_key != novo_key:
+            r2_delete(old_key)
+    else:
+        arquivo_novo_db = arquivo_novo
+
     if USE_PG:
         import psycopg2
-        db_exec('UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL, arquivo=%s WHERE id=%s',
-                (novo_token, now_str(), 'enviado', psycopg2.Binary(arquivo_novo), id))
+        db_exec('UPDATE pdfs SET token=%s, criado_em=%s, status=%s, aberturas=0, aberto_em=NULL, arquivo=%s, arquivo_key=%s WHERE id=%s',
+                (novo_token, now_str(), 'enviado',
+                 psycopg2.Binary(arquivo_novo_db) if arquivo_novo_db else None, novo_key, id))
     else:
-        db_exec('UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL, arquivo=? WHERE id=?',
-                (novo_token, now_str(), 'enviado', arquivo_novo, id))
+        db_exec('UPDATE pdfs SET token=?, criado_em=?, status=?, aberturas=0, aberto_em=NULL, arquivo=?, arquivo_key=? WHERE id=?',
+                (novo_token, now_str(), 'enviado', arquivo_novo_db, novo_key, id))
 
     link = f"{get_base_url()}/pdf/{novo_token}"
 
@@ -1520,6 +1607,10 @@ def atualizar_status_pdf(id):
 def deletar_pdf(id):
     from flask import g
     uid = g.current_user['id']
+    row = db_exec('SELECT arquivo_key FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else
+                  'SELECT arquivo_key FROM pdfs WHERE id=? AND user_id=?', (id, uid), fetch='one')
+    if row and row.get('arquivo_key'):
+        r2_delete(row['arquivo_key'])
     sql = 'DELETE FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=? AND user_id=?'
     db_exec(sql, (id, uid))
     return redirect(url_for('dashboard'))
@@ -1527,6 +1618,10 @@ def deletar_pdf(id):
 @app.route('/deletar_pdf_ajax/<int:id>', methods=['POST'])
 @login_required
 def deletar_pdf_ajax(id):
+    row = db_exec('SELECT arquivo_key FROM pdfs WHERE id=%s' if USE_PG else
+                  'SELECT arquivo_key FROM pdfs WHERE id=?', (id,), fetch='one')
+    if row and row.get('arquivo_key'):
+        r2_delete(row['arquivo_key'])
     sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
     db_exec(sql, (id,))
     return jsonify({'ok': True})
@@ -1567,11 +1662,18 @@ def acessos_pdf(id):
 @login_required
 def reler_valor(id):
     """Reextrai o valor total do PDF e atualiza no banco."""
-    sql = 'SELECT arquivo FROM pdfs WHERE id=%s' if USE_PG else 'SELECT arquivo FROM pdfs WHERE id=?'
+    sql = ('SELECT arquivo, arquivo_key FROM pdfs WHERE id=%s'
+           if USE_PG else 'SELECT arquivo, arquivo_key FROM pdfs WHERE id=?')
     p = db_exec(sql, (id,), fetch='one')
-    if not p or not p['arquivo']:
+    if not p:
         return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
-    dados = bytes(p['arquivo'])
+    if p.get('arquivo_key'):
+        try: dados = r2_download(p['arquivo_key'])
+        except Exception: return jsonify({'ok': False, 'erro': 'Erro ao ler PDF do storage'})
+    elif p.get('arquivo'):
+        dados = bytes(p['arquivo'])
+    else:
+        return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
     valor = extrair_valor_pdf(dados)
     sql2 = 'UPDATE pdfs SET valor=%s WHERE id=%s' if USE_PG else 'UPDATE pdfs SET valor=? WHERE id=?'
     db_exec(sql2, (valor, id))
