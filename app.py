@@ -198,11 +198,19 @@ def send_web_push(user_id, title, body, url='/dashboard'):
 
 # ── banco de dados ──────────────────────────────────────────────────────────
 
+_pg_pool = None
+
+def _get_pg_pool():
+    global _pg_pool
+    if _pg_pool is None:
+        import psycopg2.pool
+        url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        _pg_pool = psycopg2.pool.ThreadedConnectionPool(2, 10, url)
+    return _pg_pool
+
 def get_db():
     if USE_PG:
-        import psycopg2
-        url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        return psycopg2.connect(url)
+        return _get_pg_pool().getconn()
     else:
         import sqlite3
         db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
@@ -212,9 +220,11 @@ def get_db():
 
 def db_exec(sql, params=(), fetch=None):
     con = None
+    pool = None
     try:
-        con = get_db()
         if USE_PG:
+            pool = _get_pg_pool()
+            con = pool.getconn()
             import psycopg2.extras
             cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             sql_pg = sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
@@ -223,17 +233,23 @@ def db_exec(sql, params=(), fetch=None):
             if fetch == 'all': return [dict(r) for r in cur.fetchall()]
             if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
         else:
+            con = get_db()
             cur = con.execute(sql, params)
             con.commit()
             if fetch == 'all': return [dict(r) for r in cur.fetchall()]
             if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
     finally:
         if con:
-            con.close()
+            if USE_PG and pool:
+                pool.putconn(con)
+            else:
+                con.close()
 
 def init_db():
     if USE_PG:
-        con = get_db()
+        import psycopg2
+        url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        con = psycopg2.connect(url)
         cur = con.cursor()
         cur.execute('''
             CREATE TABLE IF NOT EXISTS orcamentos (
@@ -313,6 +329,16 @@ def init_db():
                      ('zapi_instance',''),('zapi_token',''),('zapi_client_token',''),('zapi_phone',''),
                      ('gmail_refresh_token',''),('gmail_email','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
+        for idx_sql in [
+            'CREATE INDEX IF NOT EXISTS idx_pdfs_user_id ON pdfs(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_pdfs_token ON pdfs(token)',
+            'CREATE INDEX IF NOT EXISTS idx_pdf_acessos_pdf_id ON pdf_acessos(pdf_id)',
+            'CREATE INDEX IF NOT EXISTS idx_user_config_user_id ON user_config(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+            'CREATE INDEX IF NOT EXISTS idx_orcamentos_token ON orcamentos(token)',
+        ]:
+            try: cur.execute(idx_sql)
+            except Exception: pass
         con.commit()
         con.close()
     else:
@@ -400,6 +426,16 @@ def init_db():
             con.commit()
         except Exception:
             pass
+        for idx_sql in [
+            'CREATE INDEX IF NOT EXISTS idx_pdfs_user_id ON pdfs(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_pdfs_token ON pdfs(token)',
+            'CREATE INDEX IF NOT EXISTS idx_pdf_acessos_pdf_id ON pdf_acessos(pdf_id)',
+            'CREATE INDEX IF NOT EXISTS idx_user_config_user_id ON user_config(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+            'CREATE INDEX IF NOT EXISTS idx_orcamentos_token ON orcamentos(token)',
+        ]:
+            try: con.execute(idx_sql)
+            except Exception: pass
         con.commit()
         con.close()
 
