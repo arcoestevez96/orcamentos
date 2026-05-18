@@ -636,7 +636,7 @@ function closeSidebar() {
 
 /* SW + Push registration */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js').then(async reg => {
+  navigator.serviceWorker.register('/sw.js').then(async reg => {
     if (!('PushManager' in window)) return;
     // Only subscribe if permission already granted (don't ask here — ask in configuracoes)
     if (Notification.permission !== 'granted') return;

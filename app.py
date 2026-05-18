@@ -1647,6 +1647,15 @@ def push_unsubscribe():
             db_exec('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?', (uid, endpoint))
     return jsonify({'ok': True})
 
+@app.route('/sw.js')
+def service_worker():
+    """Serve o SW da raiz para que tenha escopo sobre todo o site."""
+    resp = send_file(os.path.join(app.root_path, 'static', 'sw.js'),
+                     mimetype='application/javascript')
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
 @app.route('/ping')
 def ping():
     """Health check — usado por serviços externos para manter o servidor acordado."""

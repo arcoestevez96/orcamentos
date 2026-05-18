@@ -26,6 +26,7 @@ body { background: var(--cream); }
 .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px) { .cfg-layout { grid-template-columns: 1fr; } .dash-sidebar { display: none !important; } }
 @media (max-width: 600px) { .cfg-grid { grid-template-columns: 1fr; } .cfg-content { padding: 16px; } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -94,19 +95,25 @@ body { background: var(--cream); }
       <div class="cfg-card" id="push-section">
         <div class="cfg-card__header">
           <div class="cfg-card__icon" style="background:rgba(232,68,26,.1);color:var(--orange)">
-            <i class="ti ti-bell"></i>
+            <i class="ti ti-bell-ringing"></i>
           </div>
           <div>
-            <div class="cfg-card__title">Notificações do App</div>
-            <div class="cfg-card__sub">Receba alertas mesmo com o app em segundo plano</div>
+            <div class="cfg-card__title">Notificações neste dispositivo</div>
+            <div class="cfg-card__sub">Alerta instantâneo no computador ou celular — mesmo com o site fechado</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px">
-          <span id="push-status" style="font-size:13px;color:var(--gray)">Verificando...</span>
-          <button id="btn-push-ativar" onclick="ativarPushNotif()" class="btn btn-primary btn-sm" style="display:none">
-            <i class="ti ti-bell"></i> Ativar notificações
+        <div class="cfg-info" style="margin-bottom:14px">
+          <strong>Como funciona:</strong> ative neste dispositivo e você receberá uma notificação do sistema operacional quando o cliente abrir o orçamento — aparece no canto da tela, mesmo com o browser minimizado.<br><br>
+          <strong>Múltiplos dispositivos:</strong> acesse as Configurações no computador <em>e</em> no celular e ative em cada um separadamente.
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span id="push-status" style="font-size:13px;color:var(--gray);display:flex;align-items:center;gap:6px">
+            <i class="ti ti-loader-2" style="animation:spin .8s linear infinite;font-size:14px"></i> Verificando...
+          </span>
+          <button id="btn-push-ativar" onclick="ativarPushNotif()" class="btn btn-primary btn-sm" style="display:none;gap:6px">
+            <i class="ti ti-bell"></i> Ativar neste dispositivo
           </button>
-          <button id="btn-push-desativar" onclick="desativarPushNotif()" class="btn btn-ghost btn-sm" style="display:none">
+          <button id="btn-push-desativar" onclick="desativarPushNotif()" class="btn btn-ghost btn-sm" style="display:none;gap:6px">
             <i class="ti ti-bell-off"></i> Desativar
           </button>
         </div>
@@ -470,29 +477,35 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
-// Check current push status on load + register SW
+// Verifica status do push neste dispositivo e registra SW
 (async () => {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js');
-  }
+  const statusEl = document.getElementById('push-status');
+  const btnAtivar = document.getElementById('btn-push-ativar');
+  const btnDesativar = document.getElementById('btn-push-desativar');
+
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    document.getElementById('push-section').style.display = 'none';
+    statusEl.innerHTML = '<i class="ti ti-alert-circle" style="color:#F59E0B"></i> Navegador não suporta push';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    statusEl.innerHTML = '<i class="ti ti-alert-circle" style="color:#EF4444"></i> Bloqueado — libere nas configurações do navegador';
     return;
   }
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
-      document.getElementById('push-status').textContent = '✅ Notificações ativas!';
-      document.getElementById('push-status').style.color = 'var(--green)';
-      document.getElementById('btn-push-ativar').style.display = 'none';
-      document.getElementById('btn-push-desativar').style.display = 'inline-flex';
+      statusEl.innerHTML = '<i class="ti ti-check" style="color:var(--green)"></i> <span style="color:var(--green)">Ativo neste dispositivo</span>';
+      btnAtivar.style.display = 'none';
+      btnDesativar.style.display = 'inline-flex';
     } else {
-      document.getElementById('push-status').textContent = 'Desativado';
-      document.getElementById('btn-push-ativar').style.display = 'inline-flex';
+      statusEl.innerHTML = '<i class="ti ti-bell-off" style="color:var(--gray)"></i> Desativado neste dispositivo';
+      btnAtivar.style.display = 'inline-flex';
+      btnDesativar.style.display = 'none';
     }
-  } catch {
-    document.getElementById('push-status').textContent = 'Não disponível';
+  } catch(e) {
+    statusEl.textContent = 'Erro: ' + e.message;
   }
 })();
 </script>
