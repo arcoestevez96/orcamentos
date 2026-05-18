@@ -25,12 +25,13 @@ from email.mime.multipart import MIMEMultipart
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# ── SECRET_KEY obrigatória ────────────────────────────────────────────────────
+# ── SECRET_KEY ────────────────────────────────────────────────────────────────
 _sk = os.environ.get('SECRET_KEY')
 if not _sk:
-    raise RuntimeError(
-        "SECRET_KEY não configurada. Defina-a em Render > Settings > Environment Variables."
-    )
+    _sk = secrets.token_hex(32)
+    log.critical('SECRET_KEY nao configurada — usando chave temporaria. '
+                 'Sessoes serao perdidas a cada restart. '
+                 'Configure SECRET_KEY em Render > Settings > Environment Variables.')
 app.secret_key = _sk
 
 # ── Cookies de sessão seguros ─────────────────────────────────────────────────
