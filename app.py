@@ -786,42 +786,135 @@ def detectar_dispositivo(ua):
     if 'mobile' in ua or 'android' in ua or 'iphone' in ua: return 'mobile'
     return 'desktop'
 
-def detectar_sistema(ua):
-    ua = (ua or '').lower()
-    if 'iphone' in ua: return 'iPhone'
-    if 'ipad' in ua: return 'iPad'
-    if 'android' in ua: return 'Android'
-    if 'windows' in ua: return 'Windows'
-    if 'mac os' in ua: return 'Mac'
-    if 'linux' in ua: return 'Linux'
-    return 'Desconhecido'
+def detectar_modelo(ua):
+    """Extrai o modelo real do dispositivo a partir do User-Agent."""
+    import re
+    ua_orig = ua or ''
+    ua_low  = ua_orig.lower()
+
+    # ── iOS / Apple ───────────────────────────────────────────────
+    if 'iphone' in ua_low:
+        m = re.search(r'CPU iPhone OS ([\d_]+)', ua_orig)
+        if m:
+            ver = m.group(1).replace('_', '.')
+            v = int(ver.split('.')[0])
+            # Mapeamento iOS → modelo aproximado (lançamento)
+            ios_map = {18:'iPhone 16', 17:'iPhone 15', 16:'iPhone 14',
+                       15:'iPhone 13', 14:'iPhone 12', 13:'iPhone 11',
+                       12:'iPhone XR/XS', 11:'iPhone X'}
+            modelo = ios_map.get(v, f'iPhone (iOS {ver})')
+            return modelo
+        return 'iPhone'
+    if 'ipad' in ua_low:
+        return 'iPad'
+    if 'macintosh' in ua_low or 'mac os x' in ua_low:
+        return 'Mac'
+
+    # ── Android — modelo específico ───────────────────────────────
+    if 'android' in ua_low:
+        # Padrão: (Linux; Android X.X; MODELO Build/...)
+        m = re.search(r'Android[\s/][\d.]+;\s*([^)]+?)\s*(?:Build|;|\))', ua_orig)
+        if m:
+            modelo = m.group(1).strip()
+            # Remove sufixos desnecessários
+            modelo = re.sub(r'\s*(Build|wv|LTE|4G|5G).*', '', modelo, flags=re.IGNORECASE).strip()
+            if modelo and len(modelo) > 1:
+                # Melhora nomes de fabricantes conhecidos
+                fab_map = [
+                    ('SM-S9', 'Samsung Galaxy S23'),('SM-S8', 'Samsung Galaxy S22'),
+                    ('SM-S7', 'Samsung Galaxy S21'),('SM-S6', 'Samsung Galaxy S20'),
+                    ('SM-A5', 'Samsung Galaxy A5x'),('SM-A3', 'Samsung Galaxy A3x'),
+                    ('SM-G9', 'Samsung Galaxy S10'),('SM-N', 'Samsung Galaxy Note'),
+                    ('SM-', 'Samsung Galaxy'),
+                    ('Pixel 8', 'Google Pixel 8'),('Pixel 7', 'Google Pixel 7'),
+                    ('Pixel 6', 'Google Pixel 6'),('Pixel 5', 'Google Pixel 5'),
+                    ('Redmi', 'Xiaomi Redmi'),('POCO', 'Xiaomi POCO'),
+                    ('Mi ', 'Xiaomi Mi'),
+                    ('CPH', 'OPPO'),('RMX', 'Realme'),
+                    ('LM-', 'LG'),('V60', 'LG V60'),
+                    ('Moto G', 'Motorola Moto G'),('Moto E', 'Motorola Moto E'),
+                    ('XT', 'Motorola'),
+                ]
+                for prefix, nome in fab_map:
+                    if modelo.startswith(prefix):
+                        if nome.endswith(prefix.rstrip()):
+                            return nome
+                        if modelo == prefix.strip():
+                            return nome
+                        # Se o modelo tem mais info, usa o modelo completo com fabricante
+                        fab = nome.split()[0]
+                        return f'{fab} {modelo}' if not modelo.lower().startswith(fab.lower()) else modelo
+                return modelo
+        return 'Android'
+
+    # ── Windows ───────────────────────────────────────────────────
+    if 'windows nt' in ua_low:
+        nt_map = {'10.0':'Windows 10/11','6.3':'Windows 8.1','6.2':'Windows 8','6.1':'Windows 7'}
+        m = re.search(r'Windows NT ([\d.]+)', ua_orig)
+        ver = m.group(1) if m else ''
+        return nt_map.get(ver, f'Windows {ver}')
+
+    # ── Linux Desktop ─────────────────────────────────────────────
+    if 'linux' in ua_low:
+        return 'Linux'
+
+    return 'Dispositivo desconhecido'
+
+def hostname_ip(ip):
+    """Reverse DNS — pode revelar nome do host em redes corporativas."""
+    try:
+        import socket
+        if not ip or ip in ('127.0.0.1','::1') or ip.startswith(('192.168.','10.','172.')):
+            return None
+        h = socket.gethostbyaddr(ip)[0]
+        # Filtra hostnames genéricos de CGNAT/ISP (não são úteis)
+        genericos = ['static','dynamic','pool','dhcp','cgnat','broadband',
+                     'cable','dsl','fiber','mobile','gprs','3g','4g','5g',
+                     'users','customer','client','host','node','rev']
+        h_low = h.lower()
+        if any(g in h_low for g in genericos):
+            return None
+        return h
+    except Exception:
+        return None
 
 def geolocate_ip(ip):
     try:
         import urllib.request, json as _json
         if not ip or ip in ('127.0.0.1','::1') or ip.startswith(('192.168.','10.','172.')):
-            return {'cidade':'Local','regiao':'','pais':'BR','operadora':''}
-        with urllib.request.urlopen(f'http://ip-api.com/json/{ip}?fields=status,city,regionName,countryCode,isp', timeout=3) as r:
+            return {'cidade':'Local','regiao':'','pais':'BR','operadora':'', 'hostname': None}
+        with urllib.request.urlopen(
+            f'http://ip-api.com/json/{ip}?fields=status,city,regionName,countryCode,isp,org,mobile', timeout=3
+        ) as r:
             d = _json.loads(r.read())
         if d.get('status') == 'success':
-            return {'cidade': d.get('city',''), 'regiao': d.get('regionName',''), 'pais': d.get('countryCode',''), 'operadora': d.get('isp','')}
+            return {
+                'cidade':    d.get('city',''),
+                'regiao':    d.get('regionName',''),
+                'pais':      d.get('countryCode',''),
+                'operadora': d.get('isp','') or d.get('org',''),
+                'mobile':    d.get('mobile', False),
+                'hostname':  hostname_ip(ip),
+            }
     except Exception:
         pass
-    return {'cidade':'','regiao':'','pais':'','operadora':''}
+    return {'cidade':'','regiao':'','pais':'','operadora':'','mobile':False,'hostname':None}
 
 def registrar_acesso(pdf_id, token, ip, ua, fonte):
-    """Registra acesso com geo em background thread."""
+    """Registra acesso com geo + modelo do dispositivo + hostname em background thread."""
     def _worker():
         try:
-            geo = geolocate_ip(ip)
-            disp = detectar_dispositivo(ua)
-            sis  = detectar_sistema(ua)
+            geo    = geolocate_ip(ip)  # inclui hostname_ip interno
+            disp   = detectar_dispositivo(ua)
+            modelo = detectar_modelo(ua)
+            # sistema = modelo (já bem descritivo), hostname sobrescreve se disponível
+            nome_disp = geo.get('hostname') or modelo
             if USE_PG:
                 db_exec('INSERT INTO pdf_acessos(pdf_id,token,ip,user_agent,dispositivo,sistema,cidade,regiao,pais,operadora,fonte,criado_em) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-                    (pdf_id, token, ip, (ua or '')[:500], disp, sis, geo['cidade'], geo['regiao'], geo['pais'], geo['operadora'], fonte, now_str()))
+                    (pdf_id, token, ip, (ua or '')[:500], disp, nome_disp, geo['cidade'], geo['regiao'], geo['pais'], geo['operadora'], fonte, now_str()))
             else:
                 db_exec('INSERT INTO pdf_acessos(pdf_id,token,ip,user_agent,dispositivo,sistema,cidade,regiao,pais,operadora,fonte,criado_em) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-                    (pdf_id, token, ip, (ua or '')[:500], disp, sis, geo['cidade'], geo['regiao'], geo['pais'], geo['operadora'], fonte, now_str()))
+                    (pdf_id, token, ip, (ua or '')[:500], disp, nome_disp, geo['cidade'], geo['regiao'], geo['pais'], geo['operadora'], fonte, now_str()))
         except Exception:
             pass
     threading.Thread(target=_worker, daemon=True).start()

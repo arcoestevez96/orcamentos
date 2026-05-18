@@ -553,30 +553,36 @@ async function verRastreio(id, nome) {
   const items = acessos.map((a, i) => {
     const isCliente = ipMap[a.ip] === 1;
     const deviceIcon = a.dispositivo === 'mobile' ? 'ti-device-mobile' : a.dispositivo === 'tablet' ? 'ti-device-ipad' : 'ti-device-laptop';
-    const fonteLabel = a.fonte === 'arquivo' ? '<span style="background:rgba(99,102,241,.1);color:#4338CA;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px">via arquivo</span>' : '<span style="background:rgba(34,197,94,.1);color:#15803D;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px">via link</span>';
+    const fonteLabel = a.fonte === 'arquivo'
+      ? '<span style="background:rgba(99,102,241,.1);color:#4338CA;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px"><i class="ti ti-file" style="font-size:10px"></i>via arquivo</span>'
+      : '<span style="background:rgba(34,197,94,.1);color:#15803D;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px"><i class="ti ti-link" style="font-size:10px"></i>via link</span>';
     const locStr = [a.cidade, a.regiao, a.pais].filter(Boolean).join(', ') || 'Localização desconhecida';
     const quemLabel = isCliente
-      ? '<span style="background:#DCFCE7;color:#173404;font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px"><i class="ti ti-user-check" style="font-size:11px"></i> Provável cliente</span>'
-      : `<span style="background:#FEF3C7;color:#633806;font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px"><i class="ti ti-user-question" style="font-size:11px"></i> Outro contato #${ipMap[a.ip]}</span>`;
+      ? '<span style="background:#DCFCE7;color:#173404;font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user-check" style="font-size:11px"></i> Provável cliente</span>'
+      : `<span style="background:#FEF3C7;color:#633806;font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user-question" style="font-size:11px"></i> Outro dispositivo #${ipMap[a.ip]}</span>`;
     const hora = a.criado_em ? a.criado_em.slice(0,16).replace('T',' ') : '—';
-    return `<div style="border:1px solid rgba(13,27,42,.08);border-radius:14px;padding:16px;margin-bottom:10px${!isCliente ? ';border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)' : ''}">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:10px;background:${isCliente ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)'};display:flex;align-items:center;justify-content:center;color:${isCliente ? 'var(--green)' : '#F59E0B'};flex-shrink:0">
-            <i class="ti ${deviceIcon}" style="font-size:18px"></i>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--navy)">${a.sistema || 'Dispositivo'}</div>
-            <div style="font-size:11px;color:var(--gray);margin-top:1px">${a.operadora || ''}</div>
-          </div>
+    // Nome do dispositivo — "sistema" agora contém o modelo real (ex: iPhone 15, Samsung Galaxy S23)
+    const nomeDisp = a.sistema || 'Dispositivo';
+    // Destaque amarelo para dispositivos extras
+    const borderStyle = isCliente
+      ? 'border:1px solid rgba(13,27,42,.08)'
+      : 'border:1.5px solid rgba(245,158,11,.3);background:rgba(255,251,235,.6)';
+    return `<div style="${borderStyle};border-radius:14px;padding:16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="width:44px;height:44px;border-radius:12px;background:${isCliente ? '#DCFCE7' : '#FEF3C7'};display:flex;align-items:center;justify-content:center;color:${isCliente ? '#15803D' : '#D97706'};flex-shrink:0">
+          <i class="ti ${deviceIcon}" style="font-size:22px"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--navy);letter-spacing:-.01em">${nomeDisp}</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:2px">${a.operadora || 'Operadora desconhecida'}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:12px;color:var(--gray)">${hora}</div>
-          <div style="margin-top:4px">${fonteLabel}</div>
+          <div style="font-size:11px;color:var(--gray)">${hora}</div>
+          <div style="margin-top:5px">${fonteLabel}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray)">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid rgba(13,27,42,.06)">
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray2)">
           <i class="ti ti-map-pin" style="font-size:13px;color:var(--orange)"></i>
           ${locStr}
         </div>
