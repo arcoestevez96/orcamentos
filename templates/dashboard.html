@@ -9,6 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0D1B2A">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 body { background: var(--cream); }
 
@@ -100,6 +103,47 @@ select.action-btn {
 .dash-metric__delta { font-size: 11px; opacity: .3; }
 .dash-metric__icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 36px; opacity: .07; }
 
+/* Mobile menu */
+.mob-menu-btn {
+  display: none; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border: 1px solid rgba(13,27,42,.12);
+  border-radius: 8px; background: none; cursor: pointer; color: var(--navy);
+  font-size: 18px;
+}
+.mob-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(13,27,42,.5);
+  z-index: 99; backdrop-filter: blur(2px);
+}
+.mob-overlay.show { display: block; }
+
+/* Bottom nav */
+.bottom-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: var(--white); border-top: 1px solid rgba(13,27,42,.08);
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  grid-template-columns: repeat(3, 1fr);
+}
+.bottom-nav__item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 500; color: var(--gray);
+  text-decoration: none; padding: 4px 8px; transition: color .15s;
+}
+.bottom-nav__item i { font-size: 20px; }
+.bottom-nav__item.active { color: var(--orange); }
+.bottom-nav__item:hover { color: var(--navy); }
+
+@media (max-width: 900px) {
+  .mob-menu-btn { display: flex; }
+  .bottom-nav { display: grid; }
+  .dash-content { padding: 16px 16px 80px; }
+  .dash-sidebar {
+    display: flex !important; position: fixed; left: -220px; top: 0; bottom: 0;
+    z-index: 100; transition: left .25s ease; width: 220px;
+  }
+  .dash-sidebar.open { left: 0; }
+  .dash-topbar { padding: 12px 16px; }
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .form-row { grid-template-columns: 1fr; }
@@ -178,6 +222,9 @@ select.action-btn {
 
     <!-- TOPBAR -->
     <div class="dash-topbar">
+      <button class="mob-menu-btn" id="mob-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <i class="ti ti-menu-2"></i>
+      </button>
       <div class="dash-topbar__title">Dashboard</div>
       <div style="display:flex;align-items:center;gap:12px">
         {% set abertos_agora = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
@@ -361,6 +408,25 @@ select.action-btn {
     </div>
   </main>
 </div>
+
+<!-- Mobile sidebar overlay -->
+<div class="mob-overlay" id="mob-overlay" onclick="closeSidebar()"></div>
+
+<!-- Bottom navigation (mobile only) -->
+<nav class="bottom-nav">
+  <a href="/dashboard" class="bottom-nav__item active">
+    <i class="ti ti-layout-dashboard"></i>
+    <span>Dashboard</span>
+  </a>
+  <a href="/configuracoes" class="bottom-nav__item">
+    <i class="ti ti-settings"></i>
+    <span>Config.</span>
+  </a>
+  <a href="/logout" class="bottom-nav__item">
+    <i class="ti ti-logout"></i>
+    <span>Sair</span>
+  </a>
+</nav>
 
 <!-- UPLOAD MODAL -->
 <div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(13,27,42,.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
@@ -558,6 +624,47 @@ evtSource.addEventListener('aviso', e => {
 const spinStyle = document.createElement('style');
 spinStyle.textContent = '@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
 document.head.appendChild(spinStyle);
+
+function toggleSidebar() {
+  document.querySelector('.dash-sidebar').classList.toggle('open');
+  document.getElementById('mob-overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.querySelector('.dash-sidebar').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('show');
+}
+
+/* SW + Push registration */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').then(async reg => {
+    if (!('PushManager' in window)) return;
+    // Only subscribe if permission already granted (don't ask here — ask in configuracoes)
+    if (Notification.permission !== 'granted') return;
+    try {
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) return;  // already subscribed
+      const keyRes = await fetch('/push/vapid-key');
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) return;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+      await fetch('/push/subscribe', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(sub.toJSON())
+      });
+    } catch {}
+  });
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
 
 async function verRastreio(id, nome) {
   document.getElementById('rastreio-titulo').textContent = 'Rastreio · ' + nome;

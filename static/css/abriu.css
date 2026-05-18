@@ -381,8 +381,9 @@ select.action-btn {
 }
 @media (max-width: 768px) {
   .wrap { padding: 0 20px; }
-  .dash-content { padding: 16px; }
+  .dash-content { padding: 16px 16px 80px; }
   .form-row { grid-template-columns: 1fr; }
   .dash-metrics-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .table-actions { display: none; }
+  .dash-topbar { padding: 12px 16px; }
 }

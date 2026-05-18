@@ -32,6 +32,76 @@ def sse_push(user_id, event, data):
         except queue.Full:
             pass
 
+# ── Web Push (VAPID) ──────────────────────────────────────────────────────────
+
+def get_vapid_keys():
+    """Retorna (private_key_pem, public_key_b64url). Gera na primeira chamada."""
+    try:
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import serialization
+        # Verifica env
+        priv = os.environ.get('VAPID_PRIVATE_KEY', '')
+        pub  = os.environ.get('VAPID_PUBLIC_KEY', '')
+        if priv and pub:
+            return priv, pub
+        # Verifica config
+        cfg  = get_config()
+        priv = cfg.get('vapid_private_key', '')
+        pub  = cfg.get('vapid_public_key', '')
+        if priv and pub:
+            return priv, pub
+        # Gera par de chaves ECDH P-256
+        private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
+        pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption()
+        ).decode('utf-8')
+        pub_bytes = private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.X962,
+            format=serialization.PublicFormat.UncompressedPoint
+        )
+        pub_b64 = base64.urlsafe_b64encode(pub_bytes).rstrip(b'=').decode('ascii')
+        save_config({'vapid_private_key': pem, 'vapid_public_key': pub_b64})
+        return pem, pub_b64
+    except Exception as e:
+        print(f'VAPID key error: {e}')
+        return '', ''
+
+def send_web_push(user_id, title, body, url='/dashboard'):
+    """Envia push notification para as subscriptions do usuário (background thread)."""
+    def _worker():
+        try:
+            from pywebpush import webpush, WebPushException
+            priv_key, _ = get_vapid_keys()
+            if not priv_key:
+                return
+            sql = 'SELECT id, subscription_json FROM push_subscriptions WHERE user_id=%s' if USE_PG else \
+                  'SELECT id, subscription_json FROM push_subscriptions WHERE user_id=?'
+            rows = db_exec(sql, (user_id,), fetch='all') or []
+            payload = json.dumps({'title': title, 'body': body, 'url': url}, ensure_ascii=False)
+            stale = []
+            for row in rows:
+                try:
+                    sub = json.loads(row['subscription_json'])
+                    webpush(
+                        subscription_info=sub,
+                        data=payload,
+                        vapid_private_key=priv_key,
+                        vapid_claims={'sub': 'mailto:noreply@abriu.app.br'}
+                    )
+                except Exception as e:
+                    resp = getattr(e, 'response', None)
+                    if resp and resp.status_code in (404, 410):
+                        stale.append(row['id'])
+            for sid in stale:
+                db_exec('DELETE FROM push_subscriptions WHERE id=%s' if USE_PG else
+                        'DELETE FROM push_subscriptions WHERE id=?', (sid,))
+        except Exception as ex:
+            print(f'Web push error: {ex}')
+    threading.Thread(target=_worker, daemon=True).start()
+
 # ── banco de dados ──────────────────────────────────────────────────────────
 
 def get_db():
@@ -123,6 +193,13 @@ def init_db():
                 fonte TEXT,
                 criado_em TEXT
             )''')
+        cur.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            subscription_json TEXT NOT NULL,
+            endpoint TEXT,
+            criado_em TEXT
+        )''')
         for k, v in [('whatsapp_numero',''),('whatsapp_apikey',''),
                      ('empresa_nome',''),('base_url',''),
                      ('email_remetente',''),('email_senha_app',''),
@@ -177,6 +254,13 @@ def init_db():
                 pais TEXT,
                 operadora TEXT,
                 fonte TEXT,
+                criado_em TEXT
+            );
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                subscription_json TEXT NOT NULL,
+                endpoint TEXT,
                 criado_em TEXT
             );
             INSERT OR IGNORE INTO config VALUES ("whatsapp_numero","");
@@ -1253,6 +1337,7 @@ def track_pdf(token):
             <small style="color:#64748b">Aberto via arquivo baixado/compartilhado</small></p></div>"""
     if owner:
         sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
+        send_web_push(owner, f"👁 {p['cliente_nome']} abriu o orçamento!", p['titulo'])
     threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
     return '', 204
 
@@ -1318,6 +1403,7 @@ def ver_pdf(token):
             <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>"""
     if owner:
         sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
+        send_web_push(owner, f"👁 {p['cliente_nome']} abriu o orçamento!", p['titulo'])
     threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
     arquivo  = bytes(p['arquivo']) if p['arquivo'] else b''
     filename = (p['filename'] or 'orcamento.pdf').replace('"', '')
@@ -1619,6 +1705,47 @@ def sse():
     return Response(generate(), mimetype='text/event-stream',
                     headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',
                              'Connection': 'keep-alive'})
+
+@app.route('/push/vapid-key')
+def push_vapid_key():
+    """Retorna a chave pública VAPID para registro de push no browser."""
+    _, pub = get_vapid_keys()
+    return jsonify({'publicKey': pub})
+
+@app.route('/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    from flask import g
+    uid  = g.current_user['id']
+    sub  = request.get_json()
+    if not sub or not sub.get('endpoint'):
+        return jsonify({'ok': False}), 400
+    endpoint = sub.get('endpoint', '')
+    sub_json = json.dumps(sub)
+    # Upsert: remove old subscription for same endpoint, insert new
+    if USE_PG:
+        db_exec('DELETE FROM push_subscriptions WHERE user_id=%s AND endpoint=%s', (uid, endpoint))
+        db_exec('INSERT INTO push_subscriptions(user_id,subscription_json,endpoint,criado_em) VALUES(%s,%s,%s,%s)',
+                (uid, sub_json, endpoint, now_str()))
+    else:
+        db_exec('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?', (uid, endpoint))
+        db_exec('INSERT INTO push_subscriptions(user_id,subscription_json,endpoint,criado_em) VALUES(?,?,?,?)',
+                (uid, sub_json, endpoint, now_str()))
+    return jsonify({'ok': True})
+
+@app.route('/push/unsubscribe', methods=['POST'])
+@login_required
+def push_unsubscribe():
+    from flask import g
+    uid  = g.current_user['id']
+    sub  = request.get_json()
+    endpoint = (sub or {}).get('endpoint', '')
+    if endpoint:
+        if USE_PG:
+            db_exec('DELETE FROM push_subscriptions WHERE user_id=%s AND endpoint=%s', (uid, endpoint))
+        else:
+            db_exec('DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?', (uid, endpoint))
+    return jsonify({'ok': True})
 
 @app.route('/ping')
 def ping():
