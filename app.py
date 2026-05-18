@@ -1108,19 +1108,21 @@ def upload_pdf():
     titulo = request.form.get('titulo', filename)
 
     # Enviar arquivo PDF diretamente via WhatsApp (com rastreador embutido)
-    cfg = get_config()
+    cfg = get_user_config(uid)
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
-        caption = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO SOLICITADO."
+        caption = f"Olá, {cliente_nome}! 👋\n\nSegue o orçamento *{titulo}* conforme solicitado.\n\nQualquer dúvida estou à disposição!"
         fname   = filename or 'orcamento.pdf'
         pdf_snapshot = bytes(dados)
-        def _enviar_cliente(pdf=pdf_snapshot, fn=fname, cap=caption):
+        link_msg = f"🔗 Para visualizar online: {link}"
+        def _enviar_cliente(pdf=pdf_snapshot, fn=fname, cap=caption, lm=link_msg):
             try:
                 notificar_zapi_documento(
                     cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
                     phone, pdf, fn, cap)
+                import time; time.sleep(1)  # pequeno delay para manter ordem
                 notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
-                               phone, link)
+                               phone, lm)
             except Exception:
                 pass
         threading.Thread(target=_enviar_cliente, daemon=True).start()
@@ -1328,20 +1330,22 @@ def renovar_link(id):
     link = f"{get_base_url()}/pdf/{novo_token}"
 
     # Envia arquivo PDF atualizado diretamente via WhatsApp
-    cfg = get_config()
+    cfg = get_user_config(uid)
     cliente_tel  = (p.get('cliente_telefone') or '').strip()
     cliente_nome = p.get('cliente_nome', 'Cliente')
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone   = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
-        caption = f"OLÁ, {cliente_nome.upper()} !\n\nSEGUE O ORÇAMENTO/DOCUMENTO ATUALIZADO."
+        caption = f"Olá, {cliente_nome}! 👋\n\nSegue o orçamento atualizado conforme solicitado.\n\nQualquer dúvida estou à disposição!"
         pdf_snap = bytes(arquivo_novo)
-        def _reenviar(pdf=pdf_snap, fn=fname, cap=caption):
+        link_msg = f"🔗 Para visualizar online: {link}"
+        def _reenviar(pdf=pdf_snap, fn=fname, cap=caption, lm=link_msg):
             try:
                 notificar_zapi_documento(
                     cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
                     phone, pdf, fn, cap)
+                import time; time.sleep(1)
                 notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
-                               phone, link)
+                               phone, lm)
             except Exception:
                 pass
         threading.Thread(target=_reenviar, daemon=True).start()
