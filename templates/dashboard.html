@@ -812,6 +812,60 @@ async function verRastreio(id, nome) {
 
   body.innerHTML = alertHtml + items;
 }
+
+/* ── Pull-to-refresh ─────────────────────────────────────────── */
+(function(){
+  let startY = 0, pulling = false, indicator = null;
+  const THRESHOLD = 80;
+
+  function getIndicator() {
+    if (indicator) return indicator;
+    indicator = document.createElement('div');
+    indicator.style.cssText = [
+      'position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-60px)',
+      'background:#fff;border-radius:50%;width:44px;height:44px',
+      'display:flex;align-items:center;justify-content:center',
+      'box-shadow:0 2px 12px rgba(13,27,42,.18);z-index:9999',
+      'transition:opacity .15s;pointer-events:none;opacity:0'
+    ].join(';');
+    indicator.innerHTML = '<i class="ti ti-refresh" style="font-size:20px;color:#E8441A;transition:transform .1s"></i>';
+    document.body.appendChild(indicator);
+    return indicator;
+  }
+
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    const dist = e.touches[0].clientY - startY;
+    if (dist <= 0) return;
+    const clamped = Math.min(dist * 0.5, 56);
+    const progress = Math.min(dist / THRESHOLD, 1);
+    const el = getIndicator();
+    el.style.transform = `translateX(-50%) translateY(${clamped}px)`;
+    el.style.opacity = progress;
+    el.querySelector('i').style.transform = `rotate(${progress * 360}deg)`;
+  }, {passive: true});
+
+  document.addEventListener('touchend', e => {
+    if (!pulling) return;
+    pulling = false;
+    const dist = e.changedTouches[0].clientY - startY;
+    const el = getIndicator();
+    if (dist >= THRESHOLD) {
+      el.querySelector('i').style.animation = 'spin .5s linear infinite';
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      el.style.transform = 'translateX(-50%) translateY(-60px)';
+      el.style.opacity = '0';
+    }
+  }, {passive: true});
+})();
 </script>
 
 <!-- MODAL RASTREIO -->
