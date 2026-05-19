@@ -233,6 +233,14 @@ def _get_pg_pool():
         _pg_pool = psycopg2.pool.ThreadedConnectionPool(2, 10, url)
     return _pg_pool
 
+def _reset_pg_pool():
+    """Fecha todas as conexões do pool e força recriação na próxima chamada."""
+    global _pg_pool
+    old, _pg_pool = _pg_pool, None
+    if old:
+        try: old.closeall()
+        except Exception: pass
+
 def get_db():
     if USE_PG:
         return _get_pg_pool().getconn()
@@ -245,38 +253,52 @@ def get_db():
         return con
 
 def db_exec(sql, params=(), fetch=None):
-    con = None
-    pool = None
-    ok = False
-    try:
-        if USE_PG:
-            pool = _get_pg_pool()
-            con = pool.getconn()
-            import psycopg2.extras
-            cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            sql_pg = sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
-            cur.execute(sql_pg, params)
-            con.commit()
-            ok = True
-            if fetch == 'all': return [dict(r) for r in cur.fetchall()]
-            if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
-        else:
-            con = get_db()
-            cur = con.execute(sql, params)
-            con.commit()
-            if fetch == 'all': return [dict(r) for r in cur.fetchall()]
-            if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
-    except Exception:
-        if con and USE_PG:
-            try: con.rollback()
-            except Exception: pass
-        raise
-    finally:
-        if con:
-            if USE_PG and pool:
-                pool.putconn(con, close=not ok)
+    for attempt in range(2):
+        con = None
+        pool = None
+        ok = False
+        try:
+            if USE_PG:
+                pool = _get_pg_pool()
+                con = pool.getconn()
+                import psycopg2.extras
+                cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                sql_pg = sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+                cur.execute(sql_pg, params)
+                con.commit()
+                ok = True
+                if fetch == 'all': return [dict(r) for r in cur.fetchall()]
+                if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
+                return None
             else:
-                con.close()
+                con = get_db()
+                cur = con.execute(sql, params)
+                con.commit()
+                if fetch == 'all': return [dict(r) for r in cur.fetchall()]
+                if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
+                return None
+        except Exception as e:
+            if con and USE_PG:
+                try: con.rollback()
+                except Exception: pass
+            # Conexões SSL fechadas pelo servidor são recuperáveis — descarta o pool e tenta uma vez
+            if attempt == 0 and USE_PG:
+                import psycopg2
+                if isinstance(e, psycopg2.OperationalError):
+                    if con and pool:
+                        try: pool.putconn(con, close=True)
+                        except Exception: pass
+                    con = None  # impede o finally de devolver conexão ruim ao pool
+                    _reset_pg_pool()
+                    log.warning('db_exec: conexão SSL morta detectada, reconectando...')
+                    continue
+            raise
+        finally:
+            if con:
+                if USE_PG and pool:
+                    pool.putconn(con, close=not ok)
+                else:
+                    con.close()
 
 def init_db():
     if USE_PG:
