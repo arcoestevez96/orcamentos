@@ -373,7 +373,7 @@ select.action-btn {
                 </select>
               </td>
               <td class="table-actions">
-                <div style="display:flex;align-items:center;gap:6px">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                   <button onclick="copyLink('{{ p.token }}')" class="action-btn action-btn-orange" title="Copiar link">
                     <i class="ti ti-copy" style="font-size:12px"></i>
                     Link
@@ -387,6 +387,13 @@ select.action-btn {
                   <button onclick="verRastreio({{ p.id }}, '{{ p.cliente_nome }}')" class="action-btn" title="Ver quem abriu">
                     <i class="ti ti-map-pin" style="font-size:12px"></i>
                     Rastreio
+                  </button>
+                  <button id="renovar-btn-{{ p.id }}" onclick="renovarLink({{ p.id }}, this)"
+                    class="action-btn" style="display:none;border-color:rgba(99,102,241,.35);color:#6366f1"
+                    title="Link expirado — renovar por mais 48h"
+                    data-criado="{{ p.criado_em }}">
+                    <i class="ti ti-refresh" style="font-size:12px"></i>
+                    Renovar
                   </button>
                 </div>
               </td>
@@ -596,6 +603,48 @@ async function updateStatus(id, status){
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({status})
   });
+}
+
+/* Renovar link expirado */
+(function checkExpirados(){
+  const PRAZO_MS = 48 * 60 * 60 * 1000;
+  document.querySelectorAll('[id^="renovar-btn-"]').forEach(btn => {
+    const criado = btn.dataset.criado;
+    if (!criado) return;
+    const ts = new Date(criado.replace(' ', 'T') + (criado.includes('+') ? '' : '-03:00'));
+    if (Date.now() - ts.getTime() >= PRAZO_MS) {
+      btn.style.display = '';
+    }
+  });
+})();
+
+async function renovarLink(id, btn){
+  if (!confirm('Renovar o link por mais 48h? O link anterior deixará de funcionar.')) return;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="font-size:12px;animation:spin .7s linear infinite"></i> Aguarde…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/renovar_link/' + id, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      btn.style.display = 'none';
+      const row = document.getElementById('row-' + id);
+      if (row) {
+        const copyBtn = row.querySelector('[onclick^="copyLink"]');
+        if (copyBtn && d.token) copyBtn.setAttribute('onclick', `copyLink('${d.token}')`);
+      }
+      alert('Link renovado! Novo link copiado.');
+      if (d.token) navigator.clipboard.writeText(window.location.origin + '/pdf/' + d.token).catch(()=>{});
+    } else {
+      alert('Erro: ' + (d.erro || 'Tente novamente.'));
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  } catch {
+    alert('Erro de conexão.');
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
 }
 
 /* SSE — live notifications */
