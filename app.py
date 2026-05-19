@@ -340,6 +340,10 @@ def init_db():
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS arquivo_key TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS cliente_email TEXT')
+        cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS fonte TEXT')
+        cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS operadora TEXT')
+        cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS sistema TEXT')
+        cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS dispositivo TEXT')
         for idx_sql in [
             'CREATE INDEX IF NOT EXISTS idx_pdfs_user_id ON pdfs(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_pdfs_token ON pdfs(token)',
