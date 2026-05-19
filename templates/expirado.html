@@ -3,57 +3,74 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Link Expirado</title>
+<title>Link expirado — ABRIU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
-    min-height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
-  }
-  .card {
-    background: #1a1d27;
-    border: 1px solid #2e3250;
-    border-radius: 18px;
-    padding: 2.5rem 2rem;
-    width: 100%;
-    max-width: 380px;
+  body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .exp-card {
+    width: 100%; max-width: 440px;
+    background: var(--ink-1);
+    border: 1px solid var(--line-strong);
+    border-radius: 22px;
+    padding: 44px 36px;
     text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
   }
-  .icon { font-size: 3.5rem; margin-bottom: 1rem; }
-  h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: .5rem; color: #f87171; }
-  p  { color: #94a3b8; font-size: .92rem; line-height: 1.6; }
-  .nome { color: #e2e8f0; font-weight: 600; }
-  .aviso {
-    margin-top: 1.5rem;
-    background: rgba(239,68,68,.08);
-    border: 1px solid rgba(239,68,68,.2);
-    border-radius: 10px;
-    padding: 1rem;
-    font-size: .85rem;
-    color: #fca5a5;
-    line-height: 1.5;
+  .exp-icon {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: oklch(0.82 0.16 85 / 0.12);
+    border: 1px solid oklch(0.82 0.16 85 / 0.3);
+    color: var(--warn);
+    display: grid; place-items: center;
+    margin: 0 auto 22px;
   }
-  .empresa { margin-top: 2rem; font-size: .78rem; color: #475569; }
+  .exp-eyebrow { font-family: var(--ff-mono); font-size: 11px; color: var(--warn); letter-spacing: 0.1em; text-transform: uppercase; }
+  .exp-h1 {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15;
+    margin: 12px 0 14px;
+  }
+  .exp-p { font-size: 14.5px; color: var(--fg-dim); line-height: 1.55; margin: 0 0 24px; }
+  .exp-p strong { color: var(--fg); font-weight: 600; }
+  .exp-info {
+    margin-top: 24px;
+    padding: 16px 18px;
+    background: var(--ink-2); border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    font-size: 13px; color: var(--fg-dim); line-height: 1.55;
+    text-align: left;
+  }
+  .exp-info strong { color: var(--fg); }
+  .exp-empresa {
+    margin-top: 22px;
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--fg-mute); letter-spacing: 0.04em;
+  }
 </style>
 </head>
-<body>
-<div class="card">
-  <div class="icon">⏰</div>
-  <h1>Link Expirado</h1>
-  <p>Olá, <span class="nome">{{ cliente }}</span>!<br><br>
-  O link do orçamento <strong>{{ titulo }}</strong> expirou após 48 horas.</p>
-  <div class="aviso">
-    Entre em contato com <strong>{{ empresa }}</strong> para receber um novo link atualizado.
+<body class="dark">
+
+<div class="exp-card">
+  <div class="exp-icon">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  </div>
+  <div class="exp-eyebrow">↳ Link expirado</div>
+  <h1 class="exp-h1">Este orçamento<br>não está mais disponível</h1>
+  <p class="exp-p">
+    Olá, <strong>{{ cliente }}</strong>. O link do orçamento <strong>{{ titulo }}</strong> expirou após 48 horas por questão de segurança.
+  </p>
+  <div class="exp-info">
+    Entre em contato com <strong>{{ empresa }}</strong> para receber um link atualizado.
   </div>
   {% if empresa %}
-  <div class="empresa">{{ empresa }}</div>
+  <div class="exp-empresa">via abriu.app.br</div>
   {% endif %}
 </div>
+
 </body>
 </html>

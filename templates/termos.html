@@ -4,233 +4,162 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Termos de Uso e Política de Privacidade · ABRIU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <link rel="manifest" href="/static/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="ABRIU">
-<meta name="theme-color" content="#7c3aed">
+<meta name="theme-color" content="#06121d">
 <meta name="description" content="Termos de Uso e Política de Privacidade da plataforma ABRIU — rastreamento de abertura de orçamentos em PDF.">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ink-0); }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #0f1117;
-  color: #e2e8f0;
-  line-height: 1.7;
-  font-size: 1rem;
-}
+  .top-bar {
+    background: var(--ink-1); border-bottom: 1px solid var(--line);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .top-bar .brand {
+    font-size: 17px; font-weight: 700; color: var(--fg);
+    text-decoration: none; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .top-bar .brand-mark {
+    width: 30px; height: 30px; background: var(--accent); border-radius: 8px;
+    display: grid; place-items: center; color: var(--ink-0);
+  }
+  .top-bar .brand span { color: var(--accent-2); }
 
-a { color: #818cf8; text-decoration: none; }
-a:hover { text-decoration: underline; }
+  .doc-wrap {
+    max-width: 860px; margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
 
-/* ── Header ── */
-.top-bar {
-  background: #1a1d27;
-  border-bottom: 1px solid #2e3250;
-  padding: 1rem 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.top-bar .brand { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; text-decoration: none; }
-.top-bar .brand span { color: #818cf8; }
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  font-size: .85rem;
-  color: #94a3b8;
-  text-decoration: none;
-  padding: .4rem .75rem;
-  border-radius: 8px;
-  border: 1px solid #2e3250;
-  background: transparent;
-  transition: border-color .15s, color .15s;
-}
-.btn-back:hover { border-color: #4f6ef7; color: #e2e8f0; text-decoration: none; }
+  .doc-hero {
+    text-align: center; margin-bottom: 48px;
+    padding-bottom: 40px; border-bottom: 1px solid var(--line);
+  }
+  .doc-hero h1 {
+    font-size: 30px; font-weight: 700; letter-spacing: -0.03em;
+    color: var(--fg); margin-bottom: 8px;
+  }
+  .doc-hero p { color: var(--fg-mute); font-size: 14px; }
+  .badge-lgpd {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: oklch(0.72 0.14 240 / 0.12);
+    border: 1px solid oklch(0.72 0.14 240 / 0.25);
+    color: var(--info); border-radius: 99px;
+    padding: 4px 14px; font-size: 12px; font-weight: 600;
+    margin-top: 14px; font-family: var(--ff-mono); letter-spacing: 0.04em;
+  }
 
-/* ── Layout ── */
-.container {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem 5rem;
-}
+  .toc {
+    background: var(--ink-1); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: 24px 28px;
+    margin-bottom: 48px;
+  }
+  .toc h3 { font-family: var(--ff-mono); font-size: 10px; font-weight: 700; color: var(--fg-mute); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 6px; font-size: 14px; }
+  .toc a { color: var(--fg-dim); text-decoration: none; }
+  .toc a:hover { color: var(--accent-2); }
 
-/* ── Hero ── */
-.hero {
-  text-align: center;
-  margin-bottom: 3rem;
-  padding-bottom: 2.5rem;
-  border-bottom: 1px solid #2e3250;
-}
-.hero h1 {
-  font-size: 1.9rem;
-  font-weight: 800;
-  color: #f1f5f9;
-  margin-bottom: .5rem;
-}
-.hero p { color: #64748b; font-size: .95rem; }
-.badge-lgpd {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  background: rgba(129,140,248,.1);
-  border: 1px solid rgba(129,140,248,.25);
-  color: #a5b4fc;
-  border-radius: 99px;
-  padding: .3rem .9rem;
-  font-size: .8rem;
-  font-weight: 600;
-  margin-top: 1rem;
-}
+  .section { margin-bottom: 48px; }
+  .section h2 {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--fg); margin-bottom: 20px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px;
+    background: oklch(0.72 0.14 240 / 0.12);
+    border: 1px solid oklch(0.72 0.14 240 / 0.3);
+    border-radius: 6px; font-size: 12px; font-weight: 700;
+    color: var(--info); flex-shrink: 0; font-family: var(--ff-mono);
+  }
+  .section h3 { font-size: 15px; font-weight: 600; color: var(--fg-dim); margin: 24px 0 10px; }
+  .section p { color: var(--fg-dim); margin-bottom: 14px; font-size: 14.5px; line-height: 1.7; }
+  .section ul, .section ol { color: var(--fg-dim); padding-left: 24px; margin-bottom: 16px; }
+  .section li { margin-bottom: 6px; font-size: 14.5px; line-height: 1.6; }
+  .section strong { color: var(--fg); }
+  .section a { color: var(--accent-2); text-decoration: none; }
+  .section a:hover { text-decoration: underline; }
 
-/* ── Índice ── */
-.toc {
-  background: #1a1d27;
-  border: 1px solid #2e3250;
-  border-radius: 14px;
-  padding: 1.5rem 1.75rem;
-  margin-bottom: 3rem;
-}
-.toc h3 { font-size: .85rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
-.toc ol { padding-left: 1.25rem; }
-.toc li { margin-bottom: .35rem; font-size: .9rem; }
-.toc a { color: #94a3b8; }
-.toc a:hover { color: #818cf8; }
+  .highlight-box {
+    background: oklch(0.72 0.14 240 / 0.07);
+    border: 1px solid oklch(0.72 0.14 240 / 0.2);
+    border-radius: var(--r-sm); padding: 16px 20px; margin: 16px 0;
+  }
+  .highlight-box p { margin: 0; color: var(--info); font-size: 13.5px; }
 
-/* ── Seções ── */
-.section { margin-bottom: 3rem; }
-.section h2 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  margin-bottom: 1.25rem;
-  padding-bottom: .6rem;
-  border-bottom: 1px solid #2e3250;
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-}
-.section h2 .num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.7rem;
-  height: 1.7rem;
-  background: rgba(79,110,247,.15);
-  border: 1px solid rgba(79,110,247,.3);
-  border-radius: 6px;
-  font-size: .75rem;
-  font-weight: 700;
-  color: #818cf8;
-  flex-shrink: 0;
-}
-.section h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #cbd5e1;
-  margin: 1.5rem 0 .6rem;
-}
-.section p { color: #94a3b8; margin-bottom: .85rem; font-size: .95rem; }
-.section ul, .section ol { color: #94a3b8; padding-left: 1.5rem; margin-bottom: 1rem; }
-.section li { margin-bottom: .4rem; font-size: .95rem; }
-.section strong { color: #cbd5e1; }
+  .warn-box {
+    background: oklch(0.82 0.16 85 / 0.07);
+    border: 1px solid oklch(0.82 0.16 85 / 0.22);
+    border-radius: var(--r-sm); padding: 16px 20px; margin: 16px 0;
+  }
+  .warn-box p { margin: 0; color: var(--warn); font-size: 13.5px; }
 
-/* ── Destaque LGPD ── */
-.highlight-box {
-  background: rgba(129,140,248,.07);
-  border: 1px solid rgba(129,140,248,.2);
-  border-radius: 10px;
-  padding: 1.1rem 1.4rem;
-  margin: 1rem 0;
-}
-.highlight-box p { margin: 0; color: #a5b4fc; font-size: .9rem; }
+  .data-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  .data-table th {
+    background: var(--ink-2); color: var(--fg-mute);
+    font-weight: 600; text-align: left;
+    padding: 10px 14px; border: 1px solid var(--line);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    font-family: var(--ff-mono);
+  }
+  .data-table td {
+    padding: 10px 14px; border: 1px solid var(--line);
+    color: var(--fg-dim); vertical-align: top; line-height: 1.55;
+  }
+  .data-table tr:nth-child(even) td { background: rgba(255,255,255,.015); }
 
-.warn-box {
-  background: rgba(251,191,36,.06);
-  border: 1px solid rgba(251,191,36,.2);
-  border-radius: 10px;
-  padding: 1.1rem 1.4rem;
-  margin: 1rem 0;
-}
-.warn-box p { margin: 0; color: #fbbf24; font-size: .9rem; }
+  .rights-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px; margin: 16px 0;
+  }
+  .right-card {
+    background: var(--ink-1); border: 1px solid var(--line);
+    border-radius: var(--r-sm); padding: 16px;
+  }
+  .right-card .r-icon { font-size: 20px; margin-bottom: 6px; }
+  .right-card .r-title { font-size: 13px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
+  .right-card .r-desc { font-size: 12px; color: var(--fg-mute); line-height: 1.5; }
 
-/* ── Tabela de dados ── */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-  font-size: .88rem;
-}
-.data-table th {
-  background: #22263a;
-  color: #94a3b8;
-  font-weight: 600;
-  text-align: left;
-  padding: .6rem 1rem;
-  border: 1px solid #2e3250;
-  font-size: .8rem;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-.data-table td {
-  padding: .65rem 1rem;
-  border: 1px solid #2e3250;
-  color: #94a3b8;
-  vertical-align: top;
-}
-.data-table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  .doc-footer {
+    text-align: center; color: var(--fg-mute); font-size: 13px;
+    margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--line);
+  }
+  .doc-footer a { color: var(--fg-mute); }
 
-/* ── Direitos ── */
-.rights-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: .75rem;
-  margin: 1rem 0;
-}
-.right-card {
-  background: #1a1d27;
-  border: 1px solid #2e3250;
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-}
-.right-card .r-icon { font-size: 1.3rem; margin-bottom: .4rem; }
-.right-card .r-title { font-size: .85rem; font-weight: 600; color: #cbd5e1; margin-bottom: .3rem; }
-.right-card .r-desc { font-size: .8rem; color: #64748b; }
-
-/* ── Footer ── */
-.doc-footer {
-  text-align: center;
-  color: #475569;
-  font-size: .85rem;
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid #2e3250;
-}
-.doc-footer a { color: #64748b; }
-
-@media (max-width: 600px) {
-  .hero h1 { font-size: 1.5rem; }
-  .data-table { display: block; overflow-x: auto; }
-  .rights-grid { grid-template-columns: 1fr 1fr; }
-}
+  @media (max-width: 600px) {
+    .doc-hero h1 { font-size: 24px; }
+    .data-table { display: block; overflow-x: auto; }
+    .rights-grid { grid-template-columns: 1fr 1fr; }
+    .doc-wrap { padding: 28px 16px 60px; }
+  }
 </style>
 </head>
-<body>
+<body class="dark">
 
 <div class="top-bar">
-  <a href="/" class="brand">ABRIU<span>.</span></a>
-  <a href="/" class="btn-back">← Voltar ao início</a>
+  <a href="/" class="brand">
+    <span class="brand-mark">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+        <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+      </svg>
+    </span>
+    ABRIU<span>.</span>
+  </a>
+  <a href="/" class="btn btn-ghost btn-sm">← Voltar ao início</a>
 </div>
 
-<div class="container">
+<div class="doc-wrap">
 
-  <div class="hero">
+  <div class="doc-hero">
     <h1>Termos de Uso & Política de Privacidade</h1>
     <p>Última atualização: 18 de maio de 2025 &nbsp;·&nbsp; Versão 1.0</p>
     <div class="badge-lgpd">Conformidade LGPD · GDPR · CCPA</div>
@@ -311,86 +240,30 @@ a:hover { text-decoration: underline; }
     <h3>3.1 Dados dos Usuários (quem cria conta)</h3>
     <table class="data-table">
       <thead>
-        <tr>
-          <th>Dado</th>
-          <th>Fonte</th>
-          <th>Finalidade</th>
-        </tr>
+        <tr><th>Dado</th><th>Fonte</th><th>Finalidade</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Nome completo</td>
-          <td>Cadastro / Google / Facebook / Apple</td>
-          <td>Identificação na plataforma</td>
-        </tr>
-        <tr>
-          <td>Endereço de e-mail</td>
-          <td>Cadastro / Login social</td>
-          <td>Autenticação, notificações, suporte</td>
-        </tr>
-        <tr>
-          <td>Foto de perfil</td>
-          <td>Google / Facebook (opcional)</td>
-          <td>Exibição na interface</td>
-        </tr>
-        <tr>
-          <td>Senha (hash bcrypt)</td>
-          <td>Cadastro por e-mail</td>
-          <td>Autenticação segura</td>
-        </tr>
-        <tr>
-          <td>Token de acesso OAuth</td>
-          <td>Google / Facebook / Apple</td>
-          <td>Login federado e envio de e-mail via Gmail</td>
-        </tr>
-        <tr>
-          <td>Dados de pagamento (token)</td>
-          <td>Stripe</td>
-          <td>Processamento de assinatura</td>
-        </tr>
-        <tr>
-          <td>Configurações de notificação</td>
-          <td>Inserção pelo Usuário</td>
-          <td>Envio de alertas por WhatsApp / Telegram / e-mail</td>
-        </tr>
-        <tr>
-          <td>PDFs enviados</td>
-          <td>Upload pelo Usuário</td>
-          <td>Armazenamento e compartilhamento com Destinatários</td>
-        </tr>
+        <tr><td>Nome completo</td><td>Cadastro / Google / Facebook / Apple</td><td>Identificação na plataforma</td></tr>
+        <tr><td>Endereço de e-mail</td><td>Cadastro / Login social</td><td>Autenticação, notificações, suporte</td></tr>
+        <tr><td>Foto de perfil</td><td>Google / Facebook (opcional)</td><td>Exibição na interface</td></tr>
+        <tr><td>Senha (hash bcrypt)</td><td>Cadastro por e-mail</td><td>Autenticação segura</td></tr>
+        <tr><td>Token de acesso OAuth</td><td>Google / Facebook / Apple</td><td>Login federado e envio de e-mail via Gmail</td></tr>
+        <tr><td>Dados de pagamento (token)</td><td>Stripe</td><td>Processamento de assinatura</td></tr>
+        <tr><td>Configurações de notificação</td><td>Inserção pelo Usuário</td><td>Envio de alertas por WhatsApp / Telegram / e-mail</td></tr>
+        <tr><td>PDFs enviados</td><td>Upload pelo Usuário</td><td>Armazenamento e compartilhamento com Destinatários</td></tr>
       </tbody>
     </table>
 
     <h3>3.2 Dados dos Destinatários (quem abre o link)</h3>
     <table class="data-table">
       <thead>
-        <tr>
-          <th>Dado</th>
-          <th>Como é coletado</th>
-          <th>Finalidade</th>
-        </tr>
+        <tr><th>Dado</th><th>Como é coletado</th><th>Finalidade</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Endereço IP</td>
-          <td>Requisição HTTP ao abrir o link</td>
-          <td>Localização aproximada e detecção de abertura</td>
-        </tr>
-        <tr>
-          <td>User-Agent (navegador/SO)</td>
-          <td>Cabeçalho HTTP</td>
-          <td>Identificação do dispositivo utilizado</td>
-        </tr>
-        <tr>
-          <td>Data e hora de acesso</td>
-          <td>Servidor</td>
-          <td>Registro de quando o documento foi aberto</td>
-        </tr>
-        <tr>
-          <td>Localização geográfica aproximada</td>
-          <td>Inferida pelo IP (cidade/país)</td>
-          <td>Relatório de abertura para o Usuário</td>
-        </tr>
+        <tr><td>Endereço IP</td><td>Requisição HTTP ao abrir o link</td><td>Localização aproximada e detecção de abertura</td></tr>
+        <tr><td>User-Agent (navegador/SO)</td><td>Cabeçalho HTTP</td><td>Identificação do dispositivo utilizado</td></tr>
+        <tr><td>Data e hora de acesso</td><td>Servidor</td><td>Registro de quando o documento foi aberto</td></tr>
+        <tr><td>Localização geográfica aproximada</td><td>Inferida pelo IP (cidade/país)</td><td>Relatório de abertura para o Usuário</td></tr>
       </tbody>
     </table>
     <div class="warn-box">
@@ -404,43 +277,15 @@ a:hover { text-decoration: underline; }
     <p>Nos termos do art. 7.º e 11 da LGPD, tratamos dados pessoais com as seguintes bases legais:</p>
     <table class="data-table">
       <thead>
-        <tr>
-          <th>Tratamento</th>
-          <th>Base Legal (LGPD)</th>
-          <th>Equivalente GDPR</th>
-        </tr>
+        <tr><th>Tratamento</th><th>Base Legal (LGPD)</th><th>Equivalente GDPR</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Criação e manutenção de conta</td>
-          <td>Art. 7.º, V — execução de contrato</td>
-          <td>Art. 6(1)(b) GDPR</td>
-        </tr>
-        <tr>
-          <td>Envio de notificações de abertura</td>
-          <td>Art. 7.º, V — execução de contrato</td>
-          <td>Art. 6(1)(b) GDPR</td>
-        </tr>
-        <tr>
-          <td>Rastreamento de acesso ao PDF</td>
-          <td>Art. 7.º, I — consentimento; ou Art. 7.º, V — contrato</td>
-          <td>Art. 6(1)(a)/(b) GDPR</td>
-        </tr>
-        <tr>
-          <td>Processamento de pagamento</td>
-          <td>Art. 7.º, V — execução de contrato</td>
-          <td>Art. 6(1)(b) GDPR</td>
-        </tr>
-        <tr>
-          <td>Melhorias da plataforma e analytics</td>
-          <td>Art. 7.º, IX — legítimo interesse</td>
-          <td>Art. 6(1)(f) GDPR</td>
-        </tr>
-        <tr>
-          <td>Cumprimento de obrigação legal</td>
-          <td>Art. 7.º, II — obrigação legal</td>
-          <td>Art. 6(1)(c) GDPR</td>
-        </tr>
+        <tr><td>Criação e manutenção de conta</td><td>Art. 7.º, V — execução de contrato</td><td>Art. 6(1)(b) GDPR</td></tr>
+        <tr><td>Envio de notificações de abertura</td><td>Art. 7.º, V — execução de contrato</td><td>Art. 6(1)(b) GDPR</td></tr>
+        <tr><td>Rastreamento de acesso ao PDF</td><td>Art. 7.º, I — consentimento; ou Art. 7.º, V — contrato</td><td>Art. 6(1)(a)/(b) GDPR</td></tr>
+        <tr><td>Processamento de pagamento</td><td>Art. 7.º, V — execução de contrato</td><td>Art. 6(1)(b) GDPR</td></tr>
+        <tr><td>Melhorias da plataforma e analytics</td><td>Art. 7.º, IX — legítimo interesse</td><td>Art. 6(1)(f) GDPR</td></tr>
+        <tr><td>Cumprimento de obrigação legal</td><td>Art. 7.º, II — obrigação legal</td><td>Art. 6(1)(c) GDPR</td></tr>
       </tbody>
     </table>
   </div>
@@ -465,56 +310,16 @@ a:hover { text-decoration: underline; }
     <p>Não vendemos seus dados pessoais. Compartilhamos apenas com os seguintes parceiros, na qualidade de Operadores:</p>
     <table class="data-table">
       <thead>
-        <tr>
-          <th>Parceiro</th>
-          <th>País</th>
-          <th>Finalidade</th>
-          <th>Salvaguarda</th>
-        </tr>
+        <tr><th>Parceiro</th><th>País</th><th>Finalidade</th><th>Salvaguarda</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Render Services, Inc.</td>
-          <td>EUA</td>
-          <td>Hospedagem da aplicação e banco de dados</td>
-          <td>SCCs / DPA</td>
-        </tr>
-        <tr>
-          <td>Stripe, Inc.</td>
-          <td>EUA</td>
-          <td>Processamento de pagamentos</td>
-          <td>SCCs / PCI-DSS</td>
-        </tr>
-        <tr>
-          <td>Google LLC</td>
-          <td>EUA</td>
-          <td>Login social (OAuth) e envio de e-mail (Gmail API)</td>
-          <td>SCCs / Google DPA</td>
-        </tr>
-        <tr>
-          <td>Meta Platforms, Inc.</td>
-          <td>EUA</td>
-          <td>Login social (Facebook OAuth)</td>
-          <td>SCCs / Meta DPA</td>
-        </tr>
-        <tr>
-          <td>Apple Inc.</td>
-          <td>EUA</td>
-          <td>Login social (Sign in with Apple)</td>
-          <td>SCCs / Apple DPA</td>
-        </tr>
-        <tr>
-          <td>Z-API / Telegram</td>
-          <td>Brasil / Global</td>
-          <td>Envio de notificações (configurado pelo Usuário)</td>
-          <td>Dados mínimos — apenas número/chat ID</td>
-        </tr>
-        <tr>
-          <td>Anthropic, PBC</td>
-          <td>EUA</td>
-          <td>Extração de valor total de PDF via IA (quando ANTHROPIC_API_KEY configurada)</td>
-          <td>SCCs / Anthropic DPA</td>
-        </tr>
+        <tr><td>Render Services, Inc.</td><td>EUA</td><td>Hospedagem da aplicação e banco de dados</td><td>SCCs / DPA</td></tr>
+        <tr><td>Stripe, Inc.</td><td>EUA</td><td>Processamento de pagamentos</td><td>SCCs / PCI-DSS</td></tr>
+        <tr><td>Google LLC</td><td>EUA</td><td>Login social (OAuth) e envio de e-mail (Gmail API)</td><td>SCCs / Google DPA</td></tr>
+        <tr><td>Meta Platforms, Inc.</td><td>EUA</td><td>Login social (Facebook OAuth)</td><td>SCCs / Meta DPA</td></tr>
+        <tr><td>Apple Inc.</td><td>EUA</td><td>Login social (Sign in with Apple)</td><td>SCCs / Apple DPA</td></tr>
+        <tr><td>Z-API / Telegram</td><td>Brasil / Global</td><td>Envio de notificações (configurado pelo Usuário)</td><td>Dados mínimos — apenas número/chat ID</td></tr>
+        <tr><td>Anthropic, PBC</td><td>EUA</td><td>Extração de valor total de PDF via IA (quando ANTHROPIC_API_KEY configurada)</td><td>SCCs / Anthropic DPA</td></tr>
       </tbody>
     </table>
     <p>Podemos divulgar dados pessoais a autoridades competentes quando exigido por lei, decisão judicial ou pela Autoridade Nacional de Proteção de Dados (ANPD).</p>
@@ -525,32 +330,14 @@ a:hover { text-decoration: underline; }
     <h2><span class="num">7</span> Retenção e Exclusão de Dados</h2>
     <table class="data-table">
       <thead>
-        <tr>
-          <th>Dado</th>
-          <th>Prazo de Retenção</th>
-        </tr>
+        <tr><th>Dado</th><th>Prazo de Retenção</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Dados de conta (nome, e-mail)</td>
-          <td>Até exclusão da conta + 5 anos (obrigação fiscal)</td>
-        </tr>
-        <tr>
-          <td>PDFs enviados</td>
-          <td>Até exclusão pelo Usuário ou encerramento da conta</td>
-        </tr>
-        <tr>
-          <td>Logs de acesso de Destinatários</td>
-          <td>2 anos a partir do acesso</td>
-        </tr>
-        <tr>
-          <td>Registros de pagamento</td>
-          <td>10 anos (Código Tributário Nacional, art. 195)</td>
-        </tr>
-        <tr>
-          <td>Logs de sistema (segurança)</td>
-          <td>6 meses (Marco Civil da Internet, art. 15)</td>
-        </tr>
+        <tr><td>Dados de conta (nome, e-mail)</td><td>Até exclusão da conta + 5 anos (obrigação fiscal)</td></tr>
+        <tr><td>PDFs enviados</td><td>Até exclusão pelo Usuário ou encerramento da conta</td></tr>
+        <tr><td>Logs de acesso de Destinatários</td><td>2 anos a partir do acesso</td></tr>
+        <tr><td>Registros de pagamento</td><td>10 anos (Código Tributário Nacional, art. 195)</td></tr>
+        <tr><td>Logs de sistema (segurança)</td><td>6 meses (Marco Civil da Internet, art. 15)</td></tr>
       </tbody>
     </table>
     <p>Após o encerramento da conta, os dados são anonimizados ou excluídos no prazo de 30 dias, salvo quando a retenção for exigida por lei.</p>
@@ -661,8 +448,8 @@ a:hover { text-decoration: underline; }
   </div>
 
   <div class="doc-footer">
-    <p>© 2025 ABRIU · <a href="/">abriu.app.br</a> · Todos os direitos reservados</p>
-    <p style="margin-top:.4rem;">Dúvidas? Fale conosco: <a href="mailto:privacidade@abriu.app.br">privacidade@abriu.app.br</a></p>
+    <p>© 2026 ABRIU · <a href="/">abriu.app.br</a> · Todos os direitos reservados</p>
+    <p style="margin-top:6px">Dúvidas? Fale conosco: <a href="mailto:privacidade@abriu.app.br">privacidade@abriu.app.br</a></p>
   </div>
 
 </div>

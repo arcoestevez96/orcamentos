@@ -4,127 +4,236 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orçamento — {{ o.titulo }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1e293b; }
+  body { background: #ece6da; color: var(--ink); padding: 32px 16px; min-height: 100vh; }
 
-.page { max-width: 780px; margin: 2rem auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 40px rgba(0,0,0,.1); overflow: hidden; }
+  .doc {
+    max-width: 820px; margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(13,27,42,0.10), 0 6px 14px rgba(13,27,42,0.06);
+  }
 
-/* HEADER */
-.header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff; padding: 2.5rem 2.5rem 2rem; }
-.header-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
-.empresa { font-size: 1.3rem; font-weight: 700; }
-.orcamento-label { font-size: .8rem; opacity: .6; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .2rem; }
-.orcamento-num { font-size: 1rem; font-weight: 600; opacity: .9; }
-.header-info { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.15); }
-.info-block label { font-size: .75rem; opacity: .6; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .2rem; }
-.info-block span { font-size: .95rem; font-weight: 500; }
+  /* Header — dark band */
+  .doc-head {
+    background: var(--ink-1);
+    color: var(--fg);
+    padding: 36px 40px 32px;
+    position: relative;
+  }
+  .doc-head-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
+    margin-bottom: 28px;
+  }
+  .doc-empresa {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.015em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .doc-empresa-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent); color: var(--ink-0);
+    display: grid; place-items: center;
+  }
+  .doc-num-eyebrow { font-family: var(--ff-mono); font-size: 10.5px; letter-spacing: 0.1em; color: var(--fg-mute); text-transform: uppercase; text-align: right; }
+  .doc-num { font-family: var(--ff-mono); font-size: 14px; color: var(--fg-dim); margin-top: 3px; text-align: right; }
 
-/* BODY */
-.body { padding: 2rem 2.5rem; }
+  .doc-head-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+  }
+  .info-label { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--fg-mute); text-transform: uppercase; margin-bottom: 5px; }
+  .info-val { font-size: 14px; font-weight: 600; color: var(--fg); }
 
-.titulo-orcamento { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #e2e8f0; }
+  /* Body */
+  .doc-body { padding: 36px 40px; }
+  .doc-title {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.025em;
+    color: var(--ink);
+    margin: 0 0 28px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e8e4da;
+  }
 
-/* ETAPA */
-.etapa { margin-bottom: 1.5rem; }
-.etapa-titulo { background: #f8fafc; border-left: 4px solid #4f6ef7; padding: .6rem 1rem; font-weight: 600; font-size: .95rem; color: #334155; border-radius: 0 6px 6px 0; margin-bottom: .5rem; }
+  /* Etapas */
+  .etapa { margin-bottom: 26px; }
+  .etapa-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: #f5f1e9;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 8px;
+  }
+  .etapa-num {
+    font-family: var(--ff-mono); font-size: 11px; font-weight: 600;
+    color: var(--accent);
+    padding: 2px 7px; background: white; border-radius: 4px;
+    border: 1px solid rgba(13,27,42,0.08);
+  }
+  .etapa-name { font-size: 14.5px; font-weight: 600; color: var(--ink); }
 
-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-thead tr { background: #f1f5f9; }
-th { padding: .6rem .8rem; text-align: left; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; font-weight: 600; }
-td { padding: .65rem .8rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
-tr:last-child td { border-bottom: none; }
-.td-right { text-align: right; }
-.subtotal-row td { background: #f8fafc; font-weight: 600; font-size: .85rem; color: #475569; }
+  table.itens { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.itens th {
+    text-align: left; padding: 10px 12px;
+    font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #888; font-weight: 500;
+    background: #fafaf6;
+  }
+  table.itens th.tr { text-align: right; }
+  table.itens td { padding: 11px 12px; border-bottom: 1px solid #f0eee5; color: #555; }
+  table.itens td.tr { text-align: right; }
+  table.itens td.mono { font-family: var(--ff-mono); }
+  table.itens tr.subtotal td {
+    background: #fafaf6; font-weight: 600; color: var(--ink); font-size: 13px;
+    border-bottom: none;
+  }
 
-/* TOTAL */
-.total-section { margin-top: 1.5rem; display: flex; justify-content: flex-end; }
-.total-box { background: linear-gradient(135deg, #4f6ef7, #6c8aff); color: #fff; border-radius: 12px; padding: 1.2rem 2rem; text-align: right; min-width: 260px; }
-.total-box .total-label { font-size: .85rem; opacity: .85; margin-bottom: .3rem; }
-.total-box .total-valor { font-size: 2rem; font-weight: 700; }
+  /* Total */
+  .total-row {
+    margin-top: 30px;
+    display: flex; justify-content: flex-end;
+  }
+  .total-box {
+    background: var(--ink-1); color: var(--fg);
+    border-radius: var(--r-md);
+    padding: 22px 32px;
+    min-width: 320px;
+    text-align: right;
+  }
+  .total-label { font-family: var(--ff-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--fg-mute); text-transform: uppercase; margin-bottom: 6px; }
+  .total-val { font-size: 36px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+  .total-val .cur { font-size: 16px; font-weight: 500; color: var(--fg-dim); margin-right: 4px; }
 
-/* CONDIÇÕES */
-.condicoes { margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-.condicao { background: #f8fafc; border-radius: 10px; padding: 1rem 1.2rem; }
-.condicao label { font-size: .75rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .3rem; }
-.condicao span { font-size: .9rem; font-weight: 500; color: #334155; }
+  /* Condições */
+  .cond-grid {
+    margin-top: 32px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .cond {
+    background: #fafaf6; border: 1px solid #f0eee5;
+    border-radius: var(--r-sm); padding: 14px 16px;
+  }
+  .cond-label { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.08em; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+  .cond-val { font-size: 14px; font-weight: 500; color: var(--ink); }
 
-/* OBS */
-.obs { margin-top: 1.5rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 1rem 1.2rem; }
-.obs label { font-size: .75rem; color: #92400e; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .4rem; font-weight: 600; }
-.obs p { font-size: .9rem; color: #78350f; line-height: 1.6; }
+  .obs {
+    margin-top: 22px;
+    background: #fff8e8; border: 1px solid #f4e7be;
+    border-radius: var(--r-sm); padding: 16px 18px;
+  }
+  .obs-label { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.08em; color: oklch(0.45 0.1 80); text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
+  .obs p { font-size: 13.5px; color: oklch(0.32 0.06 70); line-height: 1.6; margin: 0; }
 
-/* FOOTER */
-.footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.5rem 2.5rem; display: flex; align-items: center; justify-content: space-between; }
-.footer small { color: #94a3b8; font-size: .8rem; }
-.badge-status { display: inline-flex; align-items: center; gap: .4rem; background: #dcfce7; color: #16a34a; padding: .3rem .8rem; border-radius: 99px; font-size: .8rem; font-weight: 600; }
+  /* Footer */
+  .doc-foot {
+    background: #fafaf6;
+    border-top: 1px solid #f0eee5;
+    padding: 20px 40px;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+    font-size: 12px; color: #888;
+  }
+  .doc-foot-brand { font-family: var(--ff-mono); display: flex; align-items: center; gap: 6px; }
+  .doc-foot-brand span { color: var(--accent); }
 
-/* PRINT BTN */
-.print-btn { position: fixed; bottom: 2rem; right: 2rem; background: #4f6ef7; color: #fff; border: none; border-radius: 50px; padding: .8rem 1.5rem; font-size: .9rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 20px rgba(79,110,247,.4); display: flex; align-items: center; gap: .5rem; }
-.print-btn:hover { background: #6c8aff; }
+  /* Print button */
+  .print-btn {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 14px 22px; border-radius: 999px;
+    background: var(--ink-1); color: var(--fg);
+    font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 10px;
+    box-shadow: 0 12px 30px rgba(13,27,42,0.25);
+    border: 1px solid var(--line-strong);
+    transition: transform .15s;
+    cursor: pointer;
+  }
+  .print-btn:hover { transform: translateY(-2px); }
 
-@media print {
-  body { background: #fff; }
-  .page { box-shadow: none; margin: 0; border-radius: 0; }
-  .print-btn { display: none; }
-}
-@media (max-width: 600px) {
-  .page { margin: 0; border-radius: 0; }
-  .header, .body, .footer { padding-left: 1.2rem; padding-right: 1.2rem; }
-  .header-info { grid-template-columns: 1fr; }
-  .print-btn { bottom: 1rem; right: 1rem; }
-}
+  @media print {
+    body { background: white; padding: 0; }
+    .doc { box-shadow: none; border-radius: 0; }
+    .print-btn { display: none; }
+  }
+  @media (max-width: 700px) {
+    body { padding: 16px 0; }
+    .doc { border-radius: 0; }
+    .doc-head, .doc-body, .doc-foot { padding-left: 22px; padding-right: 22px; }
+    .doc-head-grid { grid-template-columns: 1fr 1fr; }
+    .cond-grid { grid-template-columns: 1fr; }
+    .total-box { min-width: 0; width: 100%; }
+    .print-btn { bottom: 16px; right: 16px; left: 16px; justify-content: center; }
+  }
 </style>
 </head>
 <body>
 
-<div class="page">
-  <div class="header">
-    <div class="header-top">
-      <div class="empresa">{{ o.empresa_nome or '🏗️ Orçamento' }}</div>
-      <div style="text-align:right">
-        <div class="orcamento-label">Proposta</div>
-        <div class="orcamento-num">#{{ o.token }}</div>
+<div class="doc">
+
+  <!-- HEADER -->
+  <header class="doc-head">
+    <div class="doc-head-top">
+      <div class="doc-empresa">
+        <span class="doc-empresa-mark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+            <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        {{ o.empresa_nome or 'Orçamento' }}
+      </div>
+      <div>
+        <div class="doc-num-eyebrow">Proposta comercial</div>
+        <div class="doc-num">#{{ o.token }}</div>
       </div>
     </div>
-    <div class="header-info">
-      <div class="info-block">
-        <label>Cliente</label>
-        <span>{{ o.cliente_nome }}</span>
+    <div class="doc-head-grid">
+      <div>
+        <div class="info-label">Cliente</div>
+        <div class="info-val">{{ o.cliente_nome }}</div>
       </div>
       {% if o.cliente_telefone %}
-      <div class="info-block">
-        <label>Contato</label>
-        <span>{{ o.cliente_telefone }}</span>
+      <div>
+        <div class="info-label">Contato</div>
+        <div class="info-val">{{ o.cliente_telefone }}</div>
       </div>
       {% endif %}
-      <div class="info-block">
-        <label>Data</label>
-        <span>{{ o.criado_em[:10].split('-') | reverse | join('/') }}</span>
+      <div>
+        <div class="info-label">Data</div>
+        <div class="info-val">{{ o.criado_em[:10].split('-') | reverse | join('/') }}</div>
       </div>
       {% if o.validade %}
-      <div class="info-block">
-        <label>Válido por</label>
-        <span>{{ o.validade }}</span>
+      <div>
+        <div class="info-label">Válido por</div>
+        <div class="info-val">{{ o.validade }}</div>
       </div>
       {% endif %}
     </div>
-  </div>
+  </header>
 
-  <div class="body">
-    <div class="titulo-orcamento">{{ o.titulo }}</div>
+  <!-- BODY -->
+  <div class="doc-body">
+    <h1 class="doc-title">{{ o.titulo }}</h1>
 
     {% for etapa in o.itens %}
     <div class="etapa">
-      <div class="etapa-titulo">{{ etapa.nome }}</div>
-      <table>
+      <div class="etapa-head">
+        <span class="etapa-num">ETAPA {{ "%02d"|format(loop.index) }}</span>
+        <span class="etapa-name">{{ etapa.nome }}</span>
+      </div>
+      <table class="itens">
         <thead>
           <tr>
             <th>Descrição</th>
             <th>Unidade</th>
-            <th class="td-right">Qtd</th>
-            <th class="td-right">Preço Unit.</th>
-            <th class="td-right">Total</th>
+            <th class="tr">Qtd</th>
+            <th class="tr">Preço unit.</th>
+            <th class="tr">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -135,39 +244,39 @@ tr:last-child td { border-bottom: none; }
           <tr>
             <td>{{ item.descricao }}</td>
             <td>{{ item.unidade }}</td>
-            <td class="td-right">{{ item.quantidade }}</td>
-            <td class="td-right">R$ {{ "%.2f"|format(item.preco | float) | replace('.', ',') }}</td>
-            <td class="td-right" style="font-weight:500">R$ {{ "%.2f"|format(linha) | replace('.', ',') }}</td>
+            <td class="tr mono">{{ item.quantidade }}</td>
+            <td class="tr mono">R$ {{ "%.2f"|format(item.preco | float) | replace('.', ',') }}</td>
+            <td class="tr mono" style="font-weight:500">R$ {{ "%.2f"|format(linha) | replace('.', ',') }}</td>
           </tr>
           {% endfor %}
-          <tr class="subtotal-row">
-            <td colspan="4" class="td-right">Subtotal {{ etapa.nome }}</td>
-            <td class="td-right">R$ {{ "%.2f"|format(subtotal.val) | replace('.', ',') }}</td>
+          <tr class="subtotal">
+            <td colspan="4" class="tr">Subtotal {{ etapa.nome }}</td>
+            <td class="tr mono">R$ {{ "%.2f"|format(subtotal.val) | replace('.', ',') }}</td>
           </tr>
         </tbody>
       </table>
     </div>
     {% endfor %}
 
-    <div class="total-section">
+    <div class="total-row">
       <div class="total-box">
-        <div class="total-label">Valor Total da Proposta</div>
-        <div class="total-valor">R$ {{ "%.2f"|format(o.total) | replace('.', ',') }}</div>
+        <div class="total-label">Valor total da proposta</div>
+        <div class="total-val"><span class="cur">R$</span>{{ "%.2f"|format(o.total) | replace('.', ',') }}</div>
       </div>
     </div>
 
     {% if o.prazo or o.forma_pagamento %}
-    <div class="condicoes">
+    <div class="cond-grid">
       {% if o.prazo %}
-      <div class="condicao">
-        <label>⏱ Prazo</label>
-        <span>{{ o.prazo }}</span>
+      <div class="cond">
+        <div class="cond-label">Prazo</div>
+        <div class="cond-val">{{ o.prazo }}</div>
       </div>
       {% endif %}
       {% if o.forma_pagamento %}
-      <div class="condicao">
-        <label>💳 Pagamento</label>
-        <span>{{ o.forma_pagamento }}</span>
+      <div class="cond">
+        <div class="cond-label">Pagamento</div>
+        <div class="cond-val">{{ o.forma_pagamento }}</div>
       </div>
       {% endif %}
     </div>
@@ -175,19 +284,32 @@ tr:last-child td { border-bottom: none; }
 
     {% if o.observacoes %}
     <div class="obs">
-      <label>📋 Observações</label>
+      <div class="obs-label">↳ Observações</div>
       <p>{{ o.observacoes }}</p>
     </div>
     {% endif %}
   </div>
 
-  <div class="footer">
-    <small>Gerado em {{ o.criado_em[:10].split('-') | reverse | join('/') }}</small>
-    <span class="badge-status">✅ Proposta Ativa</span>
-  </div>
+  <!-- Footer -->
+  <footer class="doc-foot">
+    <div class="doc-foot-brand">
+      Gerado via <span>abriu.app.br</span>
+    </div>
+    <div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#16a34a;background:#dcfce7;padding:4px 12px;border-radius:99px;border:1px solid #bbf7d0">
+      <span style="width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+      Proposta ativa
+    </div>
+  </footer>
 </div>
 
-<button class="print-btn" onclick="window.print()">🖨️ Salvar PDF</button>
+<button class="print-btn" onclick="window.print()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 6 2 18 2 18 9"/>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+    <rect x="6" y="14" width="12" height="8"/>
+  </svg>
+  Salvar como PDF
+</button>
 
 </body>
 </html>

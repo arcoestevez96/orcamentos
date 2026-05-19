@@ -7,127 +7,112 @@
 <title>{% if modo == 'cadastro' %}Criar conta{% else %}Entrar{% endif %} — ABRIU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" onload="this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" onload="this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"></noscript>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
 body {
-  background: var(--navy);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow-x: hidden;
 }
-
-/* Background decoration */
-body::before {
-  content: '';
-  position: fixed;
-  top: -200px;
-  right: -200px;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(232,68,26,.12) 0%, transparent 65%);
-  pointer-events: none;
+.bg-decor { position: fixed; inset: 0; pointer-events: none; }
+.bg-decor::before {
+  content: ''; position: absolute; top: -200px; right: -200px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, oklch(0.74 0.17 45 / 0.18) 0%, transparent 60%);
+  filter: blur(20px);
 }
-body::after {
-  content: '';
-  position: fixed;
-  bottom: -100px;
-  left: -100px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(34,197,94,.06) 0%, transparent 65%);
-  pointer-events: none;
+.bg-decor::after {
+  content: ''; position: absolute; bottom: -100px; left: -100px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, oklch(0.72 0.14 240 / 0.12) 0%, transparent 60%);
+  filter: blur(30px);
 }
-
 .auth-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 24px 40px;
-  position: relative;
-  z-index: 1;
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 80px 24px 40px; position: relative; z-index: 1;
 }
-
 .auth-card {
-  width: 100%;
-  max-width: 440px;
-  background: var(--navy2);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 24px;
+  width: 100%; max-width: 440px;
+  background: var(--ink-1);
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
   padding: 40px;
-  box-shadow: 0 24px 80px rgba(0,0,0,.4);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.4);
 }
-
 .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
-.auth-logo-icon {
-  width: 38px; height: 38px; background: var(--orange); border-radius: 10px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+.auth-logo-mark {
+  width: 38px; height: 38px; background: var(--accent);
+  border-radius: 10px; display: grid; place-items: center; color: var(--ink-0);
 }
-.auth-logo-word { font-family: var(--fd); font-weight: 700; font-size: 22px; color: var(--cream); letter-spacing: -.025em; }
-.auth-logo-word b { color: var(--orange); }
-
-.auth-title { font-family: var(--fd); font-weight: 700; font-size: 26px; color: var(--cream); letter-spacing: -.03em; margin-bottom: 6px; }
-.auth-title em { font-style: normal; color: var(--orange); }
-.auth-sub { font-size: 14px; color: rgba(245,240,232,.4); margin-bottom: 28px; }
-
-.auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-.auth-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,.08); }
-.auth-divider-txt { font-size: 12px; color: rgba(245,240,232,.25); white-space: nowrap; }
-
-.auth-error {
-  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
-  color: #FCA5A5; font-size: 13px; padding: 11px 14px;
-  border-radius: var(--r-sm); margin-bottom: 20px;
-  display: flex; align-items: center; gap: 8px;
-}
-
-.auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: rgba(245,240,232,.35); }
-.auth-footer a { color: var(--orange); font-weight: 500; transition: opacity .15s; }
-.auth-footer a:hover { opacity: .8; }
-
+.auth-logo-word { font-weight: 700; font-size: 22px; letter-spacing: -0.025em; }
+.auth-h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 8px; }
+.auth-h1 em { font-style: italic; font-weight: 500; color: var(--accent-2); }
+.auth-sub { font-size: 14.5px; color: var(--fg-dim); margin: 0 0 28px; }
+.field-stack { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
 .trial-badge {
-  background: rgba(232,68,26,.08);
-  border: 1px solid rgba(232,68,26,.2);
-  border-radius: var(--r-md); padding: 13px 15px;
-  font-size: 13px; color: rgba(245,240,232,.65); margin-bottom: 24px;
-  display: flex; align-items: center; gap: 10px; line-height: 1.5;
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 15px; border-radius: var(--r-sm);
+  background: oklch(0.74 0.17 45 / 0.1);
+  border: 1px solid oklch(0.74 0.17 45 / 0.25);
+  font-size: 13px; color: var(--fg-dim);
+  margin-bottom: 22px;
 }
-.trial-badge i { font-size: 18px; color: var(--orange); flex-shrink: 0; }
-
+.trial-badge strong { color: var(--accent-2); font-weight: 600; }
+.auth-error {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 14px; border-radius: var(--r-sm);
+  background: oklch(0.7 0.18 25 / 0.1);
+  border: 1px solid oklch(0.7 0.18 25 / 0.25);
+  font-size: 13px; color: var(--bad);
+  margin-bottom: 20px;
+}
+.auth-foot { text-align: center; margin-top: 24px; font-size: 13px; color: var(--fg-mute); }
+.auth-foot a { color: var(--accent-2); font-weight: 500; }
+.page-foot {
+  text-align: center; padding: 16px;
+  font-size: 11.5px; color: var(--fg-mute);
+  position: relative; z-index: 1;
+}
+.page-foot a { color: var(--fg-mute); }
+@media (max-width: 480px) {
+  .auth-card { padding: 28px 22px; }
+  .auth-h1 { font-size: 24px; }
+  .auth-wrap { padding: 40px 16px 24px; }
+}
 </style>
 </head>
-<body>
+<body class="dark">
+
+<div class="bg-decor"></div>
 
 <div class="auth-wrap">
   <div class="auth-card">
-    <!-- Logo -->
-    <div class="auth-logo">
-      <div class="auth-logo-icon">
-        <svg width="22" height="22" viewBox="0 0 30 30" fill="none">
-          <rect x="3" y="7" width="18" height="14" rx="3" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
-          <path d="M6 11h12M6 15h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="23" cy="9" r="5" fill="#22C55E"/>
-          <path d="M21 9l1.5 1.5L25 7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <a href="/" class="auth-logo">
+      <span class="auth-logo-mark">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+          <path d="M3 12c2.5 1 4 4 4 4" opacity=".55"/>
+          <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
         </svg>
-      </div>
-      <span class="auth-logo-word">ABRI<b>U</b></span>
-    </div>
+      </span>
+      <span class="auth-logo-word">ABRIU</span>
+    </a>
 
     {% if modo == 'cadastro' %}
-      <h1 class="auth-title">Criar sua <em>conta</em></h1>
+      <h1 class="auth-h1">Criar sua <em>conta</em>.</h1>
       <p class="auth-sub">3 dias grátis. Sem cartão de crédito.</p>
       <div class="trial-badge">
-        <i class="ti ti-gift"></i>
-        Você terá <strong style="color:var(--orange)">&nbsp;3 dias grátis&nbsp;</strong> para testar tudo sem compromisso.
+        <i class="ti ti-gift" style="font-size:18px;color:var(--accent-2);flex-shrink:0"></i>
+        Você terá <strong>&nbsp;3 dias grátis&nbsp;</strong> para testar tudo sem compromisso.
       </div>
     {% else %}
-      <h1 class="auth-title">Bem-vindo de <em>volta</em></h1>
-      <p class="auth-sub">Entre na sua conta para ver seus orçamentos.</p>
+      <h1 class="auth-h1">Bem-vindo de <em>volta</em>.</h1>
+      <p class="auth-sub">Acesse sua conta para ver seus orçamentos.</p>
     {% endif %}
 
     {% if erro %}
@@ -137,43 +122,42 @@ body::after {
     </div>
     {% endif %}
 
-    <!-- Formulário -->
     <form method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      {% if modo == 'cadastro' %}
-      <div class="input-group">
-        <label class="input-label">Seu nome</label>
-        <input class="input input-dark" type="text" name="nome" placeholder="Ex: Gabriel Estevez" autocomplete="name">
-      </div>
-      {% endif %}
-
-      <div class="input-group">
-        <label class="input-label">E-mail</label>
-        <input class="input input-dark" type="email" name="email" placeholder="seu@email.com" required autocomplete="email">
-      </div>
-
-      <div class="input-group" style="margin-bottom:{% if modo == 'cadastro' %}16{% else %}24{% endif %}px">
-        <label class="input-label">Senha</label>
-        <input class="input input-dark" type="password" name="senha" placeholder="Mínimo 6 caracteres" required autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}">
-      </div>
-
-      {% if modo == 'cadastro' %}
-      <div class="input-group" style="margin-bottom:24px">
-        <label class="input-label">Confirmar senha</label>
-        <input class="input input-dark" type="password" name="confirmar" placeholder="Repita a senha" required autocomplete="new-password">
-      </div>
-      {% endif %}
-
-      <button type="submit" class="btn btn-primary btn-md" style="width:100%;justify-content:center">
+      <div class="field-stack">
         {% if modo == 'cadastro' %}
-          <i class="ti ti-rocket"></i> Criar conta grátis →
-        {% else %}
-          <i class="ti ti-login"></i> Entrar →
+        <div class="field">
+          <label class="field-label" for="nome">Seu nome</label>
+          <input class="input" type="text" id="nome" name="nome" placeholder="Ex: Gabriel Estevez" autocomplete="name" required>
+        </div>
         {% endif %}
+        <div class="field">
+          <label class="field-label" for="email">E-mail</label>
+          <input class="input" type="email" id="email" name="email" placeholder="seu@email.com" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label class="field-label" for="senha">Senha</label>
+          <input class="input" type="password" id="senha" name="senha" placeholder="{% if modo == 'cadastro' %}Mínimo 6 caracteres{% else %}••••••••{% endif %}" required autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}">
+        </div>
+        {% if modo == 'cadastro' %}
+        <div class="field">
+          <label class="field-label" for="conf">Confirmar senha</label>
+          <input class="input" type="password" id="conf" name="confirmar" placeholder="Repita a senha" required autocomplete="new-password">
+        </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-accent btn-md btn-block">
+        {% if modo == 'cadastro' %}
+          <i class="ti ti-rocket"></i> Criar conta grátis
+        {% else %}
+          <i class="ti ti-login"></i> Entrar
+        {% endif %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </form>
 
-    <div class="auth-footer">
+    <div class="auth-foot">
       {% if modo == 'cadastro' %}
         Já tem conta? <a href="/login">Entrar →</a>
       {% else %}
@@ -183,9 +167,8 @@ body::after {
   </div>
 </div>
 
-<!-- Footer mínimo -->
-<div style="text-align:center;padding:16px;font-size:12px;color:rgba(245,240,232,.18);position:relative;z-index:1">
-  © 2026 ABRIU · <a href="/privacidade" style="color:rgba(245,240,232,.22)">Privacidade</a> · <a href="/termos" style="color:rgba(245,240,232,.22)">Termos</a>
+<div class="page-foot">
+  © 2026 ABRIU · <a href="/termos">Termos</a> · <a href="/privacidade">Privacidade</a>
 </div>
 
 </body>

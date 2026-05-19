@@ -3,151 +3,253 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDFs Rastreados</title>
-<link rel="stylesheet" href="/static/style.css">
-<link rel="manifest" href="/static/manifest.json">
-<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="OrcEVeja">
-<meta name="theme-color" content="#7c3aed">
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<title>PDFs rastreados — ABRIU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" onload="this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"></noscript>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#06121d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  /* Upload modal drop zone */
+  .drop-zone {
+    border: 2px dashed var(--line-strong);
+    border-radius: var(--r-md);
+    padding: 32px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    background: var(--ink-2);
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: oklch(0.74 0.17 45 / 0.06);
+  }
+  .drop-zone input { display: none; }
+</style>
 <script>(function(){const t=document.querySelector('meta[name="csrf-token"]');if(!t)return;const tk=t.content;const _f=window.fetch;window.fetch=function(u,o){o=o||{};if(!['GET','HEAD','OPTIONS'].includes((o.method||'GET').toUpperCase())){o.headers=Object.assign({'X-CSRFToken':tk},o.headers||{});}return _f(u,o);};})();</script>
 </head>
-<body>
-<nav>
-  <div class="logo"><span>📋</span> Orçamentos</div>
-  <a href="/">Dashboard</a>
-  <a href="/pdfs" class="active">PDFs</a>
-  <a href="/configuracoes">Configurações</a>
-  <div class="ml-auto">
-    <button class="btn btn-nav" onclick="abrirUpload()">📎 Enviar PDF</button>
-  </div>
-</nav>
+<body class="dark">
 
-<div class="container">
-  <div class="page-header">
-    <div>
-      <h1>PDFs com Rastreamento</h1>
-      <p>Envie PDFs de orçamentos e saiba quando o cliente abrir</p>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <a href="/" class="sidebar-logo">
+      <span class="sidebar-logo-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+          <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <div>
+        <div class="sidebar-logo-word">ABRIU</div>
+        <div class="sidebar-logo-tld">app.br</div>
+      </div>
+    </a>
+    <div class="sidebar-section">MENU</div>
+    <nav class="sidebar-nav">
+      <a href="/" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        Dashboard
+      </a>
+      <a href="/pdfs" class="sidebar-item active">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
+        PDFs rastreados
+      </a>
+      <a href="/criar" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        Novo orçamento
+      </a>
+    </nav>
+    <div class="sidebar-section">CONTA</div>
+    <nav class="sidebar-nav">
+      <a href="/configuracoes" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8"/></svg></span>
+        Configurações
+      </a>
+      <a href="/logout" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+        Sair
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ session.get('user_nome', 'U')[0].upper() }}</div>
+      <div style="flex:1;min-width:0">
+        <div class="sidebar-user-name">{{ session.get('user_nome', '') }}</div>
+        <div class="sidebar-user-email">{{ session.get('user_email', '') }}</div>
+      </div>
     </div>
-    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar Novo PDF</button>
-  </div>
+  </aside>
 
-  {% if pdfs %}
-  <div class="table-card">
-    <table>
-      <thead>
-        <tr>
-          <th>Cliente</th>
-          <th>Título / Arquivo</th>
-          <th>Enviado em</th>
-          <th>Status</th>
-          <th>Aberturas</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in pdfs %}
-        <tr>
-          <td>
-            <strong>{{ p.cliente_nome }}</strong>
-            {% if p.cliente_telefone %}<br><small style="color:var(--text2)">{{ p.cliente_telefone }}</small>{% endif %}
-          </td>
-          <td>{{ p.titulo }}</td>
-          <td style="color:var(--text2);font-size:.85rem">{{ p.criado_em[:10] }}</td>
-          <td>
-            {% if p.status == 'enviado' %}
-              <span class="badge enviado">📤 Aguardando</span>
-            {% else %}
-              <span class="badge aberto">👁 Visualizado</span>
-              {% if p.aberto_em %}<br><small style="color:var(--text2);font-size:.75rem">{{ p.aberto_em[:16] }}</small>{% endif %}
-            {% endif %}
-          </td>
-          <td style="text-align:center">
-            {% if p.aberturas and p.aberturas > 0 %}
-              <span style="color:var(--green);font-weight:700;font-size:1.1rem">{{ p.aberturas }}x</span>
-            {% else %}
-              <span style="color:var(--text2)">—</span>
-            {% endif %}
-          </td>
-          <td>
-            <div class="actions">
-              <button class="btn btn-green btn-sm" onclick="copiarLink('{{ p.token }}')">🔗 Copiar Link</button>
-              <button class="btn btn-secondary btn-sm" onclick="whatsappLink('{{ p.token }}', '{{ p.cliente_telefone }}')">💬</button>
-              <form method="POST" action="/deletar_pdf/{{ p.id }}" onsubmit="return confirm('Deletar este PDF?')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn btn-danger btn-sm">🗑</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <div class="empty">
-    <div class="icon">📄</div>
-    <h3>Nenhum PDF enviado ainda</h3>
-    <p>Faça upload de um PDF de orçamento para gerar um link rastreável</p>
-    <br>
-    <button class="btn btn-primary" onclick="abrirUpload()">📎 Enviar Primeiro PDF</button>
-  </div>
-  {% endif %}
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <main class="app-main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="topbar-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <div class="topbar-title-eyebrow">PAINEL / PDFS RASTREADOS</div>
+          <h1 class="topbar-title">PDFs com rastreamento</h1>
+        </div>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="abrirUpload()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Enviar novo PDF
+      </button>
+    </header>
+
+    <div class="content">
+
+      {% if pdfs %}
+      <div class="table-wrap">
+        <div class="table-head-bar">
+          <div>
+            <div style="font-size:15.5px;font-weight:600">Todos os PDFs</div>
+            <div class="mono" style="font-size:11.5px;color:var(--fg-mute);margin-top:2px">{{ pdfs|length }} documento{{ 's' if pdfs|length != 1 else '' }}</div>
+          </div>
+        </div>
+
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Título / arquivo</th>
+              <th>Enviado em</th>
+              <th>Status</th>
+              <th style="text-align:center">Aberturas</th>
+              <th style="text-align:right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pdfs %}
+            <tr>
+              <td>
+                <div style="font-size:14px;font-weight:600">{{ p.cliente_nome }}</div>
+                {% if p.cliente_telefone %}<div class="mono" style="font-size:11px;color:var(--fg-mute);margin-top:2px">{{ p.cliente_telefone }}</div>{% endif %}
+              </td>
+              <td>
+                <div style="font-size:13.5px">{{ p.titulo }}</div>
+              </td>
+              <td class="mono" style="font-size:12.5px;color:var(--fg-dim)">{{ p.criado_em[:10] }}</td>
+              <td>
+                {% if p.status == 'enviado' %}
+                  <span class="badge">
+                    <span class="badge-dot" style="background:var(--fg-mute)"></span> Aguardando
+                  </span>
+                {% else %}
+                  <span class="badge badge-accent">
+                    <span class="badge-dot"></span> Visualizado{% if p.aberto_em %} · {{ p.aberto_em[11:16] }}{% endif %}
+                  </span>
+                {% endif %}
+              </td>
+              <td class="mono" style="text-align:center;font-size:16px;font-weight:700;color:{% if p.aberturas and p.aberturas > 0 %}var(--accent-2){% else %}var(--fg-mute){% endif %}">
+                {% if p.aberturas and p.aberturas > 0 %}{{ p.aberturas }}×{% else %}—{% endif %}
+              </td>
+              <td style="text-align:right">
+                <div style="display:inline-flex;gap:6px">
+                  <button class="btn btn-subtle btn-sm" onclick="copiarLink('{{ p.token }}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Link
+                  </button>
+                  <button class="btn btn-sm" style="background:oklch(0.75 0.16 145 / 0.12);color:var(--ok);border:1px solid oklch(0.75 0.16 145 / 0.3)" onclick="whatsappLink('{{ p.token }}', '{{ p.cliente_telefone }}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.92.5 3.78 1.46 5.43L2 22l4.81-1.26a9.86 9.86 0 0 0 5.23 1.49h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.81 9.81 0 0 0 12.04 2z"/></svg>
+                  </button>
+                  <form method="POST" action="/deletar_pdf/{{ p.id }}" onsubmit="return confirm('Deletar este PDF?')" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-danger btn-sm" type="submit">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% else %}
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center">
+        <div style="width:72px;height:72px;border-radius:18px;background:var(--ink-1);border:1px solid var(--line);display:grid;place-items:center;margin-bottom:22px;color:var(--fg-mute)">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+        </div>
+        <div style="font-size:18px;font-weight:600;letter-spacing:-0.015em;margin-bottom:8px">Nenhum PDF enviado ainda</div>
+        <div style="font-size:14px;color:var(--fg-dim);max-width:360px;line-height:1.5;margin-bottom:24px">Faça upload de um PDF de orçamento para gerar um link rastreável e saber quando o cliente abrir.</div>
+        <button class="btn btn-accent btn-md" onclick="abrirUpload()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Enviar primeiro PDF
+        </button>
+      </div>
+      {% endif %}
+
+    </div>
+  </main>
 </div>
 
 <!-- Modal Upload -->
 <div class="modal-overlay" id="modalUpload">
   <div class="modal" style="max-width:520px">
-    <h3>📎 Enviar PDF com Rastreamento</h3>
-    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1.2rem">Faça upload do seu orçamento em PDF e receba notificação no WhatsApp quando o cliente abrir.</p>
+    <div class="modal-header">
+      <div class="modal-title">Enviar PDF com rastreamento</div>
+      <button class="modal-close" onclick="fecharUpload()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;color:var(--fg-dim);margin-bottom:18px;line-height:1.5">Faça upload do seu orçamento em PDF e receba notificação quando o cliente abrir.</p>
 
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>Nome do Cliente *</label>
-      <input type="text" id="up_cliente_nome" placeholder="Ex: João Silva">
-    </div>
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>WhatsApp do Cliente</label>
-      <input type="text" id="up_cliente_tel" placeholder="Ex: 11999990000">
-    </div>
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>Título do Orçamento</label>
-      <input type="text" id="up_titulo" placeholder="Ex: Reforma Cozinha — Casa Jardim">
-    </div>
-    <div class="form-group" style="margin-bottom:.8rem">
-      <label>Valor do Orçamento (R$)</label>
-      <input type="text" id="up_valor" placeholder="Ex: 15000,00">
-    </div>
-    <div class="form-group" style="margin-bottom:1rem">
-      <label>Arquivo PDF *</label>
-      <input type="file" id="up_arquivo" accept=".pdf" onchange="previewArquivo(this)">
-      <small id="up_arquivo_nome" style="color:var(--text2);margin-top:.3rem"></small>
-    </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="field">
+          <label class="field-label">Nome do cliente *</label>
+          <input class="input" type="text" id="up_cliente_nome" placeholder="Ex: João Silva">
+        </div>
+        <div class="field">
+          <label class="field-label">WhatsApp do cliente</label>
+          <input class="input" type="text" id="up_cliente_tel" placeholder="Ex: 11999990000">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label class="field-label">Título do orçamento</label>
+        <input class="input" type="text" id="up_titulo" placeholder="Ex: Reforma Cozinha — Casa Jardim">
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label class="field-label">Valor do orçamento (R$)</label>
+        <input class="input" type="text" id="up_valor" placeholder="Ex: 15000,00">
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label class="field-label">Arquivo PDF *</label>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('up_arquivo').click()">
+          <input type="file" id="up_arquivo" accept=".pdf" onchange="previewArquivo(this)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-mute);margin-bottom:8px"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+          <div id="up_arquivo_nome" style="font-size:13.5px;color:var(--fg-dim)">Clique ou arraste o PDF aqui</div>
+        </div>
+      </div>
 
-    <div id="up_link_result" style="display:none">
-      <div style="color:var(--green);font-weight:600;margin-bottom:.5rem">✅ PDF enviado! Copie o link abaixo:</div>
-      <div class="link-box" id="up_link"></div>
+      <div id="up_link_result" style="display:none;background:oklch(0.78 0.16 150 / 0.07);border:1px solid oklch(0.78 0.16 150 / 0.2);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:600;color:var(--ok);margin-bottom:8px">PDF enviado! Copie o link abaixo:</div>
+        <div id="up_link" class="mono" style="font-size:12px;color:var(--fg-dim);word-break:break-all"></div>
+      </div>
     </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="fecharUpload()">Fechar</button>
-      <button class="btn btn-primary" id="btnEnviar" onclick="enviarPDF()">📤 Enviar e Gerar Link</button>
-      <button class="btn btn-green" id="btnCopiar" style="display:none" onclick="copiarLinkModal()">📋 Copiar Link</button>
-      <button class="btn btn-primary" id="btnWpp" style="display:none" onclick="wppModal()">💬 WhatsApp</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Link -->
-<div class="modal-overlay" id="modalLink">
-  <div class="modal">
-    <h3>🔗 Link do Orçamento PDF</h3>
-    <div class="link-box" id="linkModal"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="document.getElementById('modalLink').classList.remove('show')">Fechar</button>
-      <button class="btn btn-green" onclick="navigator.clipboard.writeText(document.getElementById('linkModal').textContent);alert('Copiado!')">📋 Copiar</button>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="fecharUpload()">Fechar</button>
+      <button class="btn btn-accent btn-sm" id="btnEnviar" onclick="enviarPDF()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+        Enviar e gerar link
+      </button>
+      <button class="btn btn-subtle btn-sm" id="btnCopiar" style="display:none" onclick="copiarLinkModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar link
+      </button>
+      <button class="btn btn-sm" id="btnWpp" style="display:none;background:oklch(0.75 0.16 145 / 0.12);color:var(--ok);border:1px solid oklch(0.75 0.16 145 / 0.3)" onclick="wppModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.92.5 3.78 1.46 5.43L2 22l4.81-1.26a9.86 9.86 0 0 0 5.23 1.49h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.81 9.81 0 0 0 12.04 2z"/></svg>
+        WhatsApp
+      </button>
     </div>
   </div>
 </div>
@@ -157,13 +259,24 @@ const BASE_URL = '{{ request.host_url.rstrip("/") }}';
 let linkAtualModal = '';
 let telModal = '';
 
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
 function abrirUpload() {
   document.getElementById('modalUpload').classList.add('show');
   document.getElementById('up_link_result').style.display = 'none';
   document.getElementById('btnCopiar').style.display = 'none';
   document.getElementById('btnWpp').style.display = 'none';
   document.getElementById('btnEnviar').style.display = '';
+  linkAtualModal = '';
 }
+
 function fecharUpload() {
   document.getElementById('modalUpload').classList.remove('show');
   if (linkAtualModal) location.reload();
@@ -171,19 +284,36 @@ function fecharUpload() {
 
 function previewArquivo(input) {
   const nome = input.files[0]?.name || '';
-  document.getElementById('up_arquivo_nome').textContent = nome;
-  if (!document.getElementById('up_titulo').value) {
-    document.getElementById('up_titulo').value = nome.replace('.pdf','');
+  const el = document.getElementById('up_arquivo_nome');
+  el.textContent = nome || 'Clique ou arraste o PDF aqui';
+  el.style.color = nome ? 'var(--fg)' : 'var(--fg-dim)';
+  if (nome && !document.getElementById('up_titulo').value) {
+    document.getElementById('up_titulo').value = nome.replace('.pdf', '');
   }
 }
+
+// Drag and drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') {
+    const dt = new DataTransfer();
+    dt.items.add(f);
+    document.getElementById('up_arquivo').files = dt.files;
+    previewArquivo(document.getElementById('up_arquivo'));
+  }
+});
 
 async function enviarPDF() {
   const nome = document.getElementById('up_cliente_nome').value.trim();
   const arquivo = document.getElementById('up_arquivo').files[0];
   if (!nome) return alert('Preencha o nome do cliente.');
   if (!arquivo) return alert('Selecione um arquivo PDF.');
-  document.getElementById('btnEnviar').textContent = '⏳ Enviando...';
-  document.getElementById('btnEnviar').disabled = true;
+  const btn = document.getElementById('btnEnviar');
+  btn.innerHTML = '⏳ Enviando...'; btn.disabled = true;
   const fd = new FormData();
   fd.append('pdf', arquivo);
   fd.append('cliente_nome', nome);
@@ -192,8 +322,8 @@ async function enviarPDF() {
   fd.append('valor', document.getElementById('up_valor').value.trim());
   const res = await fetch('/upload_pdf', { method: 'POST', body: fd });
   const data = await res.json();
-  document.getElementById('btnEnviar').textContent = '📤 Enviar e Gerar Link';
-  document.getElementById('btnEnviar').disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg> Enviar e gerar link';
+  btn.disabled = false;
   if (data.ok) {
     linkAtualModal = data.link;
     telModal = document.getElementById('up_cliente_tel').value.trim();
@@ -214,7 +344,7 @@ function copiarLinkModal() {
 
 function wppModal() {
   const msg = encodeURIComponent('Olá! Segue o link do seu orçamento: ' + linkAtualModal);
-  const tel = telModal.replace(/\D/g,'');
+  const tel = telModal.replace(/\D/g, '');
   window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
 }
 
@@ -227,7 +357,7 @@ async function copiarLink(token) {
 function whatsappLink(token, tel) {
   const link = location.origin + '/pdf/' + token;
   const msg = encodeURIComponent('Olá! Segue o link do seu orçamento: ' + link);
-  const t = tel.replace(/\D/g,'');
+  const t = (tel || '').replace(/\D/g, '');
   window.open('https://wa.me/55' + t + '?text=' + msg, '_blank');
 }
 
@@ -235,5 +365,6 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
 });
 </script>
+
 </body>
 </html>

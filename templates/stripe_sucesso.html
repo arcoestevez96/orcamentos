@@ -3,36 +3,76 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Assinatura confirmada · ABRIU</title>
-<meta name="theme-color" content="#7c3aed">
+<title>Assinatura confirmada — ABRIU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #0f1117; color: #e2e8f0;
-  min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
-}
-.card {
-  background: #1a1d27; border: 1px solid #2e3250; border-radius: 20px;
-  padding: 2.5rem 2rem; width: 100%; max-width: 420px; text-align: center;
-}
-.icon { font-size: 3.5rem; margin-bottom: 1rem; }
-h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: .5rem; color: #f1f5f9; }
-p { color: #64748b; font-size: .95rem; line-height: 1.6; margin-bottom: 1.5rem; }
-.btn {
-  display: inline-block; background: #4f6ef7; color: #fff; border-radius: 10px;
-  padding: .85rem 2rem; font-size: 1rem; font-weight: 600; text-decoration: none;
-  transition: background .15s;
-}
-.btn:hover { background: #3b5bdb; }
+  body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; overflow: hidden; }
+  .bg-decor::before {
+    content: ''; position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 600px;
+    background: radial-gradient(ellipse at center, oklch(0.78 0.16 150 / 0.18), transparent 65%);
+    filter: blur(20px); pointer-events: none;
+  }
+  .ok-card {
+    width: 100%; max-width: 460px;
+    background: var(--ink-1);
+    border: 1px solid var(--line-strong);
+    border-radius: 22px;
+    padding: 48px 40px;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    position: relative; z-index: 1;
+  }
+  .ok-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: oklch(0.78 0.16 150 / 0.14);
+    border: 1px solid oklch(0.78 0.16 150 / 0.4);
+    color: var(--ok);
+    display: grid; place-items: center;
+    margin: 0 auto 24px;
+    animation: popIn .5s cubic-bezier(.2,.9,.3,1);
+  }
+  .ok-eyebrow { font-family: var(--ff-mono); font-size: 11px; color: var(--ok); letter-spacing: 0.1em; text-transform: uppercase; }
+  .ok-h1 {
+    font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
+    margin: 12px 0 14px;
+  }
+  .ok-h1 em { font-style: italic; font-weight: 500; color: var(--ok); }
+  .ok-p { font-size: 14.5px; color: var(--fg-dim); line-height: 1.55; margin: 0 0 30px; }
+  .ok-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  @keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0 }
+    60% { transform: scale(1.08); }
+    100% { transform: scale(1); opacity: 1 }
+  }
 </style>
 </head>
-<body>
-<div class="card">
-  <div class="icon">🎉</div>
-  <h1>Assinatura confirmada!</h1>
-  <p>Seu plano foi ativado com sucesso. Bem-vindo ao ABRIU Pro!</p>
-  <a href="/configuracoes" class="btn">Ver meu plano</a>
+<body class="dark">
+
+<div class="bg-decor"></div>
+
+<div class="ok-card">
+  <div class="ok-icon">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12l5 5L20 6"/>
+    </svg>
+  </div>
+  <div class="ok-eyebrow">↳ Pagamento confirmado</div>
+  <h1 class="ok-h1">Bem-vindo ao <em>ABRIU Pro.</em></h1>
+  <p class="ok-p">
+    Sua assinatura foi ativada. Já pode enviar orçamentos ilimitados e acompanhar a leitura em tempo real.
+  </p>
+  <div class="ok-actions">
+    <a href="/dashboard" class="btn btn-accent btn-md">
+      Ir para o painel
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <a href="/configuracoes" class="btn btn-ghost btn-md">Ver meu plano</a>
+  </div>
 </div>
+
 </body>
 </html>

@@ -7,156 +7,128 @@
 <title>Dashboard — ABRIU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" onload="this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" onload="this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"></noscript>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#0D1B2A">
+<meta name="theme-color" content="#06121d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-body { background: var(--cream); }
-
-/* Upload area */
-.upload-area {
-  border: 2px dashed rgba(13,27,42,.15); border-radius: var(--r-lg);
-  padding: 40px 24px; text-align: center;
-  background: var(--white); transition: border-color .2s, background .2s;
-  cursor: pointer;
-}
-.upload-area:hover, .upload-area.drag { border-color: var(--orange); background: rgba(232,68,26,.02); }
-.upload-area.drag { border-style: solid; }
-.upload-icon {
-  width: 56px; height: 56px; border-radius: 16px;
-  background: rgba(232,68,26,.1); display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 16px; color: var(--orange); font-size: 26px;
-}
-.upload-title { font-family: var(--fd); font-weight: 700; font-size: 18px; color: var(--navy); letter-spacing: -.02em; margin-bottom: 6px; }
-.upload-sub { font-size: 14px; color: var(--gray); margin-bottom: 20px; }
-#pdf-input { display: none; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-/* Table actions */
-.action-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; font-weight: 500; padding: 5px 10px;
-  border-radius: 6px; cursor: pointer; transition: all .15s;
-  background: transparent; border: 1px solid rgba(13,27,42,.12); color: var(--navy);
-  font-family: var(--fb);
-}
-.action-btn:hover { background: rgba(13,27,42,.05); }
-.action-btn-orange { border-color: rgba(232,68,26,.3); color: var(--orange); }
-.action-btn-orange:hover { background: rgba(232,68,26,.06); }
-.action-btn-green { border-color: rgba(34,197,94,.3); color: #15803D; }
-.action-btn-green:hover { background: rgba(34,197,94,.06); }
-
-select.action-btn {
-  appearance: none; -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A8A9A' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 8px center;
-  padding-right: 24px; cursor: pointer;
-}
-
-/* Notification banner */
-.notif-banner {
-  position: fixed; top: 16px; right: 16px; z-index: 999;
-  max-width: 360px; background: var(--navy);
-  border: 1px solid rgba(34,197,94,.3); border-radius: var(--r-lg);
-  padding: 16px 18px; display: none;
-  box-shadow: 0 12px 40px rgba(13,27,42,.5);
-}
-.notif-banner.show { display: flex; align-items: flex-start; gap: 12px; animation: notifIn .4s ease; }
-.nb-pulse { width: 10px; height: 10px; background: var(--green); border-radius: 50%; flex-shrink: 0; margin-top: 3px; animation: pulse 2s infinite, glow 2s infinite; }
-.nb-name { font-size: 14px; font-weight: 500; color: var(--green); margin-bottom: 2px; }
-.nb-sub  { font-size: 12px; color: rgba(245,240,232,.5); line-height: 1.4; }
-.nb-close { margin-left: auto; color: rgba(245,240,232,.3); cursor: pointer; padding: 0 0 0 8px; background: none; border: none; font-size: 18px; line-height: 1; }
-
-/* Empty state */
-.empty-state { text-align: center; padding: 72px 24px; }
-.empty-icon { width: 76px; height: 76px; border-radius: 22px; background: rgba(232,68,26,.08); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--orange); font-size: 34px; }
-.empty-title { font-family: var(--fd); font-weight: 700; font-size: 20px; color: var(--navy); letter-spacing: -.02em; margin-bottom: 8px; }
-.empty-sub { font-size: 14px; color: var(--gray); max-width: 320px; margin: 0 auto 24px; }
-
-/* Live indicator */
-.live-indicator {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 500; color: var(--green);
-  background: rgba(34,197,94,.1); padding: 4px 12px; border-radius: 99px;
-  border: 1px solid rgba(34,197,94,.2);
-}
-.live-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
-
-/* Trial warning */
-.trial-warn {
-  background: rgba(232,68,26,.06); border: 1px solid rgba(232,68,26,.2);
-  border-radius: var(--r-md); padding: 13px 18px;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  margin-bottom: 24px;
-}
-.tw-text { font-size: 13px; color: var(--navy); display: flex; align-items: center; gap: 8px; }
-.tw-text b { color: var(--orange); }
-
-/* Metric card override for dashboard */
-.dash-metric {
-  padding: 20px 22px; border-radius: var(--r-md); position: relative; overflow: hidden;
-}
-.dash-metric__label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .38; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.dash-metric__val { font-family: var(--fd); font-weight: 700; font-size: 30px; letter-spacing: -.03em; line-height: 1; margin-bottom: 5px; }
-.dash-metric__delta { font-size: 11px; opacity: .3; }
-.dash-metric__icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 36px; opacity: .07; }
-
-/* Mobile menu */
-.mob-menu-btn {
-  display: none; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border: 1px solid rgba(13,27,42,.12);
-  border-radius: 8px; background: none; cursor: pointer; color: var(--navy);
-  font-size: 18px;
-}
-.mob-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(13,27,42,.5);
-  z-index: 99; backdrop-filter: blur(2px);
-}
-.mob-overlay.show { display: block; }
-
-/* Bottom nav */
-.bottom-nav {
-  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: var(--white); border-top: 1px solid rgba(13,27,42,.08);
-  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
-  grid-template-columns: repeat(3, 1fr);
-}
-.bottom-nav__item {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font-size: 10px; font-weight: 500; color: var(--gray);
-  text-decoration: none; padding: 4px 8px; transition: color .15s;
-}
-.bottom-nav__item i { font-size: 20px; }
-.bottom-nav__item.active { color: var(--orange); }
-.bottom-nav__item:hover { color: var(--navy); }
-
-@media (max-width: 900px) {
-  .mob-menu-btn { display: flex; }
-  .bottom-nav { display: grid; }
-  .dash-content { padding: 16px 16px 80px; }
-  .dash-sidebar {
-    display: flex !important; position: fixed; left: -220px; top: 0; bottom: 0;
-    z-index: 100; transition: left .25s ease; width: 220px;
+  /* Upload drag zone */
+  .upload-area {
+    border: 2px dashed var(--line-strong);
+    border-radius: var(--r-md); padding: 36px 24px;
+    text-align: center; cursor: pointer;
+    background: var(--ink-2);
+    transition: border-color .2s, background .2s;
   }
-  .dash-sidebar.open { left: 0; }
-  .dash-topbar { padding: 12px 16px; }
-}
+  .upload-area:hover, .upload-area.drag {
+    border-color: var(--accent); border-style: solid;
+    background: oklch(0.74 0.17 45 / 0.06);
+  }
+  #pdf-input { display: none; }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .form-row { grid-template-columns: 1fr; }
-  .dash-metrics-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .table-actions { display: none; }
-}
+  /* KPI cards */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--ink-1); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: 20px 22px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card.accent { background: oklch(0.74 0.17 45 / 0.1); border-color: oklch(0.74 0.17 45 / 0.3); }
+  .kpi-label { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-mute); margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+  .kpi-value { font-size: 30px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; margin-bottom: 5px; }
+  .kpi-sub { font-size: 11px; color: var(--fg-mute); }
+  .kpi-icon { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 38px; opacity: 0.06; }
+
+  /* Pipeline bar */
+  .pipeline {
+    display: flex; align-items: stretch; gap: 0;
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    overflow: hidden; margin-bottom: 24px;
+  }
+  .pipeline-step {
+    flex: 1; padding: 16px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    border-right: 1px solid var(--line);
+  }
+  .pipeline-step:last-child { border-right: none; }
+  .pipeline-step.hot { background: var(--ink-2); }
+  .pipeline-val { font-size: 22px; font-weight: 700; letter-spacing: -0.025em; }
+  .pipeline-label { font-family: var(--ff-mono); font-size: 10.5px; color: var(--fg-mute); text-align: center; letter-spacing: 0.04em; }
+
+  /* Table status select */
+  select.status-select {
+    appearance: none; -webkit-appearance: none;
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    color: var(--fg);
+    padding: 5px 24px 5px 8px; border-radius: 6px;
+    font-size: 12px; font-family: inherit; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a7c8d' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center;
+    outline: none;
+    transition: border-color .15s;
+  }
+  select.status-select:focus { border-color: var(--accent); }
+
+  /* Live indicator */
+  .live-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; color: var(--ok);
+    background: oklch(0.78 0.16 150 / 0.1); padding: 4px 12px;
+    border-radius: 99px; border: 1px solid oklch(0.78 0.16 150 / 0.2);
+  }
+  .live-dot { width: 7px; height: 7px; background: var(--ok); border-radius: 50%; animation: pulse 2s infinite; }
+
+  /* Trial warning */
+  .trial-warn {
+    background: oklch(0.74 0.17 45 / 0.07);
+    border: 1px solid oklch(0.74 0.17 45 / 0.25);
+    border-radius: var(--r-md); padding: 13px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-bottom: 24px;
+  }
+  .trial-warn-text { font-size: 13px; color: var(--fg-dim); display: flex; align-items: center; gap: 8px; }
+  .trial-warn-text b { color: var(--accent-2); }
+
+  /* Hot row */
+  tr.hot { background: oklch(0.74 0.17 45 / 0.05); }
+
+  /* Notification banner */
+  .notif-banner {
+    position: fixed; top: 16px; right: 16px; z-index: 999;
+    max-width: 360px; background: var(--ink-1);
+    border: 1px solid oklch(0.78 0.16 150 / 0.3);
+    border-radius: var(--r-md); padding: 16px 18px;
+    display: none; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .notif-banner.show { display: flex; align-items: flex-start; gap: 12px; animation: notifIn .4s ease; }
+  @keyframes notifIn { from { opacity: 0; transform: translateY(-16px) scale(0.97); } to { opacity: 1; transform: none; } }
+  .nb-pulse { width: 10px; height: 10px; background: var(--ok); border-radius: 50%; flex-shrink: 0; margin-top: 3px; animation: pulse 2s infinite; }
+  .nb-name { font-size: 14px; font-weight: 500; color: var(--ok); margin-bottom: 2px; }
+  .nb-sub  { font-size: 12px; color: var(--fg-mute); line-height: 1.4; }
+  .nb-close { margin-left: auto; color: var(--fg-mute); cursor: pointer; padding: 0 0 0 8px; background: none; border: none; font-size: 18px; line-height: 1; }
+
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .pipeline-label { font-size: 9px; }
+  }
+  @media (max-width: 600px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .table-actions-col { display: none; }
+  }
 </style>
 <script>(function(){const t=document.querySelector('meta[name="csrf-token"]');if(!t)return;const tk=t.content;const _f=window.fetch;window.fetch=function(u,o){o=o||{};if(!['GET','HEAD','OPTIONS'].includes((o.method||'GET').toUpperCase())){o.headers=Object.assign({'X-CSRFToken':tk},o.headers||{});}return _f(u,o);};})();</script>
 </head>
-<body>
+<body class="dark">
 
 <!-- NOTIFICATION BANNER -->
 <div class="notif-banner" id="notif-banner">
@@ -168,87 +140,93 @@ select.action-btn {
   <button class="nb-close" onclick="document.getElementById('notif-banner').classList.remove('show')">×</button>
 </div>
 
-<!-- LAYOUT -->
-<div class="dash-layout">
+<div class="app-shell">
 
   <!-- SIDEBAR -->
-  <aside class="dash-sidebar">
-    <div class="dash-sidebar__top">
-      <div class="dash-sidebar__logo">
-        <div class="dash-sidebar__logo-icon">
-          <svg width="18" height="18" viewBox="0 0 30 30" fill="none">
-            <rect x="3" y="7" width="18" height="14" rx="3" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
-            <path d="M6 11h12M6 15h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="23" cy="9" r="5" fill="#22C55E"/>
-            <path d="M21 9l1.5 1.5L25 7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <span class="dash-sidebar__logo-word">ABRI<b>U</b></span>
+  <aside class="sidebar" id="sidebar">
+    <a href="/" class="sidebar-logo">
+      <span class="sidebar-logo-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+          <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <div>
+        <div class="sidebar-logo-word">ABRIU</div>
+        <div class="sidebar-logo-tld">app.br</div>
       </div>
-
-      <nav class="dash-nav">
-        <div class="dash-nav__section">Menu</div>
-        <a href="/dashboard" class="dash-nav__item active">
-          <i class="ti ti-layout-dashboard"></i>
-          Dashboard
-          {% set abertos = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
-          {% if abertos > 0 %}<div class="dash-nav__badge">{{ abertos }}</div>{% endif %}
-        </a>
-        <a href="/dashboard" class="dash-nav__item">
-          <i class="ti ti-file-invoice"></i>
-          Orçamentos
-        </a>
-        <div class="dash-nav__section">Conta</div>
-        <a href="/configuracoes" class="dash-nav__item">
-          <i class="ti ti-settings"></i>
-          Configurações
-        </a>
-        <a href="/logout" class="dash-nav__item">
-          <i class="ti ti-logout"></i>
-          Sair
-        </a>
-      </nav>
-    </div>
-
-    <div class="dash-sidebar__bottom">
-      <div class="dash-sidebar__user">
-        <div class="dash-sidebar__avatar">{{ session.get('user_nome', 'U')[0].upper() }}</div>
-        <div style="min-width:0">
-          <div class="dash-sidebar__username">{{ session.get('user_nome', 'Usuário') }}</div>
-          <div class="dash-sidebar__email">{{ session.get('user_email', '') }}</div>
-        </div>
+    </a>
+    <div class="sidebar-section">MENU</div>
+    <nav class="sidebar-nav">
+      <a href="/" class="sidebar-item active">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        Dashboard
+        {% set abertos_nav = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
+        {% if abertos_nav > 0 %}<span class="sidebar-item-badge">{{ abertos_nav }}</span>{% endif %}
+      </a>
+      <a href="/pdfs" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
+        PDFs rastreados
+      </a>
+      <a href="/criar" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        Novo orçamento
+      </a>
+    </nav>
+    <div class="sidebar-section">CONTA</div>
+    <nav class="sidebar-nav">
+      <a href="/configuracoes" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8"/></svg></span>
+        Configurações
+      </a>
+      <a href="/logout" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+        Sair
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ session.get('user_nome', 'U')[0].upper() }}</div>
+      <div style="flex:1;min-width:0">
+        <div class="sidebar-user-name">{{ session.get('user_nome', 'Usuário') }}</div>
+        <div class="sidebar-user-email">{{ session.get('user_email', '') }}</div>
       </div>
     </div>
   </aside>
 
-  <!-- MAIN -->
-  <main class="dash-main">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <main class="app-main">
 
     <!-- TOPBAR -->
-    <div class="dash-topbar">
-      <button class="mob-menu-btn" id="mob-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
-        <i class="ti ti-menu-2"></i>
-      </button>
-      <div class="dash-topbar__title">Dashboard</div>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="topbar-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <div class="topbar-title-eyebrow">PAINEL</div>
+          <h1 class="topbar-title">Dashboard</h1>
+        </div>
+      </div>
       <div style="display:flex;align-items:center;gap:12px">
         {% set abertos_agora = pdfs | selectattr('status', 'equalto', 'aberto') | list | length %}
         {% if abertos_agora > 0 %}
         <span class="live-indicator"><span class="live-dot"></span>{{ abertos_agora }} aberto{% if abertos_agora > 1 %}s{% endif %} agora</span>
         {% endif %}
-        <button onclick="document.getElementById('upload-modal').style.display='flex'" class="btn btn-primary btn-sm">
+        <button class="btn btn-accent btn-sm" onclick="document.getElementById('upload-modal').style.display='flex'">
           <i class="ti ti-plus"></i>
           Novo orçamento
         </button>
       </div>
-    </div>
+    </header>
 
-    <div class="dash-content">
+    <div class="content">
 
       <!-- TRIAL WARNING -->
       {% if dias_trial is not none and subscription_status == 'trial' %}
       <div class="trial-warn">
-        <div class="tw-text">
-          <i class="ti ti-clock" style="color:var(--orange);font-size:16px"></i>
+        <div class="trial-warn-text">
+          <i class="ti ti-clock" style="color:var(--accent-2);font-size:16px"></i>
           {% if dias_trial == 0 %}
             Seu período de teste <b>expira hoje</b>. Faça upgrade para não perder o acesso.
           {% elif dias_trial == 1 %}
@@ -257,7 +235,7 @@ select.action-btn {
             <b>{{ dias_trial }} dias restantes</b> no período de teste gratuito.
           {% endif %}
         </div>
-        <a href="/paywall" class="btn btn-primary btn-sm">Fazer upgrade →</a>
+        <a href="/paywall" class="btn btn-accent btn-sm">Fazer upgrade</a>
       </div>
       {% endif %}
 
@@ -267,71 +245,73 @@ select.action-btn {
       {% set fechados = pdfs | selectattr('status', 'equalto', 'fechou') | list | length %}
       {% set valor_em_aberto = pdfs | selectattr('status', 'in', ['enviado', 'aberto', 'negociando']) | map(attribute='valor') | sum %}
 
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px" class="dash-metrics-grid">
-        <div class="dash-metric" style="background:var(--white);border:1px solid rgba(13,27,42,.08)">
-          <div class="dash-metric__label"><i class="ti ti-send" style="font-size:11px"></i>Total enviados</div>
-          <div class="dash-metric__val" style="color:var(--navy)">{{ total }}</div>
-          <div class="dash-metric__delta">este período</div>
-          <i class="ti ti-file-invoice dash-metric__icon" style="color:var(--navy)"></i>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label"><i class="ti ti-send" style="font-size:11px"></i>Total enviados</div>
+          <div class="kpi-value">{{ total }}</div>
+          <div class="kpi-sub">este período</div>
+          <i class="ti ti-file-invoice kpi-icon"></i>
         </div>
-        <div class="dash-metric" style="background:var(--navy);border:1px solid rgba(255,255,255,.06)">
-          <div class="dash-metric__label" style="color:rgba(245,240,232,.38)"><i class="ti ti-eye" style="font-size:11px"></i>Abertos agora</div>
-          <div class="dash-metric__val" style="color:var(--orange)">{{ abertos }}</div>
-          <div class="dash-metric__delta" style="color:rgba(245,240,232,.3)">ligue agora</div>
-          <i class="ti ti-eye dash-metric__icon" style="color:var(--orange)"></i>
+        <div class="kpi-card {% if abertos > 0 %}accent{% endif %}">
+          <div class="kpi-label"><i class="ti ti-eye" style="font-size:11px"></i>Abertos agora</div>
+          <div class="kpi-value" style="color:{% if abertos > 0 %}var(--accent-2){% else %}var(--fg){% endif %}">{{ abertos }}</div>
+          <div class="kpi-sub">{% if abertos > 0 %}ligue agora{% else %}aguardando{% endif %}</div>
+          <i class="ti ti-eye kpi-icon"></i>
         </div>
-        <div class="dash-metric" style="background:var(--white);border:1px solid rgba(13,27,42,.08)">
-          <div class="dash-metric__label"><i class="ti ti-circle-check" style="font-size:11px"></i>Fechados</div>
-          <div class="dash-metric__val" style="color:var(--green)">{{ fechados }}</div>
-          <div class="dash-metric__delta">contratos assinados</div>
-          <i class="ti ti-circle-check dash-metric__icon" style="color:var(--green)"></i>
+        <div class="kpi-card">
+          <div class="kpi-label"><i class="ti ti-circle-check" style="font-size:11px"></i>Fechados</div>
+          <div class="kpi-value" style="color:var(--ok)">{{ fechados }}</div>
+          <div class="kpi-sub">contratos assinados</div>
+          <i class="ti ti-circle-check kpi-icon"></i>
         </div>
-        <div class="dash-metric" style="background:var(--white);border:1px solid rgba(13,27,42,.08)">
-          <div class="dash-metric__label"><i class="ti ti-coin" style="font-size:11px"></i>Valor em aberto</div>
-          <div class="dash-metric__val" style="color:var(--navy);font-size:20px;margin-top:2px">
+        <div class="kpi-card">
+          <div class="kpi-label"><i class="ti ti-coin" style="font-size:11px"></i>Valor em aberto</div>
+          <div class="kpi-value" style="font-size:{% if valor_em_aberto > 999999 %}18px{% else %}22px{% endif %};margin-top:4px">
             R$ {{ '{:,.0f}'.format(valor_em_aberto).replace(',', '.') }}
           </div>
-          <div class="dash-metric__delta">potencial de receita</div>
-          <i class="ti ti-currency-dollar dash-metric__icon" style="color:var(--navy)"></i>
+          <div class="kpi-sub">potencial de receita</div>
+          <i class="ti ti-currency-dollar kpi-icon"></i>
         </div>
       </div>
 
-      <!-- PIPELINE (brand component) -->
-      <div style="display:flex;align-items:stretch;gap:0;border:1px solid rgba(13,27,42,.08);border-radius:var(--r-lg);overflow:hidden;margin-bottom:28px;background:var(--white)">
-        {% set total_env = pdfs | selectattr('status', 'in', ['enviado', 'aberto', 'negociando', 'fechou', 'perdido']) | list | length %}
-        {% set total_neg = pdfs | selectattr('status', 'equalto', 'negociando') | list | length %}
-        <div style="flex:1;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:5px;border-right:1px solid rgba(13,27,42,.06)">
-          <i class="ti ti-send" style="font-size:18px;color:var(--gray)"></i>
-          <div style="font-family:var(--fd);font-weight:700;font-size:22px;color:var(--navy)">{{ total }}</div>
-          <div style="font-size:11px;font-weight:500;color:var(--gray);text-align:center">Enviados</div>
+      <!-- PIPELINE -->
+      {% set total_neg = pdfs | selectattr('status', 'equalto', 'negociando') | list | length %}
+      <div class="pipeline">
+        <div class="pipeline-step">
+          <i class="ti ti-send" style="font-size:18px;color:var(--fg-mute)"></i>
+          <div class="pipeline-val">{{ total }}</div>
+          <div class="pipeline-label">Enviados</div>
         </div>
-        <div style="flex:1;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:5px;border-right:1px solid rgba(13,27,42,.06);background:{% if abertos > 0 %}var(--navy){% else %}var(--white){% endif %}">
-          <i class="ti ti-eye" style="font-size:18px;color:{% if abertos > 0 %}var(--orange){% else %}var(--gray){% endif %}"></i>
-          <div style="font-family:var(--fd);font-weight:700;font-size:22px;color:{% if abertos > 0 %}var(--orange){% else %}var(--navy){% endif %}">{{ abertos }}</div>
-          <div style="font-size:11px;font-weight:500;color:{% if abertos > 0 %}rgba(245,240,232,.6){% else %}var(--gray){% endif %};text-align:center">Abertos agora</div>
+        <div class="pipeline-step {% if abertos > 0 %}hot{% endif %}">
+          <i class="ti ti-eye" style="font-size:18px;color:{% if abertos > 0 %}var(--accent-2){% else %}var(--fg-mute){% endif %}"></i>
+          <div class="pipeline-val" style="color:{% if abertos > 0 %}var(--accent-2){% else %}var(--fg){% endif %}">{{ abertos }}</div>
+          <div class="pipeline-label">Abertos agora</div>
         </div>
-        <div style="flex:1;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:5px;border-right:1px solid rgba(13,27,42,.06)">
-          <i class="ti ti-messages" style="font-size:18px;color:var(--gray)"></i>
-          <div style="font-family:var(--fd);font-weight:700;font-size:22px;color:var(--navy)">{{ total_neg }}</div>
-          <div style="font-size:11px;font-weight:500;color:var(--gray);text-align:center">Negociando</div>
+        <div class="pipeline-step">
+          <i class="ti ti-messages" style="font-size:18px;color:var(--fg-mute)"></i>
+          <div class="pipeline-val">{{ total_neg }}</div>
+          <div class="pipeline-label">Negociando</div>
         </div>
-        <div style="flex:1;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:5px">
-          <i class="ti ti-circle-check" style="font-size:18px;color:var(--gray)"></i>
-          <div style="font-family:var(--fd);font-weight:700;font-size:22px;color:var(--navy)">{{ fechados }}</div>
-          <div style="font-size:11px;font-weight:500;color:var(--gray);text-align:center">Fechados</div>
+        <div class="pipeline-step">
+          <i class="ti ti-circle-check" style="font-size:18px;color:var(--ok)"></i>
+          <div class="pipeline-val" style="color:var(--ok)">{{ fechados }}</div>
+          <div class="pipeline-label">Fechados</div>
         </div>
       </div>
 
       <!-- TABELA -->
       {% if pdfs %}
       <div class="table-wrap">
-        <div style="padding:16px 20px;border-bottom:1px solid rgba(13,27,42,.07);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-family:var(--fd);font-weight:700;font-size:15px;color:var(--navy);letter-spacing:-.01em">Orçamentos</div>
+        <div class="table-head-bar">
+          <div>
+            <div style="font-size:15.5px;font-weight:600">Orçamentos</div>
+            <div class="mono" style="font-size:11.5px;color:var(--fg-mute);margin-top:2px">{{ pdfs|length }} documento{{ 's' if pdfs|length != 1 else '' }}</div>
+          </div>
           {% if abertos_agora > 0 %}
           <span class="live-indicator"><span class="live-dot"></span>{{ abertos_agora }} aberto{% if abertos_agora > 1 %}s{% endif %} agora</span>
           {% endif %}
         </div>
-        <table class="table">
+        <table class="dt">
           <thead>
             <tr>
               <th>Cliente / Documento</th>
@@ -339,7 +319,7 @@ select.action-btn {
               <th>Enviado</th>
               <th>Última abertura</th>
               <th>Status</th>
-              <th class="table-actions">Ações</th>
+              <th class="table-actions-col" style="text-align:right">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -347,24 +327,22 @@ select.action-btn {
             {% set status = p.status | default('enviado') %}
             <tr {% if status == 'aberto' %}class="hot"{% endif %} id="row-{{ p.id }}">
               <td>
-                <div class="table-name">{{ p.cliente_nome }}</div>
-                <div class="table-sub">{{ p.titulo }}{% if p.filename %} · {{ p.filename }}{% endif %}{% if p.aberturas %} · {{ p.aberturas }}× aberto{% endif %}</div>
-              </td>
-              <td>
-                <div class="table-val">
-                  {% if p.valor %}R$ {{ '{:,.2f}'.format(p.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% else %}<span style="color:var(--gray)">—</span>{% endif %}
+                <div style="font-size:14px;font-weight:600">{{ p.cliente_nome }}</div>
+                <div class="mono" style="font-size:11px;color:var(--fg-mute);margin-top:2px">
+                  {{ p.titulo }}{% if p.filename %} · {{ p.filename }}{% endif %}{% if p.aberturas %} · {{ p.aberturas }}× aberto{% endif %}
                 </div>
               </td>
               <td>
-                <div class="table-time">{{ p.criado_em[:10] if p.criado_em else '—' }}</div>
-              </td>
-              <td>
-                <div class="table-time">
-                  {% if p.aberto_em %}{{ p.aberto_em[:16].replace('T', ' ') }}{% else %}<span style="color:var(--gray)">Não aberto</span>{% endif %}
+                <div class="mono" style="font-size:13px">
+                  {% if p.valor %}R$ {{ '{:,.2f}'.format(p.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% else %}<span style="color:var(--fg-mute)">—</span>{% endif %}
                 </div>
               </td>
+              <td class="mono" style="font-size:12.5px;color:var(--fg-dim)">{{ p.criado_em[:10] if p.criado_em else '—' }}</td>
+              <td style="font-size:12.5px;color:var(--fg-dim)">
+                {% if p.aberto_em %}{{ p.aberto_em[:16].replace('T', ' ') }}{% else %}<span style="color:var(--fg-mute)">Não aberto</span>{% endif %}
+              </td>
               <td>
-                <select class="action-btn" style="border-radius:6px;padding:5px 8px;font-size:12px;background:var(--white)" onchange="updateStatus({{ p.id }}, this.value)">
+                <select class="status-select" onchange="updateStatus({{ p.id }}, this.value)">
                   <option value="enviado"    {% if status == 'enviado' %}selected{% endif %}>📤 Enviado</option>
                   <option value="aberto"     {% if status == 'aberto' %}selected{% endif %}>👁 Aberto</option>
                   <option value="negociando" {% if status == 'negociando' %}selected{% endif %}>💬 Negociando</option>
@@ -372,28 +350,23 @@ select.action-btn {
                   <option value="perdido"    {% if status == 'perdido' %}selected{% endif %}>❌ Perdido</option>
                 </select>
               </td>
-              <td class="table-actions">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                  <button onclick="copyLink('{{ p.token }}')" class="action-btn action-btn-orange" title="Copiar link">
-                    <i class="ti ti-copy" style="font-size:12px"></i>
-                    Link
+              <td class="table-actions-col" style="text-align:right">
+                <div style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <button onclick="copyLink('{{ p.token }}')" class="btn btn-subtle btn-sm">
+                    <i class="ti ti-copy" style="font-size:12px"></i> Link
                   </button>
                   {% if p.cliente_telefone %}
-                  <a href="https://wa.me/55{{ p.cliente_telefone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}?text=Olá, {{ p.cliente_nome }}! Segue o link do seu orçamento: {{ request.host_url }}pdf/{{ p.token }}" target="_blank" class="action-btn action-btn-green">
-                    <i class="ti ti-brand-whatsapp" style="font-size:12px"></i>
-                    WhatsApp
+                  <a href="https://wa.me/55{{ p.cliente_telefone | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}?text=Ol%C3%A1%2C+{{ p.cliente_nome | urlencode }}%21+Segue+o+link+do+seu+or%C3%A7amento%3A+{{ request.host_url }}pdf/{{ p.token }}" target="_blank" class="btn btn-sm" style="background:oklch(0.75 0.16 145 / 0.12);color:var(--ok);border:1px solid oklch(0.75 0.16 145 / 0.3)">
+                    <i class="ti ti-brand-whatsapp" style="font-size:12px"></i> WhatsApp
                   </a>
                   {% endif %}
-                  <button onclick="verRastreio({{ p.id }}, '{{ p.cliente_nome }}')" class="action-btn" title="Ver quem abriu">
-                    <i class="ti ti-map-pin" style="font-size:12px"></i>
-                    Rastreio
+                  <button onclick="verRastreio({{ p.id }}, '{{ p.cliente_nome }}')" class="btn btn-ghost btn-sm">
+                    <i class="ti ti-map-pin" style="font-size:12px"></i> Rastreio
                   </button>
                   <button id="renovar-btn-{{ p.id }}" onclick="renovarLink({{ p.id }}, this)"
-                    class="action-btn" style="display:none;border-color:rgba(99,102,241,.35);color:#6366f1"
-                    title="Link expirado — renovar por mais 48h"
+                    class="btn btn-ghost btn-sm" style="display:none;color:var(--info);border-color:oklch(0.72 0.14 240 / 0.3)"
                     data-criado="{{ p.criado_em }}">
-                    <i class="ti ti-refresh" style="font-size:12px"></i>
-                    Renovar
+                    <i class="ti ti-refresh" style="font-size:12px"></i> Renovar
                   </button>
                 </div>
               </td>
@@ -402,14 +375,15 @@ select.action-btn {
           </tbody>
         </table>
       </div>
+
       {% else %}
-      <div class="empty-state">
-        <div class="empty-icon">
-          <i class="ti ti-file-invoice"></i>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center">
+        <div style="width:76px;height:76px;border-radius:22px;background:oklch(0.74 0.17 45 / 0.1);border:1px solid oklch(0.74 0.17 45 / 0.2);display:grid;place-items:center;margin-bottom:22px;color:var(--accent-2)">
+          <i class="ti ti-file-invoice" style="font-size:34px"></i>
         </div>
-        <h3 class="empty-title">Nenhum orçamento ainda</h3>
-        <p class="empty-sub">Envie seu primeiro PDF e comece a rastrear quando seu cliente abrir.</p>
-        <button onclick="document.getElementById('upload-modal').style.display='flex'" class="btn btn-primary btn-md">
+        <div style="font-size:20px;font-weight:700;letter-spacing:-0.025em;margin-bottom:8px">Nenhum orçamento ainda</div>
+        <p style="font-size:14px;color:var(--fg-dim);max-width:320px;line-height:1.55;margin-bottom:24px">Envie seu primeiro PDF e comece a rastrear quando seu cliente abrir.</p>
+        <button class="btn btn-accent btn-md" onclick="document.getElementById('upload-modal').style.display='flex'">
           <i class="ti ti-plus"></i>
           Enviar primeiro orçamento
         </button>
@@ -420,108 +394,118 @@ select.action-btn {
   </main>
 </div>
 
-<!-- Mobile sidebar overlay -->
-<div class="mob-overlay" id="mob-overlay" onclick="closeSidebar()"></div>
-
-<!-- Bottom navigation (mobile only) -->
-<nav class="bottom-nav">
-  <a href="/dashboard" class="bottom-nav__item active">
-    <i class="ti ti-layout-dashboard"></i>
-    <span>Dashboard</span>
-  </a>
-  <a href="/configuracoes" class="bottom-nav__item">
-    <i class="ti ti-settings"></i>
-    <span>Config.</span>
-  </a>
-  <a href="/logout" class="bottom-nav__item">
-    <i class="ti ti-logout"></i>
-    <span>Sair</span>
-  </a>
-</nav>
-
 <!-- UPLOAD MODAL -->
-<div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(13,27,42,.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:var(--white);border-radius:24px;padding:36px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+<div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(6,18,29,0.85);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--ink-1);border:1px solid var(--line-strong);border-radius:22px;padding:36px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
       <div>
-        <h2 style="font-family:var(--fd);font-weight:700;font-size:22px;color:var(--navy);letter-spacing:-.025em">Enviar orçamento</h2>
-        <p style="font-size:13px;color:var(--gray);margin-top:4px">O cliente receberá o PDF + link rastreável</p>
+        <h2 style="font-size:22px;font-weight:700;letter-spacing:-0.025em;color:var(--fg)">Enviar orçamento</h2>
+        <p style="font-size:13px;color:var(--fg-dim);margin-top:4px">O cliente recebe o PDF + link rastreável</p>
       </div>
-      <button onclick="document.getElementById('upload-modal').style.display='none'" style="background:rgba(13,27,42,.06);border:none;cursor:pointer;color:var(--gray);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;transition:background .15s" onmouseover="this.style.background='rgba(13,27,42,.1)'" onmouseout="this.style.background='rgba(13,27,42,.06)'">×</button>
+      <button onclick="document.getElementById('upload-modal').style.display='none'" style="background:var(--ink-2);border:1px solid var(--line);cursor:pointer;color:var(--fg-mute);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;transition:background .15s;flex-shrink:0">×</button>
     </div>
 
     <form id="upload-form" enctype="multipart/form-data">
       <div class="upload-area" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
-        <div class="upload-icon">
+        <div style="width:52px;height:52px;border-radius:14px;background:oklch(0.74 0.17 45 / 0.14);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--accent-2);font-size:24px">
           <i class="ti ti-cloud-upload"></i>
         </div>
-        <div class="upload-title" id="drop-text">Arraste o PDF aqui</div>
-        <div class="upload-sub">ou clique para selecionar · máx. 50MB</div>
+        <div style="font-size:16px;font-weight:600;color:var(--fg);margin-bottom:5px" id="drop-text">Arraste o PDF aqui</div>
+        <div style="font-size:13px;color:var(--fg-mute);margin-bottom:16px">ou clique para selecionar · máx. 50MB</div>
         <span class="btn btn-ghost btn-sm">Selecionar arquivo</span>
       </div>
       <input type="file" id="pdf-input" name="pdf" accept=".pdf">
 
-      <div style="margin-top:20px">
-        <div class="form-row" style="align-items:flex-end">
-          <div class="input-group" style="margin-bottom:0">
-            <label class="input-label">Nome do cliente *</label>
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field">
+            <label class="field-label">Nome do cliente *</label>
             <input class="input" type="text" id="campo-nome" name="cliente_nome" placeholder="Ex: João Silva" required>
           </div>
-          <div class="input-group" style="margin-bottom:0">
-            <label class="input-label">Telefone (WhatsApp)</label>
+          <div class="field">
+            <label class="field-label">Telefone (WhatsApp)</label>
             <input class="input" type="tel" id="campo-tel" name="cliente_telefone" placeholder="Ex: 71999998888">
           </div>
         </div>
-        <div class="input-group" style="margin-top:10px;margin-bottom:0">
-          <label class="input-label">Email do cliente <span style="opacity:.5;font-weight:400">(para enviar o PDF rastreado)</span></label>
+        <div class="field">
+          <label class="field-label">Email do cliente <span style="opacity:.5;font-weight:400">(para enviar PDF rastreado)</span></label>
           <input class="input" type="email" name="cliente_email" placeholder="Ex: joao@email.com">
         </div>
-        <div id="agenda-wrap" style="display:none;margin-top:8px">
-          <button type="button" id="btn-agenda" onclick="abrirAgenda()" class="btn btn-ghost btn-sm" style="gap:6px;color:var(--navy);border-color:rgba(13,27,42,.18)">
+        <div id="agenda-wrap" style="display:none">
+          <button type="button" id="btn-agenda" onclick="abrirAgenda()" class="btn btn-ghost btn-sm">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="12" cy="10" r="3"/></svg>
             Buscar na agenda
           </button>
         </div>
-        <div class="form-row">
-          <div class="input-group">
-            <label class="input-label">Título do orçamento</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field">
+            <label class="field-label">Título do orçamento</label>
             <input class="input" type="text" name="titulo" placeholder="Ex: Reforma da Cozinha">
           </div>
-          <div class="input-group">
-            <label class="input-label">Valor (R$) — opcional</label>
+          <div class="field">
+            <label class="field-label">Valor (R$) — opcional</label>
             <input class="input" type="text" name="valor" placeholder="Ex: 48500,00" id="valor-input">
           </div>
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-md" style="width:100%;justify-content:center;margin-top:8px" id="submit-btn">
+      <button type="submit" class="btn btn-accent btn-md" style="width:100%;justify-content:center;margin-top:16px" id="submit-btn">
         <i class="ti ti-send"></i>
         Enviar e rastrear
       </button>
     </form>
 
-    <!-- Resultado pós-upload -->
     <div id="upload-result" style="display:none;margin-top:20px">
-      <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:var(--r-md);padding:13px 15px;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
-        <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px;animation:pulse 2s infinite,glow 2s infinite"></div>
+      <div style="background:oklch(0.78 0.16 150 / 0.08);border:1px solid oklch(0.78 0.16 150 / 0.2);border-radius:var(--r-md);padding:13px 15px;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--ok);flex-shrink:0;margin-top:4px;animation:pulse 2s infinite"></div>
         <div>
-          <div style="font-size:13px;font-weight:500;color:#15803D;margin-bottom:2px">Orçamento enviado e rastreando!</div>
-          <div style="font-size:12px;color:#15803D;opacity:.7">Você será notificado quando o cliente abrir.</div>
+          <div style="font-size:13px;font-weight:500;color:var(--ok);margin-bottom:2px">Orçamento enviado e rastreando!</div>
+          <div style="font-size:12px;color:var(--ok);opacity:.7">Você será notificado quando o cliente abrir.</div>
         </div>
       </div>
-      <div style="background:var(--cream2);border-radius:var(--r-md);padding:14px 16px;display:flex;align-items:center;gap:12px">
-        <div style="flex:1;font-size:13px;color:var(--gray);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="result-link">—</div>
-        <button onclick="copyResult()" class="btn btn-primary btn-sm">Copiar link</button>
+      <div style="background:var(--ink-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1;font-size:12.5px;color:var(--fg-dim);font-family:var(--ff-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="result-link">—</div>
+        <button onclick="copyResult()" class="btn btn-accent btn-sm">Copiar link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RASTREIO -->
+<div id="rastreio-modal" style="display:none;position:fixed;inset:0;background:rgba(6,18,29,0.85);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--ink-1);border:1px solid var(--line-strong);border-radius:22px;padding:0;max-width:560px;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="padding:24px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h3 style="font-size:18px;font-weight:700;letter-spacing:-0.02em" id="rastreio-titulo">Rastreio de acessos</h3>
+        <p style="font-size:12px;color:var(--fg-mute);margin-top:3px" id="rastreio-sub">Carregando...</p>
+      </div>
+      <button onclick="document.getElementById('rastreio-modal').style.display='none'" style="background:var(--ink-2);border:1px solid var(--line);cursor:pointer;color:var(--fg-mute);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:24px 28px" id="rastreio-body">
+      <div style="text-align:center;padding:40px;color:var(--fg-mute)">
+        <i class="ti ti-loader-2" style="font-size:28px;animation:spin .7s linear infinite"></i>
+        <p style="margin-top:12px;font-size:14px">Buscando acessos...</p>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-/* ── Contact Picker API ───────────────────────────────────── */
+/* ── Sidebar ── */
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+/* ── Contact Picker API ── */
 (function(){
-  const supported = ('contacts' in navigator) && ('ContactsManager' in window);
-  if (supported) document.getElementById('agenda-wrap').style.display = 'block';
+  if ('contacts' in navigator && 'ContactsManager' in window) {
+    document.getElementById('agenda-wrap').style.display = 'block';
+  }
 })();
 
 async function abrirAgenda() {
@@ -531,14 +515,12 @@ async function abrirAgenda() {
     const c = contacts[0];
     const nomeEl = document.getElementById('campo-nome');
     const telEl  = document.getElementById('campo-tel');
-    if (c.name && c.name[0])  nomeEl.value = c.name[0];
-    if (c.tel  && c.tel[0]) {
-      // limpa para manter só dígitos, remove +55 se presente
+    if (c.name && c.name[0]) nomeEl.value = c.name[0];
+    if (c.tel && c.tel[0]) {
       let tel = c.tel[0].replace(/\D/g, '');
       if (tel.startsWith('55') && tel.length >= 12) tel = tel.slice(2);
       telEl.value = tel;
     }
-    // foco no próximo campo em branco
     if (!nomeEl.value) nomeEl.focus();
     else if (!telEl.value) telEl.focus();
   } catch(err) {
@@ -546,7 +528,7 @@ async function abrirAgenda() {
   }
 }
 
-/* Drag & drop */
+/* ── Drag & drop ── */
 const dz = document.getElementById('drop-zone');
 const fi = document.getElementById('pdf-input');
 const dt = document.getElementById('drop-text');
@@ -556,25 +538,22 @@ const dt = document.getElementById('drop-text');
 dz.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if(f){ fi.files = ev.dataTransfer.files; dt.textContent = f.name; } });
 fi.addEventListener('change', () => { if(fi.files[0]) dt.textContent = fi.files[0].name; });
 
-/* Upload */
+/* ── Upload form ── */
 document.getElementById('upload-form').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = document.getElementById('submit-btn');
   btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Enviando…';
   btn.disabled = true;
-
   const fd = new FormData(e.target);
   try {
     const r = await fetch('/upload_pdf', { method: 'POST', body: fd });
     const d = await r.json();
-    if(d.ok){
+    if (d.ok) {
       const link = window.location.origin + '/pdf/' + d.token;
       document.getElementById('result-link').textContent = link;
       document.getElementById('upload-result').style.display = 'block';
       window.lastLink = link;
       btn.innerHTML = '<i class="ti ti-check"></i> Enviado!';
-      btn.style.background = 'var(--green)';
-      btn.style.color = 'var(--navy)';
       setTimeout(() => location.reload(), 2500);
     } else {
       alert(d.erro || 'Erro ao enviar.');
@@ -588,10 +567,10 @@ document.getElementById('upload-form').addEventListener('submit', async e => {
   }
 });
 
-function copyResult(){ navigator.clipboard.writeText(window.lastLink || ''); }
+function copyResult() { navigator.clipboard.writeText(window.lastLink || ''); }
 
-/* Copy link */
-async function copyLink(token){
+/* ── Copy link ── */
+async function copyLink(token) {
   const link = window.location.origin + '/pdf/' + token;
   await navigator.clipboard.writeText(link);
   const btn = event.currentTarget;
@@ -600,29 +579,27 @@ async function copyLink(token){
   setTimeout(() => btn.innerHTML = orig, 1800);
 }
 
-/* Update status */
-async function updateStatus(id, status){
+/* ── Update status ── */
+async function updateStatus(id, status) {
   await fetch('/atualizar_status_pdf/' + id, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({status})
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ status })
   });
 }
 
-/* Renovar link expirado */
-(function checkExpirados(){
+/* ── Check expired links ── */
+(function checkExpirados() {
   const PRAZO_MS = 48 * 60 * 60 * 1000;
   document.querySelectorAll('[id^="renovar-btn-"]').forEach(btn => {
     const criado = btn.dataset.criado;
     if (!criado) return;
     const ts = new Date(criado.replace(' ', 'T') + (criado.includes('+') ? '' : '-03:00'));
-    if (Date.now() - ts.getTime() >= PRAZO_MS) {
-      btn.style.display = '';
-    }
+    if (Date.now() - ts.getTime() >= PRAZO_MS) btn.style.display = '';
   });
 })();
 
-async function renovarLink(id, btn){
+/* ── Renovar link ── */
+async function renovarLink(id, btn) {
   if (!confirm('Renovar o link por mais 48h? O link anterior deixará de funcionar.')) return;
   const orig = btn.innerHTML;
   btn.innerHTML = '<i class="ti ti-loader-2" style="font-size:12px;animation:spin .7s linear infinite"></i> Aguarde…';
@@ -633,12 +610,12 @@ async function renovarLink(id, btn){
     if (d.ok) {
       btn.style.display = 'none';
       const row = document.getElementById('row-' + id);
-      if (row) {
+      if (row && d.token) {
         const copyBtn = row.querySelector('[onclick^="copyLink"]');
-        if (copyBtn && d.token) copyBtn.setAttribute('onclick', `copyLink('${d.token}')`);
+        if (copyBtn) copyBtn.setAttribute('onclick', `copyLink('${d.token}')`);
       }
-      alert('Link renovado! Novo link copiado.');
       if (d.token) navigator.clipboard.writeText(window.location.origin + '/pdf/' + d.token).catch(()=>{});
+      alert('Link renovado! Novo link copiado.');
     } else {
       alert('Erro: ' + (d.erro || 'Tente novamente.'));
       btn.innerHTML = orig;
@@ -651,7 +628,7 @@ async function renovarLink(id, btn){
   }
 }
 
-/* SSE — live notifications */
+/* ── SSE live notifications ── */
 const evtSource = new EventSource('/sse');
 
 evtSource.addEventListener('abriu', e => {
@@ -666,40 +643,21 @@ evtSource.addEventListener('abriu', e => {
 evtSource.addEventListener('aviso', e => {
   const d = JSON.parse(e.data);
   if (d.tipo === 'onboarding') {
-    const banner = document.getElementById('notif-banner');
-    document.getElementById('nb-name').innerHTML =
-      '⚙️ ' + d.titulo;
-    document.getElementById('nb-sub').innerHTML =
-      d.msg + ' <a href="/configuracoes" style="color:var(--orange);font-weight:600;text-decoration:underline">Configurar agora →</a>';
-    banner.style.borderColor = 'rgba(232,68,26,.4)';
-    banner.classList.add('show');
-    // não auto-fecha — usuário precisa ver
+    document.getElementById('nb-name').innerHTML = d.titulo;
+    document.getElementById('nb-sub').innerHTML = d.msg + ' <a href="/configuracoes" style="color:var(--accent-2);font-weight:600;text-decoration:underline">Configurar agora →</a>';
+    document.getElementById('notif-banner').style.borderColor = 'oklch(0.74 0.17 45 / 0.4)';
+    document.getElementById('notif-banner').classList.add('show');
   }
 });
 
-/* Spin animation for loader */
-const spinStyle = document.createElement('style');
-spinStyle.textContent = '@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
-document.head.appendChild(spinStyle);
-
-function toggleSidebar() {
-  document.querySelector('.dash-sidebar').classList.toggle('open');
-  document.getElementById('mob-overlay').classList.toggle('show');
-}
-function closeSidebar() {
-  document.querySelector('.dash-sidebar').classList.remove('open');
-  document.getElementById('mob-overlay').classList.remove('show');
-}
-
-/* SW + Push registration */
+/* ── SW + Push registration ── */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then(async reg => {
     if (!('PushManager' in window)) return;
-    // Only subscribe if permission already granted (don't ask here — ask in configuracoes)
     if (Notification.permission !== 'granted') return;
     try {
       const existing = await reg.pushManager.getSubscription();
-      if (existing) return;  // already subscribed
+      if (existing) return;
       const keyRes = await fetch('/push/vapid-key');
       const { publicKey } = await keyRes.json();
       if (!publicKey) return;
@@ -708,8 +666,7 @@ if ('serviceWorker' in navigator) {
         applicationServerKey: urlBase64ToUint8Array(publicKey)
       });
       await fetch('/push/subscribe', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify(sub.toJSON())
       });
     } catch {}
@@ -723,10 +680,11 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+/* ── Rastreio modal ── */
 async function verRastreio(id, nome) {
   document.getElementById('rastreio-titulo').textContent = 'Rastreio · ' + nome;
   document.getElementById('rastreio-sub').textContent = 'Carregando...';
-  document.getElementById('rastreio-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)"><i class="ti ti-loader-2" style="font-size:28px;animation:spin .7s linear infinite"></i><p style="margin-top:12px;font-size:14px">Buscando acessos...</p></div>';
+  document.getElementById('rastreio-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--fg-mute)"><i class="ti ti-loader-2" style="font-size:28px;animation:spin .7s linear infinite"></i><p style="margin-top:12px;font-size:14px">Buscando acessos...</p></div>';
   document.getElementById('rastreio-modal').style.display = 'flex';
 
   let acessos;
@@ -736,7 +694,7 @@ async function verRastreio(id, nome) {
     acessos = await r.json();
   } catch(e) {
     document.getElementById('rastreio-sub').textContent = 'Erro ao carregar';
-    document.getElementById('rastreio-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray)"><i class="ti ti-alert-circle" style="font-size:28px;color:#ef4444"></i><p style="margin-top:12px;font-size:14px">Não foi possível carregar os acessos.<br>Tente novamente.</p></div>';
+    document.getElementById('rastreio-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--fg-mute)"><i class="ti ti-alert-circle" style="font-size:28px;color:var(--bad)"></i><p style="margin-top:12px;font-size:14px">Não foi possível carregar os acessos.</p></div>';
     return;
   }
 
@@ -745,64 +703,58 @@ async function verRastreio(id, nome) {
 
   if (!acessos.length) {
     sub.textContent = 'Nenhum acesso registrado ainda';
-    body.innerHTML = '<div style="text-align:center;padding:48px 24px"><div style="width:56px;height:56px;border-radius:16px;background:rgba(232,68,26,.08);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--orange)"><i class="ti ti-eye-off" style="font-size:26px"></i></div><p style="font-size:14px;color:var(--gray)">O PDF ainda não foi aberto.</p></div>';
+    body.innerHTML = '<div style="text-align:center;padding:48px 24px"><div style="width:56px;height:56px;border-radius:16px;background:oklch(0.74 0.17 45 / 0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--accent-2)"><i class="ti ti-eye-off" style="font-size:26px"></i></div><p style="font-size:14px;color:var(--fg-dim)">O PDF ainda não foi aberto.</p></div>';
     return;
   }
 
   const ips = [...new Set(acessos.map(a => a.ip).filter(Boolean))];
-  sub.textContent = acessos.length + ' acesso(s) · ' + ips.length + ' dispositivo(s) único(s)' + (ips.length > 1 ? ' — ⚠️ possível repasse' : '');
+  sub.textContent = acessos.length + ' acesso(s) · ' + ips.length + ' dispositivo(s) único(s)' + (ips.length > 1 ? ' — possível repasse' : '');
 
   let alertHtml = '';
   if (ips.length > 1) {
-    alertHtml = `<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px">
-      <i class="ti ti-alert-triangle" style="font-size:18px;color:#F59E0B;flex-shrink:0;margin-top:1px"></i>
+    alertHtml = `<div style="background:oklch(0.82 0.16 85 / 0.08);border:1px solid oklch(0.82 0.16 85 / 0.25);border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px">
+      <i class="ti ti-alert-triangle" style="font-size:18px;color:var(--warn);flex-shrink:0;margin-top:1px"></i>
       <div>
-        <div style="font-size:13px;font-weight:600;color:#92400E;margin-bottom:2px">PDF acessado por ${ips.length} dispositivos diferentes</div>
-        <div style="font-size:12px;color:#92400E;opacity:.8">O orçamento pode ter sido repassado para outras pessoas.</div>
+        <div style="font-size:13px;font-weight:600;color:var(--warn);margin-bottom:2px">PDF acessado por ${ips.length} dispositivos diferentes</div>
+        <div style="font-size:12px;color:var(--warn);opacity:.8">O orçamento pode ter sido repassado para outras pessoas.</div>
       </div>
     </div>`;
   }
 
   const ipMap = {};
   let ipCnt = 0;
-  acessos.forEach(a => {
-    if (a.ip && !ipMap[a.ip]) { ipMap[a.ip] = ++ipCnt; }
-  });
+  acessos.forEach(a => { if (a.ip && !ipMap[a.ip]) { ipMap[a.ip] = ++ipCnt; } });
 
-  const items = acessos.map((a, i) => {
+  const items = acessos.map((a) => {
     const isCliente = ipMap[a.ip] === 1;
     const deviceIcon = a.dispositivo === 'mobile' ? 'ti-device-mobile' : a.dispositivo === 'tablet' ? 'ti-device-ipad' : 'ti-device-laptop';
     const fonteLabel = a.fonte === 'arquivo'
-      ? '<span style="background:rgba(99,102,241,.1);color:#4338CA;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px"><i class="ti ti-file" style="font-size:10px"></i>via arquivo</span>'
-      : '<span style="background:rgba(34,197,94,.1);color:#15803D;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px"><i class="ti ti-link" style="font-size:10px"></i>via link</span>';
+      ? '<span style="background:oklch(0.72 0.14 240 / 0.15);color:var(--info);font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px"><i class="ti ti-file" style="font-size:10px"></i>via arquivo</span>'
+      : '<span style="background:oklch(0.78 0.16 150 / 0.12);color:var(--ok);font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px"><i class="ti ti-link" style="font-size:10px"></i>via link</span>';
     const locStr = [a.cidade, a.regiao, a.pais].filter(Boolean).join(', ') || 'Localização desconhecida';
     const quemLabel = isCliente
-      ? '<span style="background:#DCFCE7;color:#173404;font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user-check" style="font-size:11px"></i> Provável cliente</span>'
-      : `<span style="background:#FEF3C7;color:#633806;font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user-question" style="font-size:11px"></i> Outro dispositivo #${ipMap[a.ip]}</span>`;
+      ? '<span style="background:oklch(0.78 0.16 150 / 0.12);color:var(--ok);font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user-check" style="font-size:11px"></i> Provável cliente</span>'
+      : `<span style="background:oklch(0.82 0.16 85 / 0.1);color:var(--warn);font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user-question" style="font-size:11px"></i> Outro dispositivo #${ipMap[a.ip]}</span>`;
     const hora = a.criado_em ? a.criado_em.slice(0,16).replace('T',' ') : '—';
-    // Nome do dispositivo — "sistema" agora contém o modelo real (ex: iPhone 15, Samsung Galaxy S23)
     const nomeDisp = a.sistema || 'Dispositivo';
-    // Destaque amarelo para dispositivos extras
-    const borderStyle = isCliente
-      ? 'border:1px solid rgba(13,27,42,.08)'
-      : 'border:1.5px solid rgba(245,158,11,.3);background:rgba(255,251,235,.6)';
+    const borderStyle = isCliente ? 'border:1px solid var(--line)' : 'border:1.5px solid oklch(0.82 0.16 85 / 0.3);background:oklch(0.82 0.16 85 / 0.04)';
     return `<div style="${borderStyle};border-radius:14px;padding:16px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:44px;height:44px;border-radius:12px;background:${isCliente ? '#DCFCE7' : '#FEF3C7'};display:flex;align-items:center;justify-content:center;color:${isCliente ? '#15803D' : '#D97706'};flex-shrink:0">
+        <div style="width:44px;height:44px;border-radius:12px;background:${isCliente ? 'oklch(0.78 0.16 150 / 0.12)' : 'oklch(0.82 0.16 85 / 0.1)'};display:flex;align-items:center;justify-content:center;color:${isCliente ? 'var(--ok)' : 'var(--warn)'};flex-shrink:0">
           <i class="ti ${deviceIcon}" style="font-size:22px"></i>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:700;color:var(--navy);letter-spacing:-.01em">${nomeDisp}</div>
-          <div style="font-size:11px;color:var(--gray);margin-top:2px">${a.operadora || 'Operadora desconhecida'}</div>
+          <div style="font-size:15px;font-weight:700;letter-spacing:-0.01em">${nomeDisp}</div>
+          <div style="font-size:11px;color:var(--fg-mute);margin-top:2px">${a.operadora || 'Operadora desconhecida'}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:11px;color:var(--gray)">${hora}</div>
+          <div style="font-size:11px;color:var(--fg-mute)">${hora}</div>
           <div style="margin-top:5px">${fonteLabel}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid rgba(13,27,42,.06)">
-        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray2)">
-          <i class="ti ti-map-pin" style="font-size:13px;color:var(--orange)"></i>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--fg-dim)">
+          <i class="ti ti-map-pin" style="font-size:13px;color:var(--accent-2)"></i>
           ${locStr}
         </div>
         ${quemLabel}
@@ -813,33 +765,19 @@ async function verRastreio(id, nome) {
   body.innerHTML = alertHtml + items;
 }
 
-/* ── Pull-to-refresh ─────────────────────────────────────────── */
+/* ── Pull-to-refresh ── */
 (function(){
   let startY = 0, pulling = false, indicator = null;
   const THRESHOLD = 80;
-
   function getIndicator() {
     if (indicator) return indicator;
     indicator = document.createElement('div');
-    indicator.style.cssText = [
-      'position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-60px)',
-      'background:#fff;border-radius:50%;width:44px;height:44px',
-      'display:flex;align-items:center;justify-content:center',
-      'box-shadow:0 2px 12px rgba(13,27,42,.18);z-index:9999',
-      'transition:opacity .15s;pointer-events:none;opacity:0'
-    ].join(';');
-    indicator.innerHTML = '<i class="ti ti-refresh" style="font-size:20px;color:#E8441A;transition:transform .1s"></i>';
+    indicator.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--ink-1);border:1px solid var(--line-strong);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.35);z-index:9999;transition:opacity .15s;pointer-events:none;opacity:0';
+    indicator.innerHTML = '<i class="ti ti-refresh" style="font-size:20px;color:var(--accent);transition:transform .1s"></i>';
     document.body.appendChild(indicator);
     return indicator;
   }
-
-  document.addEventListener('touchstart', e => {
-    if (window.scrollY === 0) {
-      startY = e.touches[0].clientY;
-      pulling = true;
-    }
-  }, {passive: true});
-
+  document.addEventListener('touchstart', e => { if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; } }, {passive:true});
   document.addEventListener('touchmove', e => {
     if (!pulling) return;
     const dist = e.touches[0].clientY - startY;
@@ -850,8 +788,7 @@ async function verRastreio(id, nome) {
     el.style.transform = `translateX(-50%) translateY(${clamped}px)`;
     el.style.opacity = progress;
     el.querySelector('i').style.transform = `rotate(${progress * 360}deg)`;
-  }, {passive: true});
-
+  }, {passive:true});
   document.addEventListener('touchend', e => {
     if (!pulling) return;
     pulling = false;
@@ -864,35 +801,9 @@ async function verRastreio(id, nome) {
       el.style.transform = 'translateX(-50%) translateY(-60px)';
       el.style.opacity = '0';
     }
-  }, {passive: true});
+  }, {passive:true});
 })();
 </script>
 
-<!-- MODAL RASTREIO -->
-<div id="rastreio-modal" style="display:none;position:fixed;inset:0;background:rgba(13,27,42,.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:var(--white);border-radius:24px;padding:0;max-width:560px;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
-
-    <!-- Header -->
-    <div style="padding:24px 28px;border-bottom:1px solid rgba(13,27,42,.08);display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <h3 style="font-family:var(--fd);font-weight:700;font-size:18px;color:var(--navy);letter-spacing:-.02em" id="rastreio-titulo">Rastreio de acessos</h3>
-        <p style="font-size:12px;color:var(--gray);margin-top:3px" id="rastreio-sub">Carregando...</p>
-      </div>
-      <button onclick="document.getElementById('rastreio-modal').style.display='none'" style="background:rgba(13,27,42,.06);border:none;cursor:pointer;color:var(--gray);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">×</button>
-    </div>
-
-    <!-- Body -->
-    <div style="overflow-y:auto;flex:1;padding:24px 28px" id="rastreio-body">
-      <div style="text-align:center;padding:40px;color:var(--gray)">
-        <i class="ti ti-loader-2" style="font-size:28px;animation:spin .7s linear infinite"></i>
-        <p style="margin-top:12px;font-size:14px">Buscando acessos...</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<footer style="text-align:center;padding:16px;font-size:12px;color:var(--gray);opacity:.5">
-  © 2026 ABRIU · <a href="/termos" style="color:inherit;text-decoration:none">Termos</a> · <a href="/privacidade" style="color:inherit;text-decoration:none">Privacidade</a>
-</footer>
 </body>
 </html>

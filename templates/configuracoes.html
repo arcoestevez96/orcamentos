@@ -7,360 +7,431 @@
 <title>Configurações — ABRIU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" onload="this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" onload="this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"></noscript>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#0D1B2A">
+<meta name="theme-color" content="#06121d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-body { background: var(--cream); }
-.cfg-layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-.cfg-main { background: var(--cream); }
-.cfg-content { padding: 28px; max-width: 680px; }
-.cfg-card { background: var(--white); border: 1px solid rgba(13,27,42,.08); border-radius: var(--r-lg); padding: 24px; margin-bottom: 16px; }
-.cfg-card__header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
-.cfg-card__icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.cfg-card__title { font-family: var(--fd); font-weight: 700; font-size: 15px; color: var(--navy); letter-spacing: -.02em; margin-bottom: 2px; }
-.cfg-card__sub { font-size: 12px; color: var(--gray); }
-.cfg-info { background: rgba(13,27,42,.04); border-radius: var(--r-sm); padding: 12px 14px; font-size: 13px; color: var(--gray); line-height: 1.6; margin-bottom: 16px; }
-.cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 900px) { .cfg-layout { grid-template-columns: 1fr; } .dash-sidebar { display: none !important; } }
-@media (max-width: 600px) { .cfg-grid { grid-template-columns: 1fr; } .cfg-content { padding: 16px; } }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .section-card {
+    background: var(--ink-1); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: 24px;
+    margin-bottom: 14px;
+  }
+  .section-head {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 20px;
+  }
+  .section-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .section-title { font-size: 15.5px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 2px; }
+  .section-sub { font-size: 12.5px; color: var(--fg-dim); margin: 0; }
+
+  .help-box {
+    background: var(--ink-2); border: 1px solid var(--line);
+    border-radius: var(--r-sm); padding: 14px 16px;
+    font-size: 13px; color: var(--fg-dim); line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .help-box strong { color: var(--fg); font-weight: 600; }
+  .help-box code {
+    font-family: var(--ff-mono); font-size: 12px;
+    background: var(--ink-3); padding: 1px 6px; border-radius: 4px;
+    color: var(--fg);
+  }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 500;
+    padding: 4px 10px; border-radius: 99px;
+    border: 1px solid;
+  }
+  .status-on { background: oklch(0.78 0.16 150 / 0.12); border-color: oklch(0.78 0.16 150 / 0.35); color: var(--ok); }
+  .status-off { background: var(--ink-2); border-color: var(--line); color: var(--fg-mute); }
+
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .form-grid-2 { grid-template-columns: 1fr; } }
+
+  .plan-card {
+    padding: 18px 20px; border-radius: 12px;
+    background: var(--ink-2); border: 1px solid var(--line);
+    transition: border-color .15s, background .15s;
+    text-decoration: none; color: inherit;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .plan-card:hover { border-color: var(--line-strong); background: var(--ink-3); }
+  .plan-badge { font-family: var(--ff-mono); font-size: 10.5px; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 99px; background: oklch(0.72 0.14 240 / 0.15); color: var(--info); border: 1px solid oklch(0.72 0.14 240 / 0.3); align-self: flex-start; text-transform: uppercase; }
+  .plan-badge.ag { background: oklch(0.82 0.16 85 / 0.14); color: var(--warn); border-color: oklch(0.82 0.16 85 / 0.3); }
+  .plan-price { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .plan-price .per { font-size: 13px; color: var(--fg-dim); font-weight: 400; }
+
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 <script>(function(){const t=document.querySelector('meta[name="csrf-token"]');if(!t)return;const tk=t.content;const _f=window.fetch;window.fetch=function(u,o){o=o||{};if(!['GET','HEAD','OPTIONS'].includes((o.method||'GET').toUpperCase())){o.headers=Object.assign({'X-CSRFToken':tk},o.headers||{});}return _f(u,o);};})();</script>
 </head>
-<body>
+<body class="dark">
 
-<div class="cfg-layout">
+<div class="app-shell">
 
   <!-- SIDEBAR -->
-  <aside class="dash-sidebar">
-    <div class="dash-sidebar__top">
-      <div class="dash-sidebar__logo">
-        <div class="dash-sidebar__logo-icon">
-          <svg width="18" height="18" viewBox="0 0 30 30" fill="none">
-            <rect x="3" y="7" width="18" height="14" rx="3" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
-            <path d="M6 11h12M6 15h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="23" cy="9" r="5" fill="#22C55E"/>
-            <path d="M21 9l1.5 1.5L25 7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <span class="dash-sidebar__logo-word">ABRI<b>U</b></span>
+  <aside class="sidebar" id="sidebar">
+    <a href="/" class="sidebar-logo">
+      <span class="sidebar-logo-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+          <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <div>
+        <div class="sidebar-logo-word">ABRIU</div>
+        <div class="sidebar-logo-tld">app.br</div>
       </div>
-
-      <nav class="dash-nav">
-        <div class="dash-nav__section">Menu</div>
-        <a href="/dashboard" class="dash-nav__item">
-          <i class="ti ti-layout-dashboard"></i>
-          Dashboard
-        </a>
-        <a href="/dashboard" class="dash-nav__item">
-          <i class="ti ti-file-invoice"></i>
-          Orçamentos
-        </a>
-        <div class="dash-nav__section">Conta</div>
-        <a href="/configuracoes" class="dash-nav__item active">
-          <i class="ti ti-settings"></i>
-          Configurações
-        </a>
-        <a href="/logout" class="dash-nav__item">
-          <i class="ti ti-logout"></i>
-          Sair
-        </a>
-      </nav>
-    </div>
-
-    <div class="dash-sidebar__bottom">
-      <div class="dash-sidebar__user">
-        <div class="dash-sidebar__avatar">{{ session.get('user_nome', 'U')[0].upper() }}</div>
-        <div style="min-width:0">
-          <div class="dash-sidebar__username">{{ session.get('user_nome', 'Usuário') }}</div>
-          <div class="dash-sidebar__email">{{ session.get('user_email', '') }}</div>
-        </div>
+    </a>
+    <div class="sidebar-section">MENU</div>
+    <nav class="sidebar-nav">
+      <a href="/" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        Dashboard
+      </a>
+      <a href="/orcamentos" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
+        Orçamentos
+      </a>
+      <a href="/criar" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        Novo orçamento
+      </a>
+    </nav>
+    <div class="sidebar-section">CONTA</div>
+    <nav class="sidebar-nav">
+      <a href="/configuracoes" class="sidebar-item active">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8"/></svg></span>
+        Configurações
+      </a>
+      <a href="/logout" class="sidebar-item">
+        <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+        Sair
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ session.get('user_nome', 'U')[0].upper() }}</div>
+      <div style="flex:1;min-width:0">
+        <div class="sidebar-user-name">{{ session.get('user_nome', 'Usuário') }}</div>
+        <div class="sidebar-user-email">{{ session.get('user_email', '') }}</div>
       </div>
     </div>
   </aside>
 
-  <!-- MAIN -->
-  <main class="cfg-main">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <main class="app-main">
 
     <!-- TOPBAR -->
-    <div class="dash-topbar">
-      <div class="dash-topbar__title">Configurações</div>
-    </div>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="topbar-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <div class="topbar-title-eyebrow">PAINEL / CONTA</div>
+          <h1 class="topbar-title">Configurações</h1>
+        </div>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="salvar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+        Salvar tudo
+      </button>
+    </header>
 
-    <div class="cfg-content">
+    <div class="content wrap-680" style="margin: 0 auto;">
 
       <!-- PUSH NOTIFICATIONS -->
-      <div class="cfg-card" id="push-section">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(232,68,26,.1);color:var(--orange)">
-            <i class="ti ti-bell-ringing"></i>
+      <section class="section-card" id="push-section">
+        <div class="section-head">
+          <div class="section-icon" style="background:oklch(0.74 0.17 45 / 0.14);color:var(--accent-2)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">Notificações neste dispositivo</div>
-            <div class="cfg-card__sub">Alerta instantâneo no computador ou celular — mesmo com o site fechado</div>
+          <div style="flex:1">
+            <h3 class="section-title">Notificações neste dispositivo</h3>
+            <p class="section-sub">Alerta instantâneo no sistema operacional — mesmo com o site fechado</p>
           </div>
         </div>
-        <div class="cfg-info" style="margin-bottom:14px">
-          <strong>Como funciona:</strong> ative neste dispositivo e você receberá uma notificação do sistema operacional quando o cliente abrir o orçamento — aparece no canto da tela, mesmo com o browser minimizado.<br><br>
-          <strong>Múltiplos dispositivos:</strong> acesse as Configurações no computador <em>e</em> no celular e ative em cada um separadamente.
+        <div class="help-box">
+          <strong>Como funciona:</strong> ative aqui e você recebe uma notificação push do sistema quando o cliente abrir o orçamento.<br><br>
+          <strong>Múltiplos dispositivos:</strong> acesse essas configurações no celular e no computador e ative em cada um separadamente.
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span id="push-status" style="font-size:13px;color:var(--gray);display:flex;align-items:center;gap:6px">
+          <span id="push-status" style="font-size:13px;color:var(--fg-dim);display:flex;align-items:center;gap:6px">
             <i class="ti ti-loader-2" style="animation:spin .8s linear infinite;font-size:14px"></i> Verificando...
           </span>
-          <button id="btn-push-ativar" onclick="ativarPushNotif()" class="btn btn-primary btn-sm" style="display:none;gap:6px">
+          <button id="btn-push-ativar" onclick="ativarPushNotif()" class="btn btn-accent btn-sm" style="display:none">
             <i class="ti ti-bell"></i> Ativar neste dispositivo
           </button>
-          <button id="btn-push-desativar" onclick="desativarPushNotif()" class="btn btn-ghost btn-sm" style="display:none;gap:6px">
+          <button id="btn-push-desativar" onclick="desativarPushNotif()" class="btn btn-ghost btn-sm" style="display:none">
             <i class="ti ti-bell-off"></i> Desativar
           </button>
         </div>
-      </div>
+      </section>
 
       <!-- EMPRESA -->
-      <div class="cfg-card">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(13,27,42,.06);color:var(--navy)">
-            <i class="ti ti-building"></i>
+      <section class="section-card">
+        <div class="section-head">
+          <div class="section-icon" style="background:rgba(255,255,255,0.06);color:var(--fg-dim)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12M9 21V11h6v10"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">Empresa</div>
-            <div class="cfg-card__sub">Informações que aparecem nos seus orçamentos</div>
+          <div style="flex:1">
+            <h3 class="section-title">Empresa</h3>
+            <p class="section-sub">Informações que aparecem nos seus orçamentos</p>
           </div>
         </div>
-        <div class="input-group">
-          <label class="input-label">Nome da Empresa / Profissional</label>
+        <div class="field">
+          <label class="field-label">Nome da empresa / profissional</label>
           <input class="input" type="text" id="empresa_nome" value="{{ cfg.get('empresa_nome','') }}" placeholder="Ex: Gabriel Estevez Reformas">
         </div>
-      </div>
+      </section>
 
       <!-- Z-API -->
-      <div class="cfg-card">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(34,197,94,.1);color:#15803D">
-            <i class="ti ti-brand-whatsapp"></i>
+      <section class="section-card">
+        <div class="section-head">
+          <div class="section-icon" style="background:oklch(0.75 0.16 145 / 0.12);color:var(--ok)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.92.5 3.78 1.46 5.43L2 22l4.81-1.26a9.86 9.86 0 0 0 5.23 1.49h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.81 9.81 0 0 0 12.04 2z"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">WhatsApp via Z-API</div>
-            <div class="cfg-card__sub">Receba mensagens quando o cliente abrir o orçamento</div>
+          <div style="flex:1">
+            <h3 class="section-title">WhatsApp via Z-API</h3>
+            <p class="section-sub">Receba mensagens quando o cliente abrir o orçamento</p>
           </div>
         </div>
-        <div class="cfg-info">
-          <strong>Instance ID e Token:</strong> encontrados no painel do Z-API após criar a instância<br>
-          <strong>Client-Token:</strong> encontrado em Segurança no seu perfil do Z-API<br>
-          <strong>Seu número:</strong> com código do país (ex: 5571999990000)
+        <div class="help-box">
+          <strong>Instance ID</strong> e <strong>Token:</strong> no painel do Z-API após criar a instância<br>
+          <strong>Client-Token:</strong> em Segurança no seu perfil do Z-API<br>
+          <strong>Seu número:</strong> com código do país (ex: <code>5571999990000</code>)
         </div>
-        <div class="cfg-grid">
-          <div class="input-group">
-            <label class="input-label">Instance ID</label>
+        <div class="form-grid-2">
+          <div class="field">
+            <label class="field-label">Instance ID</label>
             <input class="input" type="text" id="zapi_instance" value="{{ cfg.get('zapi_instance','') }}" placeholder="Ex: 3F33D695...">
           </div>
-          <div class="input-group">
-            <label class="input-label">Token</label>
+          <div class="field">
+            <label class="field-label">Token</label>
             <input class="input" type="text" id="zapi_token" value="{{ cfg.get('zapi_token','') }}" placeholder="Ex: 61F6350A...">
           </div>
-          <div class="input-group">
-            <label class="input-label">Client-Token</label>
+          <div class="field">
+            <label class="field-label">Client-Token</label>
             <input class="input" type="text" id="zapi_client_token" value="{{ cfg.get('zapi_client_token','') }}" placeholder="Ex: F1d06fb3...">
           </div>
-          <div class="input-group">
-            <label class="input-label">Seu número (com código do país)</label>
+          <div class="field">
+            <label class="field-label">Seu número (com código do país)</label>
             <input class="input" type="text" id="zapi_phone" value="{{ cfg.get('zapi_phone','') }}" placeholder="Ex: 5571999990000">
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="testarZapi()">
+        <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="testarZapi()">
           <i class="ti ti-send"></i> Testar WhatsApp
         </button>
-      </div>
+      </section>
 
       <!-- TELEGRAM -->
-      <div class="cfg-card">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(41,182,246,.12);color:#0288D1">
-            <i class="ti ti-brand-telegram"></i>
+      <section class="section-card">
+        <div class="section-head">
+          <div class="section-icon" style="background:oklch(0.72 0.14 240 / 0.15);color:var(--info)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">Telegram</div>
-            <div class="cfg-card__sub">Receba alertas instantâneos no Telegram</div>
+          <div style="flex:1">
+            <h3 class="section-title">Telegram</h3>
+            <p class="section-sub">Receba alertas instantâneos no Telegram</p>
           </div>
         </div>
-        <div class="cfg-info">
+        <div class="help-box">
           <strong>1.</strong> Abra o Telegram e busque <strong>@BotFather</strong><br>
           <strong>2.</strong> Envie <code>/newbot</code>, escolha um nome e copie o token<br>
           <strong>3.</strong> Cole o token abaixo e clique em <strong>Conectar</strong> — depois abra o bot e mande qualquer mensagem
         </div>
-        <div class="input-group" style="margin-bottom:12px">
-          <label class="input-label">Token do Bot (obtido no @BotFather)</label>
+        <div class="field" style="margin-bottom:14px">
+          <label class="field-label">Token do Bot (obtido no @BotFather)</label>
           <input class="input" type="text" id="telegram_token" value="{{ cfg.get('telegram_token','') }}" placeholder="Ex: 8600023036:AAGbrp...">
         </div>
         <input type="hidden" id="telegram_chat_id" value="{{ cfg.get('telegram_chat_id','') }}">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-primary btn-sm" onclick="conectarTelegram()">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-subtle btn-sm" onclick="conectarTelegram()">
             <i class="ti ti-link"></i> Conectar Telegram
           </button>
           <button class="btn btn-ghost btn-sm" onclick="testarTelegram()">
             <i class="ti ti-send"></i> Testar
           </button>
-          <span id="tg-status" style="font-size:13px;color:var(--gray)">
-            {% if cfg.get('telegram_chat_id') %}✅ Conectado{% else %}⚪ Não conectado{% endif %}
+          <span id="tg-status" class="status-pill {% if cfg.get('telegram_chat_id') %}status-on{% else %}status-off{% endif %}">
+            <span style="width:7px;height:7px;border-radius:50%;background:{% if cfg.get('telegram_chat_id') %}var(--ok){% else %}var(--fg-mute){% endif %}"></span>
+            {% if cfg.get('telegram_chat_id') %}Conectado{% else %}Não conectado{% endif %}
           </span>
         </div>
-        <div id="tg-instrucao" style="display:none;margin-top:12px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r-md);padding:14px 16px;font-size:13px">
-          <strong style="color:#15803D">✅ Bot registrado!</strong><br><br>
+        <div id="tg-instrucao" style="display:none;margin-top:12px;background:oklch(0.78 0.16 150 / 0.07);border:1px solid oklch(0.78 0.16 150 / 0.2);border-radius:var(--r-md);padding:14px 16px;font-size:13px">
+          <strong style="color:var(--ok)">Bot registrado!</strong><br><br>
           Agora abra o bot no Telegram e mande qualquer mensagem (ex: <em>oi</em>):<br><br>
           <a id="tg-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#229ED9;color:#fff;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px;text-decoration:none">
             <i class="ti ti-brand-telegram"></i> Abrir Bot no Telegram
           </a>
-          <p style="color:var(--gray);margin-top:8px;font-size:12px">Após enviar a mensagem você receberá uma confirmação e as notificações estarão ativas.</p>
+          <p style="color:var(--fg-mute);margin-top:8px;font-size:12px">Após enviar a mensagem você receberá uma confirmação e as notificações estarão ativas.</p>
         </div>
-      </div>
+      </section>
 
       <!-- GMAIL -->
-      <div class="cfg-card">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(234,67,53,.1);color:#EA4335">
-            <i class="ti ti-mail"></i>
+      <section class="section-card">
+        <div class="section-head">
+          <div class="section-icon" style="background:rgba(234,67,53,0.12);color:#EA4335">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">Gmail</div>
-            <div class="cfg-card__sub">Receba notificações por email via Gmail OAuth</div>
+          <div style="flex:1">
+            <h3 class="section-title">Gmail</h3>
+            <p class="section-sub">Receba notificações por email via Gmail OAuth</p>
           </div>
         </div>
 
-        <!-- Estado: conectado -->
-        <div id="gmail-conectado" style="display:{% if cfg.get('gmail_refresh_token') %}flex{% else %}none{% endif %};align-items:center;gap:12px;flex-wrap:wrap;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r-md);padding:14px 16px">
-          <i class="ti ti-circle-check" style="font-size:22px;color:var(--green);flex-shrink:0"></i>
+        <div id="gmail-conectado" style="display:{% if cfg.get('gmail_refresh_token') %}flex{% else %}none{% endif %};align-items:center;gap:12px;flex-wrap:wrap;background:oklch(0.78 0.16 150 / 0.07);border:1px solid oklch(0.78 0.16 150 / 0.2);border-radius:var(--r-md);padding:14px 16px">
+          <i class="ti ti-circle-check" style="font-size:22px;color:var(--ok);flex-shrink:0"></i>
           <div style="flex:1">
-            <div style="font-size:14px;font-weight:600;color:#15803D">Gmail conectado</div>
-            <div id="gmail-email-label" style="font-size:12px;color:var(--gray)">{{ cfg.get('gmail_email','') }}</div>
+            <div style="font-size:14px;font-weight:600;color:var(--ok)">Gmail conectado</div>
+            <div id="gmail-email-label" style="font-size:12px;color:var(--fg-dim);font-family:var(--ff-mono)">{{ cfg.get('gmail_email','') }}</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-ghost btn-sm" onclick="testarGmail()"><i class="ti ti-send"></i> Testar</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--orange);border-color:rgba(232,68,26,.25)" onclick="desconectarGmail()">Desconectar</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--bad);border-color:oklch(0.7 0.18 25 / 0.3)" onclick="desconectarGmail()">Desconectar</button>
           </div>
         </div>
 
-        <!-- Estado: não conectado -->
         <div id="gmail-desconectado" style="display:{% if cfg.get('gmail_refresh_token') %}none{% else %}block{% endif %}">
-          <div class="cfg-info">Conecte seu Gmail para receber notificações por email. Sem senha de app — basta autorizar com 1 clique.</div>
-          <a href="/auth/gmail" class="btn btn-primary btn-sm">
+          <div class="help-box">Conecte seu Gmail para receber notificações por email. Sem senha de app — basta autorizar com 1 clique.</div>
+          <a href="/auth/gmail" class="btn btn-accent btn-sm">
             <i class="ti ti-brand-google"></i> Conectar Gmail
           </a>
         </div>
 
         {% if request.args.get('gmail_ok') %}
-        <div style="margin-top:12px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:#15803D">
-          ✅ Gmail conectado com sucesso!
+        <div style="margin-top:12px;background:oklch(0.78 0.16 150 / 0.07);border:1px solid oklch(0.78 0.16 150 / 0.2);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--ok)">
+          Gmail conectado com sucesso!
         </div>
         {% elif request.args.get('gmail_erro') %}
-        <div style="margin-top:12px;background:rgba(232,68,26,.06);border:1px solid rgba(232,68,26,.2);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--orange)">
+        <div style="margin-top:12px;background:oklch(0.7 0.18 25 / 0.08);border:1px solid oklch(0.7 0.18 25 / 0.2);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--bad)">
           Erro ao conectar Gmail. Tente novamente.
         </div>
         {% endif %}
-      </div>
+      </section>
 
       <!-- WHATSAPP CALLMEBOT -->
-      <div class="cfg-card">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(34,197,94,.1);color:#15803D">
-            <i class="ti ti-brand-whatsapp"></i>
+      <section class="section-card">
+        <div class="section-head">
+          <div class="section-icon" style="background:oklch(0.75 0.16 145 / 0.12);color:var(--ok)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.92.5 3.78 1.46 5.43L2 22l4.81-1.26a9.86 9.86 0 0 0 5.23 1.49h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.81 9.81 0 0 0 12.04 2z"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">WhatsApp CallMeBot</div>
-            <div class="cfg-card__sub">Alternativa gratuita via CallMeBot API</div>
+          <div style="flex:1">
+            <h3 class="section-title">WhatsApp CallMeBot</h3>
+            <p class="section-sub">Alternativa gratuita via CallMeBot API</p>
           </div>
         </div>
-        <div class="cfg-info">
+        <div class="help-box">
           <strong>1.</strong> Adicione o número <strong>+34 644 60 16 13</strong> na sua agenda do WhatsApp<br>
           <strong>2.</strong> Envie a mensagem: <strong>I allow callmebot to send me messages</strong><br>
           <strong>3.</strong> Você receberá seu <strong>API Key</strong> em alguns segundos<br>
           <strong>4.</strong> Preencha os campos abaixo com seu número e o API Key recebido
         </div>
-        <div class="cfg-grid">
-          <div class="input-group">
-            <label class="input-label">Seu número do WhatsApp (com DDD, sem +55)</label>
+        <div class="form-grid-2">
+          <div class="field">
+            <label class="field-label">Seu número do WhatsApp (com DDD, sem +55)</label>
             <input class="input" type="text" id="whatsapp_numero" value="{{ cfg.get('whatsapp_numero','') }}" placeholder="Ex: 11999990000">
           </div>
-          <div class="input-group">
-            <label class="input-label">API Key do CallMeBot</label>
+          <div class="field">
+            <label class="field-label">API Key do CallMeBot</label>
             <input class="input" type="text" id="whatsapp_apikey" value="{{ cfg.get('whatsapp_apikey','') }}" placeholder="Ex: 123456">
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="testarWhatsApp()">
+        <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="testarWhatsApp()">
           <i class="ti ti-send"></i> Testar Notificação
         </button>
-      </div>
+      </section>
 
       <!-- SAVE -->
-      <div style="display:flex;justify-content:flex-end">
-        <button class="btn btn-primary" onclick="salvar()">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+        <button class="btn btn-accent btn-md" onclick="salvar()">
           <i class="ti ti-device-floppy"></i> Salvar Configurações
         </button>
       </div>
 
       <!-- PLANO -->
-      <div class="cfg-card" style="margin-top:16px">
-        <div class="cfg-card__header">
-          <div class="cfg-card__icon" style="background:rgba(79,110,247,.1);color:#818cf8">
-            <i class="ti ti-credit-card"></i>
+      <section class="section-card">
+        <div class="section-head">
+          <div class="section-icon" style="background:oklch(0.72 0.14 240 / 0.14);color:var(--info)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           </div>
-          <div>
-            <div class="cfg-card__title">Plano</div>
-            <div class="cfg-card__sub">Gerencie sua assinatura</div>
+          <div style="flex:1">
+            <h3 class="section-title">Plano</h3>
+            <p class="section-sub">Gerencie sua assinatura</p>
           </div>
         </div>
 
         {% if plano == 'free' %}
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem">
-          <span style="background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.25);color:#94a3b8;border-radius:99px;padding:.25rem .85rem;font-size:.78rem;font-weight:700">GRATUITO</span>
-          <span style="font-size:.85rem;color:var(--gray)">5 orçamentos/PDFs por mês</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+          <span class="plan-badge" style="background:rgba(100,116,139,.12);color:#94a3b8;border-color:rgba(100,116,139,.25)">GRATUITO</span>
+          <span style="font-size:13px;color:var(--fg-dim)">5 orçamentos/PDFs por mês</span>
         </div>
         {% if stripe_ok %}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-          <a href="/assinar/pro" style="display:flex;flex-direction:column;align-items:center;gap:.3rem;background:rgba(79,110,247,.07);border:1px solid rgba(79,110,247,.2);border-radius:12px;padding:1rem;text-decoration:none">
-            <strong style="color:#818cf8">⚡ Pro</strong>
-            <span style="color:var(--gray);font-size:.8rem;text-align:center">Ilimitado · R$19,90/mês</span>
-            <span style="margin-top:.3rem;background:#4f6ef7;color:#fff;border-radius:8px;padding:.3rem .85rem;font-size:.8rem;font-weight:600">Assinar</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <a href="/assinar/pro" class="plan-card">
+            <span class="plan-badge">PRO</span>
+            <div class="plan-price">R$ 19,90 <span class="per">/mês</span></div>
+            <div style="font-size:12.5px;color:var(--fg-dim)">Orçamentos ilimitados e multicanal</div>
+            <button class="btn btn-accent btn-sm" style="align-self:flex-start;margin-top:4px">Assinar</button>
           </a>
-          <a href="/assinar/agency" style="display:flex;flex-direction:column;align-items:center;gap:.3rem;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.18);border-radius:12px;padding:1rem;text-decoration:none">
-            <strong style="color:#fbbf24">🏢 Agência</strong>
-            <span style="color:var(--gray);font-size:.8rem;text-align:center">5 usuários · R$59,90/mês</span>
-            <span style="margin-top:.3rem;background:rgba(234,179,8,.15);color:#fbbf24;border:1px solid rgba(234,179,8,.25);border-radius:8px;padding:.3rem .85rem;font-size:.8rem;font-weight:600">Assinar</span>
+          <a href="/assinar/agency" class="plan-card">
+            <span class="plan-badge ag">AGÊNCIA</span>
+            <div class="plan-price">R$ 59,90 <span class="per">/mês</span></div>
+            <div style="font-size:12.5px;color:var(--fg-dim)">Até 5 usuários, relatórios da equipe</div>
+            <button class="btn btn-subtle btn-sm" style="align-self:flex-start;margin-top:4px">Assinar</button>
           </a>
         </div>
         {% endif %}
 
         {% elif plano == 'pro' %}
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
-          <span style="background:rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.3);color:#818cf8;border-radius:99px;padding:.25rem .85rem;font-size:.78rem;font-weight:700">PRO</span>
-          <span style="font-size:.85rem;color:var(--gray)">Orçamentos ilimitados · R$19,90/mês</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="plan-badge">PRO</span>
+          <span style="font-size:13px;color:var(--fg-dim)">Orçamentos ilimitados · R$19,90/mês</span>
         </div>
-        <button onclick="cancelarAssinatura()" class="btn btn-ghost btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.25)">Cancelar assinatura</button>
+        <button onclick="cancelarAssinatura()" class="btn btn-ghost btn-sm" style="color:var(--bad);border-color:oklch(0.7 0.18 25 / 0.3)">Cancelar assinatura</button>
 
         {% elif plano == 'agency' %}
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
-          <span style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.25);color:#fbbf24;border-radius:99px;padding:.25rem .85rem;font-size:.78rem;font-weight:700">AGÊNCIA</span>
-          <span style="font-size:.85rem;color:var(--gray)">Ilimitado · até 5 usuários · R$59,90/mês</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="plan-badge ag">AGÊNCIA</span>
+          <span style="font-size:13px;color:var(--fg-dim)">Ilimitado · até 5 usuários · R$59,90/mês</span>
         </div>
-        <button onclick="cancelarAssinatura()" class="btn btn-ghost btn-sm" style="color:#f87171;border-color:rgba(239,68,68,.25)">Cancelar assinatura</button>
+        <button onclick="cancelarAssinatura()" class="btn btn-ghost btn-sm" style="color:var(--bad);border-color:oklch(0.7 0.18 25 / 0.3)">Cancelar assinatura</button>
         {% endif %}
 
         {% if request.args.get('stripe') == 'cancelado' %}
-        <div style="margin-top:1rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem 1rem;font-size:.85rem;color:#f87171">
+        <div style="margin-top:14px;background:oklch(0.7 0.18 25 / 0.08);border:1px solid oklch(0.7 0.18 25 / 0.2);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--bad)">
           Pagamento cancelado. Tente novamente acima.
         </div>
         {% endif %}
-      </div>
+      </section>
 
-      <!-- FOOTER -->
-      <div style="text-align:center;padding:24px 0 8px;font-size:12px;color:var(--gray);opacity:.6">
-        © 2026 ABRIU · <a href="/termos" style="color:inherit;text-decoration:none">Termos</a> · <a href="/privacidade" style="color:inherit;text-decoration:none">Privacidade</a>
+      <!-- DANGER ZONE -->
+      <section class="section-card" style="border-color:oklch(0.7 0.18 25 / 0.25);background:oklch(0.7 0.18 25 / 0.04)">
+        <div class="section-head">
+          <div class="section-icon" style="background:oklch(0.7 0.18 25 / 0.14);color:var(--bad)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </div>
+          <div style="flex:1">
+            <h3 class="section-title" style="color:var(--bad)">Zona de risco</h3>
+            <p class="section-sub">Ações irreversíveis. Pense duas vezes.</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" style="color:var(--bad);border-color:oklch(0.7 0.18 25 / 0.3)" onclick="cancelarAssinatura()">Cancelar assinatura</button>
+        </div>
+      </section>
+
+      <div style="text-align:center;padding:24px 0 60px;font-size:11.5px;color:var(--fg-mute);font-family:var(--ff-mono)">
+        © 2026 ABRIU · <a href="/termos" style="color:inherit">Termos</a> · <a href="/privacidade" style="color:inherit">Privacidade</a>
       </div>
 
     </div>
@@ -368,25 +439,31 @@ body { background: var(--cream); }
 </div>
 
 <script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
 async function cancelarAssinatura() {
   if (!confirm('Cancelar assinatura? O plano permanece ativo até o fim do período pago.')) return;
   const res = await fetch('/cancelar_assinatura', { method: 'POST' });
   const data = await res.json();
-  if (data.ok) alert('✅ Cancelamento agendado. Plano ativo até o fim do ciclo.');
-  else alert('❌ Erro: ' + data.erro);
+  if (data.ok) alert('Cancelamento agendado. Plano ativo até o fim do ciclo.');
+  else alert('Erro: ' + data.erro);
 }
 
 async function testarGmail() {
   const btn = document.querySelector('[onclick="testarGmail()"]');
   const orig = btn.innerHTML; btn.innerHTML = '⏳ Enviando...'; btn.disabled = true;
   try {
-    const res = await fetch('/testar_email', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ gmail_oauth: true })
-    });
+    const res = await fetch('/testar_email', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ gmail_oauth: true }) });
     const data = await res.json();
-    if (data.ok) alert('✅ Email enviado! Verifique sua caixa de entrada.');
-    else alert('❌ Erro: ' + data.erro);
+    if (data.ok) alert('Email enviado! Verifique sua caixa de entrada.');
+    else alert('Erro: ' + data.erro);
   } finally { btn.innerHTML = orig; btn.disabled = false; }
 }
 
@@ -406,21 +483,17 @@ async function testarZapi() {
   const btn = document.querySelector('[onclick="testarZapi()"]');
   const orig = btn.innerHTML; btn.innerHTML = '⏳ Enviando...'; btn.disabled = true;
   try {
-    const res = await fetch('/testar_zapi', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ instance, token, client_token, phone })
-    });
+    const res = await fetch('/testar_zapi', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ instance, token, client_token, phone }) });
     const data = await res.json();
-    if (data.ok) alert('✅ Mensagem enviada! Verifique seu WhatsApp.');
-    else alert('❌ Erro: ' + (data.erro || data.resposta));
+    if (data.ok) alert('Mensagem enviada! Verifique seu WhatsApp.');
+    else alert('Erro: ' + (data.erro || data.resposta));
   } finally { btn.innerHTML = orig; btn.disabled = false; }
 }
 
 async function conectarTelegram() {
   const token = document.getElementById('telegram_token').value.trim();
   if (!token) return alert('Cole o token do bot primeiro.');
-  await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ telegram_token: token }) });
+  await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ telegram_token: token }) });
   const btn = document.querySelector('[onclick="conectarTelegram()"]');
   const orig = btn.innerHTML; btn.innerHTML = '⏳ Conectando...'; btn.disabled = true;
   try {
@@ -429,17 +502,17 @@ async function conectarTelegram() {
     if (data.ok) {
       document.getElementById('tg-link').href = data.link;
       document.getElementById('tg-instrucao').style.display = 'block';
-      document.getElementById('tg-status').textContent = '🔗 Aguardando mensagem no bot...';
+      document.getElementById('tg-status').textContent = 'Aguardando mensagem no bot...';
       const intervalo = setInterval(async () => {
         const s = await fetch('/telegram/status').then(r => r.json());
         if (s.conectado) {
           clearInterval(intervalo);
-          document.getElementById('tg-status').textContent = '✅ Conectado!';
-          document.getElementById('tg-status').style.color = 'var(--green)';
+          document.getElementById('tg-status').textContent = 'Conectado!';
+          document.getElementById('tg-status').style.color = 'var(--ok)';
         }
       }, 3000);
     } else {
-      alert('❌ ' + data.erro);
+      alert(data.erro);
     }
   } finally { btn.innerHTML = orig; btn.disabled = false; }
 }
@@ -451,13 +524,10 @@ async function testarTelegram() {
   const btn = document.querySelector('[onclick="testarTelegram()"]');
   const orig = btn.innerHTML; btn.innerHTML = '⏳ Enviando...'; btn.disabled = true;
   try {
-    const res = await fetch('/testar_telegram', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ token, chat_id })
-    });
+    const res = await fetch('/testar_telegram', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ token, chat_id }) });
     const data = await res.json();
-    if (data.ok) alert('✅ Mensagem enviada! Verifique seu Telegram.');
-    else alert('❌ Erro: ' + (data.erro || data.resposta));
+    if (data.ok) alert('Mensagem enviada! Verifique seu Telegram.');
+    else alert('Erro: ' + (data.erro || data.resposta));
   } finally { btn.innerHTML = orig; btn.disabled = false; }
 }
 
@@ -468,13 +538,10 @@ async function testarWhatsApp() {
   const btn = document.querySelector('[onclick="testarWhatsApp()"]');
   const orig = btn.innerHTML; btn.innerHTML = '⏳ Enviando...'; btn.disabled = true;
   try {
-    const res = await fetch('/testar_whatsapp', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ numero, apikey })
-    });
+    const res = await fetch('/testar_whatsapp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ numero, apikey }) });
     const data = await res.json();
-    if (data.ok) alert('✅ Mensagem enviada! Verifique seu WhatsApp.');
-    else alert('❌ Erro ao enviar.\n\nResposta: ' + (data.resposta || data.erro) + '\n\nVerifique se:\n1. Adicionou o número +34 644 60 16 13 na agenda\n2. Enviou a mensagem "I allow callmebot to send me messages"\n3. O API Key está correto');
+    if (data.ok) alert('Mensagem enviada! Verifique seu WhatsApp.');
+    else alert('Erro ao enviar.\n\nResposta: ' + (data.resposta || data.erro) + '\n\nVerifique se:\n1. Adicionou o número +34 644 60 16 13 na agenda\n2. Enviou a mensagem "I allow callmebot to send me messages"\n3. O API Key está correto');
   } finally { btn.innerHTML = orig; btn.disabled = false; }
 }
 
@@ -492,10 +559,9 @@ async function salvar() {
   };
   const res = await fetch('/configuracoes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados) });
   const data = await res.json();
-  if (data.ok) alert('✅ Configurações salvas!');
+  if (data.ok) alert('Configurações salvas!');
 }
 
-/* ── Push Notifications ── */
 async function ativarPushNotif() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     return alert('Seu navegador não suporta notificações push.');
@@ -512,13 +578,8 @@ async function ativarPushNotif() {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
-    await fetch('/push/subscribe', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(sub.toJSON())
-    });
-    document.getElementById('push-status').textContent = '✅ Notificações ativas!';
-    document.getElementById('push-status').style.color = 'var(--green)';
+    await fetch('/push/subscribe', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(sub.toJSON()) });
+    document.getElementById('push-status').innerHTML = '<span style="color:var(--ok)">Notificações ativas neste dispositivo</span>';
     document.getElementById('btn-push-ativar').style.display = 'none';
     document.getElementById('btn-push-desativar').style.display = 'inline-flex';
   } catch(e) {
@@ -534,8 +595,7 @@ async function desativarPushNotif() {
       await fetch('/push/unsubscribe', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(sub.toJSON()) });
       await sub.unsubscribe();
     }
-    document.getElementById('push-status').textContent = 'Desativado';
-    document.getElementById('push-status').style.color = '';
+    document.getElementById('push-status').innerHTML = '<span style="color:var(--fg-mute)">Desativado neste dispositivo</span>';
     document.getElementById('btn-push-ativar').style.display = 'inline-flex';
     document.getElementById('btn-push-desativar').style.display = 'none';
   } catch(e) {}
@@ -548,18 +608,17 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
-// Verifica status do push neste dispositivo e registra SW
 (async () => {
   const statusEl = document.getElementById('push-status');
   const btnAtivar = document.getElementById('btn-push-ativar');
   const btnDesativar = document.getElementById('btn-push-desativar');
 
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    statusEl.innerHTML = '<i class="ti ti-alert-circle" style="color:#F59E0B"></i> Navegador não suporta push';
+    statusEl.innerHTML = '<i class="ti ti-alert-circle" style="color:var(--warn)"></i> Navegador não suporta push';
     return;
   }
   if (Notification.permission === 'denied') {
-    statusEl.innerHTML = '<i class="ti ti-alert-circle" style="color:#EF4444"></i> Bloqueado — libere nas configurações do navegador';
+    statusEl.innerHTML = '<i class="ti ti-alert-circle" style="color:var(--bad)"></i> Bloqueado — libere nas configurações do navegador';
     return;
   }
   try {
@@ -567,11 +626,11 @@ function urlBase64ToUint8Array(base64String) {
     await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
-      statusEl.innerHTML = '<i class="ti ti-check" style="color:var(--green)"></i> <span style="color:var(--green)">Ativo neste dispositivo</span>';
+      statusEl.innerHTML = '<span class="status-pill status-on"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></span> Ativo neste dispositivo</span>';
       btnAtivar.style.display = 'none';
       btnDesativar.style.display = 'inline-flex';
     } else {
-      statusEl.innerHTML = '<i class="ti ti-bell-off" style="color:var(--gray)"></i> Desativado neste dispositivo';
+      statusEl.innerHTML = '<span class="status-pill status-off"><span style="width:7px;height:7px;border-radius:50%;background:var(--fg-mute)"></span> Desativado neste dispositivo</span>';
       btnAtivar.style.display = 'inline-flex';
       btnDesativar.style.display = 'none';
     }
@@ -580,5 +639,6 @@ function urlBase64ToUint8Array(base64String) {
   }
 })();
 </script>
+
 </body>
 </html>

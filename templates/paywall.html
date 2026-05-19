@@ -4,259 +4,226 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>Assine — ABRIU</title>
+<title>Assinar — ABRIU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" onload="this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" onload="this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"></noscript>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/abriu.css') }}">
 <style>
 body {
-  background: var(--navy);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 24px;
-  position: relative;
-  overflow: hidden;
+  min-height: 100svh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px; position: relative; overflow-x: hidden;
 }
-body::before {
-  content: '';
-  position: fixed;
-  top: -200px; right: -200px;
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(232,68,26,.14) 0%, transparent 65%);
-  pointer-events: none;
+.bg-decor { position: fixed; inset: 0; pointer-events: none; }
+.bg-decor::before {
+  content: ''; position: absolute; top: -200px; right: -200px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, oklch(0.74 0.17 45 / 0.16), transparent 60%);
+  filter: blur(20px);
 }
-
-.pay-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
-.pay-logo-icon { width: 36px; height: 36px; background: var(--orange); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
-.pay-logo-word { font-family: var(--fd); font-weight: 700; font-size: 22px; color: var(--cream); letter-spacing: -.025em; }
-.pay-logo-word b { color: var(--orange); }
+.pay-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; position: relative; z-index: 1; }
+.pay-logo-mark { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: grid; place-items: center; color: var(--ink-0); }
+.pay-logo-word { font-weight: 700; font-size: 22px; letter-spacing: -0.025em; }
 
 .pay-card {
-  background: var(--navy2);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 24px;
+  width: 100%; max-width: 480px;
+  background: var(--ink-1);
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
   padding: 40px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 0 24px 80px rgba(0,0,0,.4);
-  position: relative;
-  z-index: 1;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+  position: relative; z-index: 1;
 }
 
-.pay-badge {
+.pay-eyebrow {
   display: inline-flex; align-items: center; gap: 7px;
-  background: rgba(232,68,26,.12); border: 1px solid rgba(232,68,26,.25);
-  color: var(--orange); border-radius: 99px;
-  padding: 6px 14px; font-size: 12px; font-weight: 500;
-  margin-bottom: 22px; letter-spacing: .04em;
+  padding: 6px 14px; border-radius: 999px;
+  background: oklch(0.74 0.17 45 / 0.12);
+  border: 1px solid oklch(0.74 0.17 45 / 0.25);
+  color: var(--accent-2);
+  font-family: var(--ff-mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  margin-bottom: 22px;
 }
-.pay-badge.pending { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.25); color: #F59E0B; }
-.pay-badge.error   { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.25); color: #F87171; }
+.pay-eyebrow.warn { background: oklch(0.82 0.16 85 / 0.12); border-color: oklch(0.82 0.16 85 / 0.25); color: var(--warn); }
+.pay-eyebrow.error { background: oklch(0.7 0.18 25 / 0.12); border-color: oklch(0.7 0.18 25 / 0.25); color: var(--bad); }
 
-.pay-h1 { font-family: var(--fd); font-weight: 700; font-size: 26px; color: var(--cream); letter-spacing: -.03em; line-height: 1.2; margin-bottom: 8px; }
-.pay-h1 em { font-style: normal; color: var(--orange); }
-.pay-sub { font-size: 14px; color: rgba(245,240,232,.42); margin-bottom: 32px; line-height: 1.5; }
+.pay-h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; margin: 0 0 8px; }
+.pay-h1 em { font-style: italic; font-weight: 500; color: var(--accent-2); }
+.pay-sub { font-size: 14.5px; color: var(--fg-dim); margin: 0 0 28px; line-height: 1.5; }
 
-/* Alert */
 .pay-alert {
-  border-radius: var(--r-md); padding: 12px 16px;
+  padding: 12px 16px; border-radius: var(--r-sm);
   font-size: 13px; margin-bottom: 22px;
   display: flex; align-items: flex-start; gap: 10px;
 }
-.pay-alert.error   { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #FCA5A5; }
-.pay-alert.pending { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); color: #FCD34D; }
+.pay-alert.warn { background: oklch(0.82 0.16 85 / 0.1); border: 1px solid oklch(0.82 0.16 85 / 0.25); color: var(--warn); }
+.pay-alert.error { background: oklch(0.7 0.18 25 / 0.1); border: 1px solid oklch(0.7 0.18 25 / 0.25); color: var(--bad); }
 
-/* Toggle billing */
-.toggle-wrap {
-  display: flex; background: rgba(255,255,255,.06);
-  border-radius: var(--r-sm); padding: 4px; margin-bottom: 24px;
-  border: 1px solid rgba(255,255,255,.07);
+.billing-toggle {
+  display: flex; padding: 4px; gap: 4px;
+  background: var(--ink-2); border: 1px solid var(--line);
+  border-radius: var(--r-sm); margin-bottom: 24px;
 }
-.toggle-btn {
-  flex: 1; padding: 9px 0; font-size: 14px; font-weight: 500;
-  border-radius: 6px; border: none; cursor: pointer;
-  background: transparent; color: rgba(245,240,232,.38);
-  transition: all .2s; font-family: var(--fb);
+.billing-toggle button {
+  flex: 1; padding: 10px 0; font-size: 13.5px; font-weight: 500;
+  color: var(--fg-dim); border-radius: 6px;
 }
-.toggle-btn.active {
-  background: var(--navy3); color: var(--cream);
-  box-shadow: 0 1px 4px rgba(0,0,0,.2);
-}
+.billing-toggle button.active { background: var(--ink-3); color: var(--fg); font-weight: 600; }
 .save-tag {
-  background: rgba(34,197,94,.15); color: var(--green);
-  font-size: 11px; font-weight: 500; padding: 2px 7px;
-  border-radius: 99px; margin-left: 6px;
+  background: oklch(0.78 0.16 150 / 0.18); color: var(--ok);
+  font-size: 10.5px; font-weight: 600;
+  padding: 2px 7px; border-radius: 99px; margin-left: 6px;
 }
 
-/* Price */
 .price-box {
   text-align: center; margin-bottom: 28px;
-  padding: 24px 0 20px;
-  border-top: 1px solid rgba(255,255,255,.07);
-  border-bottom: 1px solid rgba(255,255,255,.07);
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .price-value {
-  font-family: var(--fd); font-size: 52px; font-weight: 700;
-  letter-spacing: -.04em; color: var(--cream); line-height: 1;
+  font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1;
 }
-.price-value span { font-size: 24px; font-weight: 400; color: rgba(245,240,232,.4); }
-.price-period { font-size: 13px; color: rgba(245,240,232,.35); margin-top: 6px; }
+.price-value .cents { font-size: 22px; font-weight: 500; color: var(--fg-dim); }
+.price-period { font-family: var(--ff-mono); font-size: 12px; color: var(--fg-mute); margin-top: 8px; }
 
-/* Features */
-.pay-features { list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px; }
-.pay-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: rgba(245,240,232,.6); line-height: 1.45; }
+.pay-features { list-style: none; padding: 0; margin: 0 0 32px; display: flex; flex-direction: column; gap: 12px; }
+.pay-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--fg-dim); line-height: 1.45; }
 .feat-check-circle {
-  width: 20px; height: 20px; background: rgba(34,197,94,.15);
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 1px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: oklch(0.78 0.16 150 / 0.15); color: var(--ok);
+  display: grid; place-items: center; flex-shrink: 0; margin-top: 1px;
 }
-.feat-check-circle i { font-size: 11px; color: var(--green); }
-
-/* CTA */
-.btn-assinar {
-  display: block; width: 100%; padding: 16px;
-  background: var(--orange); color: #fff; border: none;
-  border-radius: var(--r-md); font-size: 16px; font-weight: 500;
-  cursor: pointer; font-family: var(--fb);
-  transition: background .18s, transform .12s, box-shadow .18s;
-  box-shadow: 0 4px 16px rgba(232,68,26,.3);
-  letter-spacing: -.01em;
-}
-.btn-assinar:hover { background: var(--orange2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,68,26,.4); }
-.btn-assinar:active { transform: scale(.99); }
 
 .pay-secure {
   display: flex; align-items: center; justify-content: center;
-  gap: 8px; margin-top: 16px;
-  font-size: 12px; color: rgba(245,240,232,.25);
+  gap: 8px; margin-top: 18px;
+  font-family: var(--ff-mono); font-size: 11px; color: var(--fg-mute);
 }
-.pay-secure i { font-size: 14px; }
-
-.pay-footer { text-align: center; margin-top: 24px; font-size: 13px; color: rgba(245,240,232,.25); position: relative; z-index: 1; }
-.pay-footer a { color: rgba(245,240,232,.4); transition: color .15s; }
-.pay-footer a:hover { color: var(--cream); }
+.pay-foot {
+  text-align: center; margin-top: 22px;
+  font-size: 13px; color: var(--fg-mute);
+  position: relative; z-index: 1;
+}
+.pay-foot a { color: var(--fg-dim); }
 </style>
 <script>(function(){const t=document.querySelector('meta[name="csrf-token"]');if(!t)return;const tk=t.content;const _f=window.fetch;window.fetch=function(u,o){o=o||{};if(!['GET','HEAD','OPTIONS'].includes((o.method||'GET').toUpperCase())){o.headers=Object.assign({'X-CSRFToken':tk},o.headers||{});}return _f(u,o);};})();</script>
 </head>
-<body>
+<body class="dark">
 
-  <a href="/" class="pay-logo">
-    <div class="pay-logo-icon">
-      <svg width="20" height="20" viewBox="0 0 30 30" fill="none">
-        <rect x="3" y="7" width="18" height="14" rx="3" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.5"/>
-        <path d="M6 11h12M6 15h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="23" cy="9" r="5" fill="#22C55E"/>
-        <path d="M21 9l1.5 1.5L25 7.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    <span class="pay-logo-word">ABRI<b>U</b></span>
-  </a>
+<div class="bg-decor"></div>
 
-  <div class="pay-card">
+<a href="/" class="pay-logo">
+  <span class="pay-logo-mark">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12s3-6.5 9-6.5 9 6.5 9 6.5-3 6.5-9 6.5"/>
+      <path d="M3 12c2.5 1 4 4 4 4" opacity=".55"/>
+      <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+    </svg>
+  </span>
+  <span class="pay-logo-word">ABRIU</span>
+</a>
 
-    {% if falha %}
-    <div class="pay-alert error">
-      <i class="ti ti-alert-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
-      O pagamento não foi aprovado. Tente novamente ou use outro método de pagamento.
-    </div>
-    {% endif %}
+<div class="pay-card">
 
-    {% if pendente %}
-    <div class="pay-alert pending">
-      <i class="ti ti-clock" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
-      Seu pagamento está sendo processado. Assim que confirmado, seu acesso será liberado.
-    </div>
-    {% endif %}
+  {% if falha %}
+  <div class="pay-alert error">
+    <i class="ti ti-alert-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+    O pagamento não foi aprovado. Tente novamente ou use outro método de pagamento.
+  </div>
+  {% endif %}
 
-    <div class="pay-badge">
-      <i class="ti ti-clock" style="font-size:13px"></i>
-      Período de teste encerrado
-    </div>
+  {% if pendente %}
+  <div class="pay-alert warn">
+    <i class="ti ti-clock" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+    Seu pagamento está sendo processado. Assim que confirmado, seu acesso será liberado.
+  </div>
+  {% endif %}
 
-    <h1 class="pay-h1">Continue fechando<br>mais <em>negócios.</em></h1>
-    <p class="pay-sub">Seu trial terminou. Assine agora e continue recebendo notificações em tempo real quando seus clientes abrem os orçamentos.</p>
-
-    <div class="toggle-wrap">
-      <button class="toggle-btn active" id="btnMensal" type="button" onclick="selecionarPlano('mensal')">Mensal</button>
-      <button class="toggle-btn" id="btnAnual" type="button" onclick="selecionarPlano('anual')">
-        Anual <span class="save-tag">−25%</span>
-      </button>
-    </div>
-
-    <div class="price-box">
-      <div class="price-value" id="precoValor">R$ 19<span id="cents">,90/mês</span></div>
-      <div class="price-period" id="precoCobranca">Cobrado mensalmente · Cancele quando quiser</div>
-    </div>
-
-    <ul class="pay-features">
-      <li class="pay-feat">
-        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
-        Orçamentos ilimitados
-      </li>
-      <li class="pay-feat">
-        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
-        Notificação via WhatsApp + E-mail em &lt;90 segundos
-      </li>
-      <li class="pay-feat">
-        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
-        Rastreamento em tempo real de abertura de PDFs
-      </li>
-      <li class="pay-feat">
-        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
-        Envio automático do orçamento via WhatsApp
-      </li>
-      <li class="pay-feat">
-        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
-        Pipeline de vendas visual completo
-      </li>
-      <li class="pay-feat">
-        <div class="feat-check-circle"><i class="ti ti-check"></i></div>
-        Cancele a qualquer momento, sem burocracia
-      </li>
-    </ul>
-
-    <form method="post" action="/assinar" id="formAssinar">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="plano" id="inputPlano" value="mensal">
-      <button type="submit" class="btn-assinar">
-        Assinar agora →
-      </button>
-    </form>
-
-    <div class="pay-secure">
-      <i class="ti ti-lock"></i>
-      Pagamento seguro · Stripe · PIX, cartão e boleto
-    </div>
+  <div class="pay-eyebrow warn">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Período de teste encerrado
   </div>
 
-  <div class="pay-footer">
-    <a href="/logout">Sair da conta</a> · <a href="/">Início</a>
+  <h1 class="pay-h1">Continue fechando<br>mais <em>negócios.</em></h1>
+  <p class="pay-sub">Seu trial terminou. Assine agora e continue recebendo notificações em tempo real quando seus clientes abrem os orçamentos.</p>
+
+  <div class="billing-toggle">
+    <button class="active" id="btn-m" type="button" onclick="selecionarPlano('mensal')">Mensal</button>
+    <button id="btn-a" type="button" onclick="selecionarPlano('anual')">Anual <span class="save-tag">−25%</span></button>
   </div>
 
-  <script>
-    function selecionarPlano(plano) {
-      document.getElementById('inputPlano').value = plano;
-      document.getElementById('btnMensal').classList.toggle('active', plano === 'mensal');
-      document.getElementById('btnAnual').classList.toggle('active', plano === 'anual');
+  <div class="price-box">
+    <div class="price-value">
+      <span id="preco-int">R$ 19</span><span class="cents" id="preco-cents">,90/mês</span>
+    </div>
+    <div class="price-period" id="preco-info">Cobrado mensalmente · Cancele quando quiser</div>
+  </div>
 
-      if (plano === 'anual') {
-        document.getElementById('precoValor').childNodes[0].textContent = 'R$ 14';
-        document.getElementById('cents').textContent = ',90/mês';
-        document.getElementById('precoCobranca').textContent = 'R$ 178,80 cobrado anualmente · Cancele quando quiser';
-      } else {
-        document.getElementById('precoValor').childNodes[0].textContent = 'R$ 19';
-        document.getElementById('cents').textContent = ',90/mês';
-        document.getElementById('precoCobranca').textContent = 'Cobrado mensalmente · Cancele quando quiser';
-      }
-    }
-  </script>
+  <ul class="pay-features">
+    <li class="pay-feat">
+      <span class="feat-check-circle"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      Orçamentos ilimitados
+    </li>
+    <li class="pay-feat">
+      <span class="feat-check-circle"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      Notificação via WhatsApp + E-mail em &lt;90 segundos
+    </li>
+    <li class="pay-feat">
+      <span class="feat-check-circle"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      Rastreamento em tempo real de abertura de PDFs
+    </li>
+    <li class="pay-feat">
+      <span class="feat-check-circle"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      Envio automático do orçamento via WhatsApp
+    </li>
+    <li class="pay-feat">
+      <span class="feat-check-circle"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      Pipeline de vendas visual completo
+    </li>
+    <li class="pay-feat">
+      <span class="feat-check-circle"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      Cancele a qualquer momento, sem burocracia
+    </li>
+  </ul>
+
+  <form method="post" action="/assinar" id="formAssinar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="plano" id="inputPlano" value="mensal">
+    <button type="submit" class="btn btn-accent btn-lg btn-block">
+      Assinar agora
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </form>
+
+  <div class="pay-secure">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Pagamento seguro · Stripe · PIX, cartão e boleto
+  </div>
+</div>
+
+<div class="pay-foot">
+  <a href="/logout">Sair da conta</a> · <a href="/">Início</a>
+</div>
+
+<script>
+function selecionarPlano(plano) {
+  document.getElementById('inputPlano').value = plano;
+  document.getElementById('btn-m').classList.toggle('active', plano === 'mensal');
+  document.getElementById('btn-a').classList.toggle('active', plano === 'anual');
+  if (plano === 'anual') {
+    document.getElementById('preco-int').textContent = 'R$ 14';
+    document.getElementById('preco-info').textContent = 'R$ 178,80 cobrado anualmente · Cancele quando quiser';
+  } else {
+    document.getElementById('preco-int').textContent = 'R$ 19';
+    document.getElementById('preco-info').textContent = 'Cobrado mensalmente · Cancele quando quiser';
+  }
+}
+</script>
 
 </body>
 </html>
