@@ -1844,19 +1844,24 @@ def reler_valor(id):
 @app.route('/telegram/webhook', methods=['POST'])
 @csrf_exempt
 def telegram_webhook():
-    """Recebe mensagens do bot e auto-registra o chat_id do usuário."""
+    """Recebe mensagens do bot e auto-registra o chat_id no user_config do dono do token."""
     try:
         data = request.get_json(silent=True) or {}
         message = data.get('message') or data.get('edited_message') or {}
         chat = message.get('chat', {})
         chat_id = str(chat.get('id', ''))
         if chat_id:
-            save_config({'telegram_chat_id': chat_id})
-            cfg = get_config()
-            token = cfg.get('telegram_token', '')
-            if token:
-                nome = message.get('from', {}).get('first_name', 'você')
-                empresa = cfg.get('empresa_nome', 'OrcEVeja')
+            # Descobre qual usuário tem telegram_token configurado e salva chat_id lá
+            sql_any = ('SELECT user_id, valor FROM user_config WHERE chave=%s LIMIT 1' if USE_PG
+                       else 'SELECT user_id, valor FROM user_config WHERE chave=? LIMIT 1')
+            row = db_exec(sql_any, ('telegram_token',), fetch='one')
+            if row:
+                uid   = row['user_id']
+                token = row['valor']
+                save_user_config(uid, {'telegram_chat_id': chat_id})
+                cfg_u   = get_user_config(uid)
+                nome    = message.get('from', {}).get('first_name', 'você')
+                empresa = cfg_u.get('empresa_nome', 'OrcEVeja')
                 resposta = (f"✅ Olá, {nome}! Tudo certo.\n\n"
                             f"Você receberá notificações do *{empresa}* sempre que um cliente abrir um orçamento. 📋")
                 requests.post(
@@ -1872,7 +1877,9 @@ def telegram_webhook():
 @login_required
 def telegram_conectar():
     """Registra o webhook do bot e retorna o link para o usuário abrir."""
-    cfg = get_config()
+    from flask import g
+    uid = g.current_user['id']
+    cfg = get_user_config(uid)
     token = cfg.get('telegram_token', '').strip()
     if not token:
         return jsonify({'ok': False, 'erro': 'Cole o token do bot primeiro.'})
@@ -1895,7 +1902,9 @@ def telegram_conectar():
 @app.route('/telegram/status', methods=['GET'])
 @login_required
 def telegram_status():
-    cfg = get_config()
+    from flask import g
+    uid = g.current_user['id']
+    cfg = get_user_config(uid)
     return jsonify({'chat_id': cfg.get('telegram_chat_id', ''),
                     'conectado': bool(cfg.get('telegram_chat_id'))})
 
