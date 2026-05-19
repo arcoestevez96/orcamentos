@@ -107,6 +107,8 @@ def set_response_headers(response):
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     elif path == '/sw.js':
         response.headers['Cache-Control'] = 'no-cache'
+    elif path in ('/', '/termos', '/robots.txt', '/sitemap.xml'):
+        response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=3600'
     response.headers['X-Frame-Options']        = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
@@ -231,49 +233,72 @@ def _get_pg_pool():
         _pg_pool = psycopg2.pool.ThreadedConnectionPool(2, 10, url)
     return _pg_pool
 
+def _reset_pg_pool():
+    """Fecha todas as conexões do pool e força recriação na próxima chamada."""
+    global _pg_pool
+    old, _pg_pool = _pg_pool, None
+    if old:
+        try: old.closeall()
+        except Exception: pass
+
 def get_db():
     if USE_PG:
         return _get_pg_pool().getconn()
     else:
         import sqlite3
-        db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
+        db_path = os.environ.get('ORCAMENTOS_DB',
+                                  os.path.join(os.path.dirname(__file__), 'orcamentos.db'))
         con = sqlite3.connect(db_path)
         con.row_factory = sqlite3.Row
         return con
 
 def db_exec(sql, params=(), fetch=None):
-    con = None
-    pool = None
-    ok = False
-    try:
-        if USE_PG:
-            pool = _get_pg_pool()
-            con = pool.getconn()
-            import psycopg2.extras
-            cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            sql_pg = sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
-            cur.execute(sql_pg, params)
-            con.commit()
-            ok = True
-            if fetch == 'all': return [dict(r) for r in cur.fetchall()]
-            if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
-        else:
-            con = get_db()
-            cur = con.execute(sql, params)
-            con.commit()
-            if fetch == 'all': return [dict(r) for r in cur.fetchall()]
-            if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
-    except Exception:
-        if con and USE_PG:
-            try: con.rollback()
-            except Exception: pass
-        raise
-    finally:
-        if con:
-            if USE_PG and pool:
-                pool.putconn(con, close=not ok)
+    for attempt in range(2):
+        con = None
+        pool = None
+        ok = False
+        try:
+            if USE_PG:
+                pool = _get_pg_pool()
+                con = pool.getconn()
+                import psycopg2.extras
+                cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                sql_pg = sql.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+                cur.execute(sql_pg, params)
+                con.commit()
+                ok = True
+                if fetch == 'all': return [dict(r) for r in cur.fetchall()]
+                if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
+                return None
             else:
-                con.close()
+                con = get_db()
+                cur = con.execute(sql, params)
+                con.commit()
+                if fetch == 'all': return [dict(r) for r in cur.fetchall()]
+                if fetch == 'one': r = cur.fetchone(); return dict(r) if r else None
+                return None
+        except Exception as e:
+            if con and USE_PG:
+                try: con.rollback()
+                except Exception: pass
+            # Conexões SSL fechadas pelo servidor são recuperáveis — descarta o pool e tenta uma vez
+            if attempt == 0 and USE_PG:
+                import psycopg2
+                if isinstance(e, psycopg2.OperationalError):
+                    if con and pool:
+                        try: pool.putconn(con, close=True)
+                        except Exception: pass
+                    con = None  # impede o finally de devolver conexão ruim ao pool
+                    _reset_pg_pool()
+                    log.warning('db_exec: conexão SSL morta detectada, reconectando...')
+                    continue
+            raise
+        finally:
+            if con:
+                if USE_PG and pool:
+                    pool.putconn(con, close=not ok)
+                else:
+                    con.close()
 
 def init_db():
     if USE_PG:
@@ -379,7 +404,8 @@ def init_db():
         con.close()
     else:
         import sqlite3
-        db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
+        db_path = os.environ.get('ORCAMENTOS_DB',
+                                  os.path.join(os.path.dirname(__file__), 'orcamentos.db'))
         con = sqlite3.connect(db_path)
         con.executescript('''
             CREATE TABLE IF NOT EXISTS orcamentos (
@@ -452,7 +478,6 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("gmail_refresh_token","");
             INSERT OR IGNORE INTO config VALUES ("gmail_email","");
             CREATE INDEX IF NOT EXISTS idx_pdfs_token  ON pdfs(token);
-            CREATE INDEX IF NOT EXISTS idx_pdfs_user   ON pdfs(user_id);
             CREATE INDEX IF NOT EXISTS idx_acessos_pdf ON pdf_acessos(pdf_id);
             CREATE INDEX IF NOT EXISTS idx_push_user   ON push_subscriptions(user_id);
         ''')

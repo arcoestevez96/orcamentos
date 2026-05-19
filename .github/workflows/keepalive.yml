@@ -2,7 +2,7 @@ name: Keep Alive — ABRIU
 
 on:
   schedule:
-    - cron: '*/13 * * * *'   # a cada 13 minutos (Render dorme em 15)
+    - cron: '*/10 * * * *'   # a cada 10 minutos (Render dorme em 15)
   workflow_dispatch:          # permite rodar manualmente pelo GitHub
 
 jobs:
