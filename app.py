@@ -238,7 +238,8 @@ def get_db():
         return _get_pg_pool().getconn()
     else:
         import sqlite3
-        db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
+        db_path = os.environ.get('ORCAMENTOS_DB',
+                                  os.path.join(os.path.dirname(__file__), 'orcamentos.db'))
         con = sqlite3.connect(db_path)
         con.row_factory = sqlite3.Row
         return con
@@ -381,7 +382,8 @@ def init_db():
         con.close()
     else:
         import sqlite3
-        db_path = os.path.join(os.path.dirname(__file__), 'orcamentos.db')
+        db_path = os.environ.get('ORCAMENTOS_DB',
+                                  os.path.join(os.path.dirname(__file__), 'orcamentos.db'))
         con = sqlite3.connect(db_path)
         con.executescript('''
             CREATE TABLE IF NOT EXISTS orcamentos (
@@ -454,7 +456,6 @@ def init_db():
             INSERT OR IGNORE INTO config VALUES ("gmail_refresh_token","");
             INSERT OR IGNORE INTO config VALUES ("gmail_email","");
             CREATE INDEX IF NOT EXISTS idx_pdfs_token  ON pdfs(token);
-            CREATE INDEX IF NOT EXISTS idx_pdfs_user   ON pdfs(user_id);
             CREATE INDEX IF NOT EXISTS idx_acessos_pdf ON pdf_acessos(pdf_id);
             CREATE INDEX IF NOT EXISTS idx_push_user   ON push_subscriptions(user_id);
         ''')
