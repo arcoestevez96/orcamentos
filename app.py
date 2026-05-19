@@ -37,9 +37,11 @@ if not _sk:
 app.secret_key = _sk
 
 # ── Cookies de sessão seguros ─────────────────────────────────────────────────
-app.config['SESSION_COOKIE_SECURE']   = True
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE']    = True
+app.config['SESSION_COOKIE_HTTPONLY']  = True
+app.config['SESSION_COOKIE_SAMESITE']  = 'Lax'
+app.config['SESSION_COOKIE_NAME']      = '__Host-session'
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 min inativo → logout automático
 
 # ── Gzip ──────────────────────────────────────────────────────────────────────
 try:
@@ -90,6 +92,13 @@ def redirect_www():
                          .replace(f'http://{host}',  f'https://{apex}', 1)
         return redirect(url, code=301)
 
+@app.before_request
+def renovar_sessao():
+    """Renova o timer de 30min a cada request autenticado."""
+    if session.get('user_email'):
+        session.permanent = True
+        session.modified   = True
+
 # ── Headers de cache + segurança ──────────────────────────────────────────────
 @app.after_request
 def set_response_headers(response):
@@ -101,16 +110,28 @@ def set_response_headers(response):
     response.headers['X-Frame-Options']        = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains; preload'
+    response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
+    response.headers['Cross-Origin-Opener-Policy']  = 'same-origin'
+    response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+    response.headers['Permissions-Policy'] = (
+        'camera=(), microphone=(), geolocation=(), '
+        'payment=(), usb=(), interest-cohort=()'
+    )
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: https:; "
-        "connect-src 'self'; "
-        "frame-src 'none';"
+        "connect-src 'self' https://api.stripe.com; "
+        "frame-src https://js.stripe.com https://hooks.stripe.com; "
+        "frame-ancestors 'none';"
     )
+    # Páginas autenticadas não devem ser cacheadas por proxies
+    if path.startswith(('/dashboard', '/configuracoes', '/upload', '/renovar', '/acessos')):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+        response.headers['Pragma'] = 'no-cache'
     return response
 
 
@@ -1350,6 +1371,7 @@ def pdfs():
     return render_template('pdfs.html', pdfs=rows)
 
 @app.route('/upload_pdf', methods=['POST'])
+@_rate_limit('20 per hour')
 @login_required
 def upload_pdf():
     if 'pdf' not in request.files:
@@ -1612,6 +1634,7 @@ def ver_pdf(token):
                  'Cache-Control': 'no-store'})
 
 @app.route('/renovar_link/<int:id>', methods=['POST'])
+@_rate_limit('10 per hour')
 @login_required
 def renovar_link(id):
     """Gera novo token, reseta prazo de 48h e envia o novo link para o cliente."""
@@ -2069,6 +2092,7 @@ def paywall():
     return render_template('paywall.html', falha=falha, pendente=pendente)
 
 @app.route('/assinar/<plano_id>')
+@_rate_limit('10 per minute')
 @login_required
 def assinar_plano(plano_id):
     """GET redirect para checkout Stripe via card de plano na página de configurações."""
