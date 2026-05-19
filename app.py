@@ -21,6 +21,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
@@ -337,6 +339,7 @@ def init_db():
                      ('gmail_refresh_token',''),('gmail_email','')]:
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS arquivo_key TEXT')
+        cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS cliente_email TEXT')
         for idx_sql in [
             'CREATE INDEX IF NOT EXISTS idx_pdfs_user_id ON pdfs(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_pdfs_token ON pdfs(token)',
@@ -950,6 +953,72 @@ def notificar_email_gmail(refresh_token, sender_email, html, subject='👁 Notif
     except Exception as e:
         return False, str(e)
 
+def enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf_bytes, filename, link):
+    """Envia o PDF rastreado como anexo para o email do cliente."""
+    assunto = f"Orçamento: {titulo}"
+    corpo_html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+      <h2 style="color:#0D1B2A">Olá, {cliente_nome}!</h2>
+      <p style="color:#444;font-size:15px">
+        Segue em anexo o orçamento <strong>{titulo}</strong> conforme solicitado.
+      </p>
+      <p style="color:#444;font-size:15px">
+        Você também pode visualizá-lo online clicando no botão abaixo:
+      </p>
+      <a href="{link}" style="display:inline-block;background:#E8441A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;margin:8px 0">
+        Ver orçamento online
+      </a>
+      <p style="color:#888;font-size:13px;margin-top:24px">
+        Qualquer dúvida estou à disposição. Obrigado!
+      </p>
+    </div>"""
+
+    def _build_msg(from_addr):
+        msg = MIMEMultipart('mixed')
+        msg['Subject'] = assunto
+        msg['From']    = from_addr
+        msg['To']      = cliente_email
+        msg.attach(MIMEText(corpo_html, 'html'))
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(pdf_bytes)
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', 'attachment', filename=filename)
+        msg.attach(part)
+        return msg
+
+    if cfg.get('gmail_refresh_token') and cfg.get('gmail_email'):
+        try:
+            tok = requests.post('https://oauth2.googleapis.com/token', data={
+                'client_id':     os.environ.get('GOOGLE_CLIENT_ID', ''),
+                'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+                'refresh_token': cfg['gmail_refresh_token'],
+                'grant_type':    'refresh_token',
+            }, timeout=15).json()
+            access_token = tok.get('access_token', '')
+            if not access_token:
+                return False, f"Sem access_token: {tok.get('error_description', tok)}"
+            msg = _build_msg(cfg['gmail_email'])
+            raw = base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+            r = requests.post(
+                'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+                headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
+                json={'raw': raw}, timeout=30)
+            return (True, 'ok') if r.status_code == 200 else (False, r.text)
+        except Exception as e:
+            return False, str(e)
+    elif cfg.get('email_remetente') and cfg.get('email_senha_app'):
+        try:
+            msg = _build_msg(cfg['email_remetente'])
+            with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as s:
+                s.starttls()
+                s.login(cfg['email_remetente'], cfg['email_senha_app'])
+                s.sendmail(cfg['email_remetente'], cliente_email, msg.as_string())
+            return True, 'ok'
+        except Exception as e:
+            return False, str(e)
+    return False, 'Email não configurado'
+
+
 def notificar_telegram(token, chat_id, msg):
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -1308,43 +1377,56 @@ def upload_pdf():
         r2_upload(arquivo_key, dados)
     else:
         arquivo_db = dados
+    cliente_email = request.form.get('cliente_email', '').strip()
     if USE_PG:
         import psycopg2
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,arquivo_key,filename,status,criado_em,valor,user_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,cliente_email,titulo,arquivo,arquivo_key,filename,status,criado_em,valor,user_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), psycopg2.Binary(arquivo_db) if arquivo_db else None,
+             cliente_email, request.form.get('titulo', filename),
+             psycopg2.Binary(arquivo_db) if arquivo_db else None,
              arquivo_key, filename, 'enviado', now_str(), valor, uid))
     else:
-        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,titulo,arquivo,arquivo_key,filename,status,criado_em,valor,user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+        db_exec('INSERT INTO pdfs(token,cliente_nome,cliente_telefone,cliente_email,titulo,arquivo,arquivo_key,filename,status,criado_em,valor,user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
-             request.form.get('titulo', filename), arquivo_db,
+             cliente_email, request.form.get('titulo', filename), arquivo_db,
              arquivo_key, filename, 'enviado', now_str(), valor, uid))
     link = f"{get_base_url()}/pdf/{token}"
     cliente_nome = request.form.get('cliente_nome', 'Cliente')
     cliente_tel = request.form.get('cliente_telefone', '').strip()
     titulo = request.form.get('titulo', filename)
 
-    # Enviar arquivo PDF diretamente via WhatsApp (com rastreador embutido)
     cfg = get_user_config(uid)
+    pdf_snapshot = bytes(dados)
+    fname = filename or 'orcamento.pdf'
+
+    # Enviar arquivo PDF + link via WhatsApp (rastreador embutido)
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
         caption = f"Olá, {cliente_nome}! 👋\n\nSegue o orçamento *{titulo}* conforme solicitado.\n\nQualquer dúvida estou à disposição!"
-        fname   = filename or 'orcamento.pdf'
-        pdf_snapshot = bytes(dados)
         link_msg = f"🔗 Para visualizar online: {link}"
-        def _enviar_cliente(pdf=pdf_snapshot, fn=fname, cap=caption, lm=link_msg):
+        def _enviar_wpp(pdf=pdf_snapshot, fn=fname, cap=caption, lm=link_msg):
             try:
                 notificar_zapi_documento(
                     cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
                     phone, pdf, fn, cap)
-                import time; time.sleep(1)  # pequeno delay para manter ordem
+                import time; time.sleep(1)
                 notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
                                phone, lm)
             except Exception:
                 pass
-        threading.Thread(target=_enviar_cliente, daemon=True).start()
+        threading.Thread(target=_enviar_wpp, daemon=True).start()
 
-    return jsonify({'ok': True, 'token': token, 'link': link, 'id': db_exec('SELECT id FROM pdfs WHERE token=%s' if USE_PG else 'SELECT id FROM pdfs WHERE token=?', (token,), fetch='one')['id'], 'valor': valor, 'titulo': request.form.get('titulo', filename), 'tel': cliente_tel})
+    # Enviar arquivo PDF + link via Email (rastreador embutido)
+    if cliente_email:
+        def _enviar_email(pdf=pdf_snapshot, fn=fname):
+            try:
+                enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf, fn, link)
+            except Exception:
+                pass
+        threading.Thread(target=_enviar_email, daemon=True).start()
+
+    row_id = db_exec('SELECT id FROM pdfs WHERE token=%s' if USE_PG else 'SELECT id FROM pdfs WHERE token=?', (token,), fetch='one')['id']
+    return jsonify({'ok': True, 'token': token, 'link': link, 'id': row_id, 'valor': valor, 'titulo': request.form.get('titulo', filename), 'tel': cliente_tel})
 
 def comprimir_pdf(dados_bytes):
     """Comprime o PDF removendo objetos duplicados e comprimindo streams."""
@@ -1532,7 +1614,7 @@ def renovar_link(id):
     from flask import g
     uid = g.current_user['id']
     # Busca dados do PDF antes de renovar (filtra por user_id para segurança)
-    sql_sel = 'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else \
+    sql_sel = 'SELECT cliente_nome, cliente_telefone, cliente_email, titulo FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else \
               'SELECT cliente_nome, cliente_telefone, titulo FROM pdfs WHERE id=? AND user_id=?'
     p = db_exec(sql_sel, (id, uid), fetch='one')
     if not p:
@@ -1578,16 +1660,19 @@ def renovar_link(id):
 
     link = f"{get_base_url()}/pdf/{novo_token}"
 
-    # Envia arquivo PDF atualizado diretamente via WhatsApp
-    cfg = get_user_config(uid)
+    cfg          = get_user_config(uid)
     cliente_tel  = (p.get('cliente_telefone') or '').strip()
     cliente_nome = p.get('cliente_nome', 'Cliente')
+    cliente_email_dest = (p.get('cliente_email') or '').strip()
+    titulo_pdf   = p.get('titulo', fname)
+    pdf_snap     = bytes(arquivo_novo)
+
+    # Reenvia via WhatsApp com novo arquivo rastreado
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone   = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
         caption = f"Olá, {cliente_nome}! 👋\n\nSegue o orçamento atualizado conforme solicitado.\n\nQualquer dúvida estou à disposição!"
-        pdf_snap = bytes(arquivo_novo)
         link_msg = f"🔗 Para visualizar online: {link}"
-        def _reenviar(pdf=pdf_snap, fn=fname, cap=caption, lm=link_msg):
+        def _reenviar_wpp(pdf=pdf_snap, fn=fname, cap=caption, lm=link_msg):
             try:
                 notificar_zapi_documento(
                     cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'],
@@ -1597,10 +1682,20 @@ def renovar_link(id):
                                phone, lm)
             except Exception:
                 pass
-        threading.Thread(target=_reenviar, daemon=True).start()
+        threading.Thread(target=_reenviar_wpp, daemon=True).start()
+
+    # Reenvia via email com novo arquivo rastreado
+    if cliente_email_dest:
+        def _reenviar_email(pdf=pdf_snap, fn=fname):
+            try:
+                enviar_pdf_email_cliente(cfg, cliente_email_dest, cliente_nome, titulo_pdf, pdf, fn, link)
+            except Exception:
+                pass
+        threading.Thread(target=_reenviar_email, daemon=True).start()
 
     return jsonify({'ok': True, 'token': novo_token, 'link': link,
-                    'enviado_wpp': bool(cliente_tel)})
+                    'enviado_wpp': bool(cliente_tel),
+                    'enviado_email': bool(cliente_email_dest)})
 
 @app.route('/atualizar_status_pdf/<int:id>', methods=['POST'])
 @login_required
