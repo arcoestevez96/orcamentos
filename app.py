@@ -107,6 +107,8 @@ def set_response_headers(response):
         response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     elif path == '/sw.js':
         response.headers['Cache-Control'] = 'no-cache'
+    elif path in ('/', '/termos', '/robots.txt', '/sitemap.xml'):
+        response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=3600'
     response.headers['X-Frame-Options']        = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
