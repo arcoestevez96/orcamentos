@@ -66,10 +66,16 @@ except ImportError:
     log.warning('flask-wtf não instalado — proteção CSRF desativada')
 
 # ── Rate Limiting ─────────────────────────────────────────────────────────────
+def _real_ip():
+    """Retorna o IP real do cliente respeitando X-Forwarded-For do Render/proxy."""
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.remote_addr or '127.0.0.1'
+
 try:
     from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
-    limiter = Limiter(app=app, key_func=get_remote_address,
+    limiter = Limiter(app=app, key_func=_real_ip,
                       default_limits=[], storage_uri='memory://')
 except ImportError:
     limiter = None
