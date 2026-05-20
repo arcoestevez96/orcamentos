@@ -1578,85 +1578,105 @@ def track_pdf(token):
 
 @app.route('/pdf/<token>')
 def ver_pdf(token):
-    """Registra abertura e serve o PDF. Bloqueia e notifica se o link expirou (48h)."""
+    """Serve o PDF imediatamente; registra abertura e notifica em background."""
     from datetime import timedelta
-    _meta_cols = 'id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id,arquivo_key'
+
+    # Busca metadados + blob em uma única query (evita 2ª roundtrip para PDFs antigos)
     try:
-        sql = f'SELECT {_meta_cols} FROM pdfs WHERE token=%s' if USE_PG else f'SELECT {_meta_cols} FROM pdfs WHERE token=?'
+        sql = ('SELECT id,token,cliente_nome,titulo,filename,status,criado_em,'
+               'aberturas,user_id,arquivo_key,arquivo FROM pdfs WHERE token=%s'
+               if USE_PG else
+               'SELECT id,token,cliente_nome,titulo,filename,status,criado_em,'
+               'aberturas,user_id,arquivo_key,arquivo FROM pdfs WHERE token=?')
         p = db_exec(sql, (token,), fetch='one')
     except Exception:
-        # Coluna arquivo_key ainda não existe (migração pendente) — cai para SELECT legado
-        sql = 'SELECT id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id FROM pdfs WHERE token=%s' if USE_PG else \
-              'SELECT id,token,cliente_nome,titulo,filename,status,criado_em,aberto_em,aberturas,user_id FROM pdfs WHERE token=?'
+        sql = ('SELECT id,token,cliente_nome,titulo,filename,status,criado_em,'
+               'aberturas,user_id,arquivo FROM pdfs WHERE token=%s'
+               if USE_PG else
+               'SELECT id,token,cliente_nome,titulo,filename,status,criado_em,'
+               'aberturas,user_id,arquivo FROM pdfs WHERE token=?')
         p = db_exec(sql, (token,), fetch='one')
-    if not p: return 'Orçamento não encontrado.', 404
+    if not p:
+        return 'Orçamento não encontrado.', 404
 
-    # ── Verifica expiração (48h após criado_em) ──────────────────────────────
-    cfg = get_config()
+    # ── Verifica expiração ───────────────────────────────────────────────────
     try:
         criado = datetime.strptime(p['criado_em'][:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=BRASILIA)
     except Exception:
         criado = datetime.now(BRASILIA)
-    expira = criado + timedelta(hours=PRAZO_HORAS)
-    agora  = datetime.now(BRASILIA)
-    expirado = agora > expira
+    agora    = datetime.now(BRASILIA)
+    expirado = agora > criado + timedelta(hours=PRAZO_HORAS)
 
     if expirado:
-        # Registra tentativa e notifica
-        hora = agora.strftime('%H:%M de %d/%m')
-        txt = (f"⏰ LINK EXPIRADO — {p['cliente_nome']} tentou abrir "
-               f"'{p['titulo']}' às {hora}, mas o link de 48h já venceu.")
-        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fef2f2;border-radius:12px">
-            <h2 style="color:#dc2626">⏰ Link Expirado!</h2>
-            <p><strong>{p['cliente_nome']}</strong> tentou abrir <strong>{p['titulo']}</strong>
-            às <strong>{hora}</strong>, mas o link de 48h já venceu.<br><br>
-            Acesse o dashboard para gerar um novo link.</p></div>"""
         owner = p.get('user_id')
-        cfg   = get_user_config(owner) if owner else {}
-        threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
-        empresa = cfg.get('empresa_nome', 'a empresa')
+        hora  = agora.strftime('%H:%M de %d/%m')
+        txt   = (f"⏰ LINK EXPIRADO — {p['cliente_nome']} tentou abrir "
+                 f"'{p['titulo']}' às {hora}, mas o link de 48h já venceu.")
+        html_notif = (f'<div style="font-family:sans-serif;padding:2rem;background:#fef2f2;border-radius:12px">'
+                      f'<h2 style="color:#dc2626">⏰ Link Expirado!</h2>'
+                      f'<p><strong>{p["cliente_nome"]}</strong> tentou abrir <strong>{p["titulo"]}</strong>'
+                      f' às <strong>{hora}</strong>, mas o link de 48h já venceu.</p></div>')
+        cfg_u = get_user_config(owner) if owner else {}
+        threading.Thread(target=lambda: notificar(cfg_u, txt, html_notif), daemon=True).start()
         return render_template('expirado.html', cliente=p['cliente_nome'],
-                               titulo=p['titulo'], empresa=empresa), 410
+                               titulo=p['titulo'], empresa=cfg_u.get('empresa_nome', 'a empresa')), 410
 
-    # ── Registra abertura normal ─────────────────────────────────────────────
+    # ── Prepara resposta antes de qualquer escrita ───────────────────────────
+    filename    = (p['filename'] or 'orcamento.pdf').replace('"', '')
+    arquivo_key = p.get('arquivo_key')
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
     ua = request.headers.get('User-Agent', '')
-    registrar_acesso(p['id'], token, ip, ua, 'link')
+
+    # Captura dados para o background ANTES de fazer qualquer I/O extra
+    pdf_id    = p['id']
+    owner     = p.get('user_id')
     aberturas = (p['aberturas'] or 0) + 1
     primeira  = p['status'] == 'enviado'
-    if USE_PG:
-        db_exec("UPDATE pdfs SET aberturas=%s,aberto_em=%s,status=%s WHERE token=%s",
-            (aberturas, now_str(), 'aberto', token))
-    else:
-        db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
-            (aberturas, now_str(), 'aberto', token))
-    hora  = agora.strftime('%H:%M')
-    owner = p.get('user_id')
-    cfg   = get_user_config(owner) if owner else {}
-    if primeira:
-        txt = f"👁 {p['cliente_nome']} abriu '{p['titulo']}' pela 1ª vez às {hora}!"
-        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">
-            <h2 style="color:#16a34a">👁 PDF Visualizado!</h2>
-            <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>.</p></div>"""
-    else:
-        txt = f"🔄 {p['cliente_nome']} abriu novamente '{p['titulo']}' às {hora}. Total: {aberturas}x"
-        html_notif = f"""<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">
-            <h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>
-            <p><strong>{p['cliente_nome']}</strong> abriu <strong>{p['titulo']}</strong> às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>"""
-    if owner:
-        sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
-        send_web_push(owner, f"👁 {p['cliente_nome']} abriu o orçamento!", p['titulo'])
-    threading.Thread(target=lambda: notificar(cfg, txt, html_notif), daemon=True).start()
-    filename = (p['filename'] or 'orcamento.pdf').replace('"', '')
-    if p.get('arquivo_key'):
-        return redirect(r2_url(p['arquivo_key']), 302)
-    # Retrocompatibilidade: PDFs antigos ainda no banco
-    sql_arq = 'SELECT arquivo FROM pdfs WHERE token=%s' if USE_PG else 'SELECT arquivo FROM pdfs WHERE token=?'
-    arq_row = db_exec(sql_arq, (token,), fetch='one')
-    arquivo = bytes(arq_row['arquivo']) if arq_row and arq_row['arquivo'] else b''
+    hora      = agora.strftime('%H:%M')
+
+    def _track():
+        """Toda escrita + notificação roda em background — não bloqueia a entrega do PDF."""
+        try:
+            registrar_acesso(pdf_id, token, ip, ua, 'link')
+            if USE_PG:
+                db_exec("UPDATE pdfs SET aberturas=%s,aberto_em=%s,status=%s WHERE token=%s",
+                        (aberturas, now_str(), 'aberto', token))
+            else:
+                db_exec("UPDATE pdfs SET aberturas=?,aberto_em=?,status=? WHERE token=?",
+                        (aberturas, now_str(), 'aberto', token))
+            cfg_u = get_user_config(owner) if owner else {}
+            if primeira:
+                txt = f"👁 {p['cliente_nome']} abriu '{p['titulo']}' pela 1ª vez às {hora}!"
+                html_n = (f'<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">'
+                          f'<h2 style="color:#16a34a">👁 PDF Visualizado!</h2>'
+                          f'<p><strong>{p["cliente_nome"]}</strong> abriu <strong>{p["titulo"]}</strong>'
+                          f' às <strong>{hora}</strong>.</p></div>')
+            else:
+                txt = f"🔄 {p['cliente_nome']} abriu novamente '{p['titulo']}' às {hora}. Total: {aberturas}x"
+                html_n = (f'<div style="font-family:sans-serif;padding:2rem;background:#fffbeb;border-radius:12px">'
+                          f'<h2 style="color:#f59e0b">🔄 PDF Aberto Novamente</h2>'
+                          f'<p><strong>{p["cliente_nome"]}</strong> abriu <strong>{p["titulo"]}</strong>'
+                          f' às <strong>{hora}</strong>. Total: <strong>{aberturas}x</strong></p></div>')
+            if owner:
+                sse_push(owner, 'abriu', {'nome': p['cliente_nome'], 'titulo': p['titulo'], 'hora': hora})
+                send_web_push(owner, f"👁 {p['cliente_nome']} abriu o orçamento!", p['titulo'])
+            notificar(cfg_u, txt, html_n)
+        except Exception:
+            pass
+
+    threading.Thread(target=_track, daemon=True).start()
+
+    # ── Serve o arquivo imediatamente ────────────────────────────────────────
+    if arquivo_key:
+        return redirect(r2_url(arquivo_key), 302)
+
+    # PDFs antigos armazenados no banco
+    arquivo = bytes(p['arquivo']) if p.get('arquivo') else b''
     return Response(arquivo, mimetype='application/pdf',
-        headers={'Content-Disposition': f'inline; filename="{filename}"',
-                 'Cache-Control': 'no-store'})
+        headers={
+            'Content-Disposition': f'inline; filename="{filename}"',
+            'Cache-Control': 'public, max-age=3600, immutable',
+        })
 
 @app.route('/renovar_link/<int:id>', methods=['POST'])
 @_rate_limit('10 per hour')
