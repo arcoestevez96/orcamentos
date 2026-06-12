@@ -114,6 +114,28 @@
   .nb-sub  { font-size: 12px; color: var(--fg-mute); line-height: 1.4; }
   .nb-close { margin-left: auto; color: var(--fg-mute); cursor: pointer; padding: 0 0 0 8px; background: none; border: none; font-size: 18px; line-height: 1; }
 
+  /* Push activation CTA */
+  .push-cta {
+    display: flex; align-items: center; gap: 14px;
+    background: oklch(0.74 0.17 45 / 0.08);
+    border: 1px solid oklch(0.74 0.17 45 / 0.3);
+    border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 20px;
+  }
+  .push-cta-icon {
+    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+    background: oklch(0.74 0.17 45 / 0.15); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .push-cta-text { flex: 1; min-width: 0; }
+  .push-cta-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .push-cta-sub { font-size: 12px; color: var(--fg-mute); line-height: 1.4; }
+  .push-cta .btn { flex-shrink: 0; }
+  @media (max-width: 600px) {
+    .push-cta { flex-wrap: wrap; }
+    .push-cta-text { flex-basis: calc(100% - 56px); }
+    .push-cta .btn { width: 100%; justify-content: center; }
+  }
+
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 
@@ -221,6 +243,19 @@
     </header>
 
     <div class="content">
+
+      <!-- ATIVAR NOTIFICAÇÕES (Web Push — zero config) -->
+      <div class="push-cta" id="push-cta" style="display:none">
+        <div class="push-cta-icon"><i class="ti ti-bell-ringing"></i></div>
+        <div class="push-cta-text">
+          <div class="push-cta-title" id="push-cta-title">Ative as notificações neste aparelho</div>
+          <div class="push-cta-sub" id="push-cta-sub">Receba um alerta na hora exata em que o cliente abrir o orçamento — sem precisar configurar nada.</div>
+        </div>
+        <button class="btn btn-accent btn-sm" id="push-cta-btn" onclick="ativarPush()">
+          <i class="ti ti-bell"></i> Ativar agora
+        </button>
+        <button class="nb-close" onclick="dispensarPushCta()" aria-label="Dispensar">×</button>
+      </div>
 
       <!-- TRIAL WARNING -->
       {% if dias_trial is not none and subscription_status == 'trial' %}
@@ -651,26 +686,92 @@ evtSource.addEventListener('aviso', e => {
 });
 
 /* ── SW + Push registration ── */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').then(async reg => {
-    if (!('PushManager' in window)) return;
-    if (Notification.permission !== 'granted') return;
-    try {
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) return;
-      const keyRes = await fetch('/push/vapid-key');
-      const { publicKey } = await keyRes.json();
-      if (!publicKey) return;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
-      await fetch('/push/subscribe', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(sub.toJSON())
-      });
-    } catch {}
+let _swReg = null;
+const _pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+async function _registrarPush(reg) {
+  // Cria/garante a subscription e envia ao servidor. Retorna true se ok.
+  const keyRes = await fetch('/push/vapid-key');
+  const { publicKey } = await keyRes.json();
+  if (!publicKey) return false;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+  }
+  const r = await fetch('/push/subscribe', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(sub.toJSON())
   });
+  return r.ok;
+}
+
+function _mostrarPushCta(estado) {
+  const cta = document.getElementById('push-cta');
+  if (!cta || sessionStorage.getItem('push_cta_dispensado') === '1') return;
+  const titulo = document.getElementById('push-cta-title');
+  const sub = document.getElementById('push-cta-sub');
+  const btn = document.getElementById('push-cta-btn');
+  if (estado === 'denied') {
+    titulo.textContent = 'Notificações bloqueadas neste navegador';
+    sub.innerHTML = 'Para receber alertas, toque no cadeado 🔒 na barra de endereço → Notificações → Permitir. Enquanto isso, você ainda recebe por WhatsApp/e-mail nas <a href="/configuracoes" style="color:var(--accent-2);text-decoration:underline">configurações</a>.';
+    btn.style.display = 'none';
+  }
+  cta.style.display = 'flex';
+}
+
+function dispensarPushCta() {
+  sessionStorage.setItem('push_cta_dispensado', '1');
+  const cta = document.getElementById('push-cta');
+  if (cta) cta.style.display = 'none';
+}
+
+async function ativarPush() {
+  const btn = document.getElementById('push-cta-btn');
+  if (!_pushSupported) {
+    alert('Seu navegador não suporta notificações. Abra o ABRIU pelo Chrome (Android) ou adicione à tela inicial no iPhone.');
+    return;
+  }
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Ativando…';
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { _mostrarPushCta('denied'); return; }
+    const reg = _swReg || await navigator.serviceWorker.register('/sw.js');
+    _swReg = reg;
+    await navigator.serviceWorker.ready;
+    const ok = await _registrarPush(reg);
+    if (ok) {
+      // Confirmação visual imediata — prova que funciona sem esperar um cliente abrir
+      reg.showNotification('🔔 Notificações ativadas!', {
+        body: 'Pronto. Você será avisado aqui na hora em que um cliente abrir o orçamento.',
+        icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png'
+      });
+      dispensarPushCta();
+    } else {
+      btn.innerHTML = orig; btn.disabled = false;
+      alert('Não foi possível ativar agora. Tente novamente em instantes.');
+    }
+  } catch (e) {
+    btn.innerHTML = orig; btn.disabled = false;
+    alert('Não foi possível ativar as notificações neste aparelho.');
+  }
+}
+
+if (_pushSupported) {
+  navigator.serviceWorker.register('/sw.js').then(async reg => {
+    _swReg = reg;
+    if (Notification.permission === 'granted') {
+      try { await _registrarPush(reg); } catch {}
+    } else if (Notification.permission === 'default') {
+      _mostrarPushCta('default');   // mostra o convite para ativar
+    } else {
+      _mostrarPushCta('denied');
+    }
+  }).catch(() => {});
 }
 
 function urlBase64ToUint8Array(base64String) {

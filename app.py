@@ -496,6 +496,8 @@ def init_db():
             pass
         for col_sql in [
             'ALTER TABLE pdfs ADD COLUMN arquivo_key TEXT',
+            'ALTER TABLE pdfs ADD COLUMN valor REAL DEFAULT 0',
+            'ALTER TABLE pdfs ADD COLUMN cliente_email TEXT',
             'ALTER TABLE orcamentos ADD COLUMN user_id INTEGER',
         ]:
             try: con.execute(col_sql)
