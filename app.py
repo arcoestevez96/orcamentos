@@ -392,6 +392,7 @@ def init_db():
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS arquivo_key TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS cliente_email TEXT')
+        cur.execute('ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS user_id INTEGER')
         cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS fonte TEXT')
         cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS operadora TEXT')
         cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS sistema TEXT')
@@ -495,6 +496,7 @@ def init_db():
             pass
         for col_sql in [
             'ALTER TABLE pdfs ADD COLUMN arquivo_key TEXT',
+            'ALTER TABLE orcamentos ADD COLUMN user_id INTEGER',
         ]:
             try: con.execute(col_sql)
             except Exception: pass
@@ -775,7 +777,8 @@ def auth_gmail_callback():
         info = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',
             headers={'Authorization': 'Bearer ' + access_token}, timeout=15).json()
         gmail_email = info.get('email', session.get('user_email', ''))
-        save_config({'gmail_refresh_token': refresh_token, 'gmail_email': gmail_email})
+        from flask import g
+        save_user_config(g.current_user['id'], {'gmail_refresh_token': refresh_token, 'gmail_email': gmail_email})
     except Exception as e:
         return redirect(url_for('configuracoes') + '?gmail_erro=excecao')
     return redirect(url_for('configuracoes') + '?gmail_ok=1')
@@ -783,13 +786,15 @@ def auth_gmail_callback():
 @app.route('/auth/gmail/disconnect', methods=['POST'])
 @login_required
 def auth_gmail_disconnect():
-    save_config({'gmail_refresh_token': '', 'gmail_email': ''})
+    from flask import g
+    save_user_config(g.current_user['id'], {'gmail_refresh_token': '', 'gmail_email': ''})
     return jsonify({'ok': True})
 
 @app.route('/gmail/status')
 @login_required
 def gmail_status():
-    cfg = get_config()
+    from flask import g
+    cfg = get_user_config(g.current_user['id'])
     conectado = bool(cfg.get('gmail_refresh_token'))
     return jsonify({'conectado': conectado, 'email': cfg.get('gmail_email', '')})
 
@@ -1306,44 +1311,53 @@ def dashboard():
                            subscription_status=u.get('subscription_status') if u else None)
 
 @app.route('/criar', methods=['GET', 'POST'])
+@login_required
 def criar():
+    from flask import g
+    uid = g.current_user['id']
     if request.method == 'POST':
         d = request.get_json()
         token = str(uuid.uuid4())[:12].strip('-')
         if USE_PG:
-            db_exec('INSERT INTO orcamentos(token,cliente_nome,cliente_telefone,titulo,itens,observacoes,prazo,forma_pagamento,validade,status,criado_em) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+            db_exec('INSERT INTO orcamentos(token,cliente_nome,cliente_telefone,titulo,itens,observacoes,prazo,forma_pagamento,validade,status,criado_em,user_id) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
                 (token, d['cliente_nome'], d.get('cliente_telefone',''), d['titulo'],
                  json.dumps(d['itens'],ensure_ascii=False), d.get('observacoes',''),
-                 d.get('prazo',''), d.get('forma_pagamento',''), d.get('validade',''), 'rascunho', now_str()))
+                 d.get('prazo',''), d.get('forma_pagamento',''), d.get('validade',''), 'rascunho', now_str(), uid))
         else:
-            db_exec('INSERT INTO orcamentos(token,cliente_nome,cliente_telefone,titulo,itens,observacoes,prazo,forma_pagamento,validade,status,criado_em) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+            db_exec('INSERT INTO orcamentos(token,cliente_nome,cliente_telefone,titulo,itens,observacoes,prazo,forma_pagamento,validade,status,criado_em,user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
                 (token, d['cliente_nome'], d.get('cliente_telefone',''), d['titulo'],
                  json.dumps(d['itens'],ensure_ascii=False), d.get('observacoes',''),
-                 d.get('prazo',''), d.get('forma_pagamento',''), d.get('validade',''), 'rascunho', now_str()))
+                 d.get('prazo',''), d.get('forma_pagamento',''), d.get('validade',''), 'rascunho', now_str(), uid))
         return jsonify({'ok': True, 'token': token})
     return render_template('criar.html', orcamento=None)
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar(id):
+    from flask import g
+    uid = g.current_user['id']
     if request.method == 'POST':
         d = request.get_json()
         p = (d['cliente_nome'], d.get('cliente_telefone',''), d['titulo'],
              json.dumps(d['itens'],ensure_ascii=False), d.get('observacoes',''),
-             d.get('prazo',''), d.get('forma_pagamento',''), d.get('validade',''), id)
-        sql = 'UPDATE orcamentos SET cliente_nome=%s,cliente_telefone=%s,titulo=%s,itens=%s,observacoes=%s,prazo=%s,forma_pagamento=%s,validade=%s WHERE id=%s' if USE_PG else \
-              'UPDATE orcamentos SET cliente_nome=?,cliente_telefone=?,titulo=?,itens=?,observacoes=?,prazo=?,forma_pagamento=?,validade=? WHERE id=?'
+             d.get('prazo',''), d.get('forma_pagamento',''), d.get('validade',''), id, uid)
+        sql = 'UPDATE orcamentos SET cliente_nome=%s,cliente_telefone=%s,titulo=%s,itens=%s,observacoes=%s,prazo=%s,forma_pagamento=%s,validade=%s WHERE id=%s AND user_id=%s' if USE_PG else \
+              'UPDATE orcamentos SET cliente_nome=?,cliente_telefone=?,titulo=?,itens=?,observacoes=?,prazo=?,forma_pagamento=?,validade=? WHERE id=? AND user_id=?'
         db_exec(sql, p)
         return jsonify({'ok': True})
-    sql = 'SELECT * FROM orcamentos WHERE id=%s' if USE_PG else 'SELECT * FROM orcamentos WHERE id=?'
-    o = db_exec(sql, (id,), fetch='one')
+    sql = 'SELECT * FROM orcamentos WHERE id=%s AND user_id=%s' if USE_PG else 'SELECT * FROM orcamentos WHERE id=? AND user_id=?'
+    o = db_exec(sql, (id, uid), fetch='one')
     if not o: return redirect(url_for('dashboard'))
     o['itens'] = json.loads(o['itens'])
     return render_template('criar.html', orcamento=o)
 
 @app.route('/deletar/<int:id>', methods=['POST'])
+@login_required
 def deletar(id):
-    sql = 'DELETE FROM orcamentos WHERE id=%s' if USE_PG else 'DELETE FROM orcamentos WHERE id=?'
-    db_exec(sql, (id,))
+    from flask import g
+    uid = g.current_user['id']
+    sql = 'DELETE FROM orcamentos WHERE id=%s AND user_id=%s' if USE_PG else 'DELETE FROM orcamentos WHERE id=? AND user_id=?'
+    db_exec(sql, (id, uid))
     return redirect(url_for('dashboard'))
 
 @app.route('/ver/<token>')
@@ -1369,23 +1383,30 @@ def ver(token):
     return render_template('orcamento.html', o=o)
 
 @app.route('/marcar_enviado/<int:id>', methods=['POST'])
+@login_required
 def marcar_enviado(id):
-    sql = "UPDATE orcamentos SET status='enviado' WHERE id=%s" if USE_PG else \
-          "UPDATE orcamentos SET status='enviado' WHERE id=?"
-    db_exec(sql, (id,))
+    from flask import g
+    uid = g.current_user['id']
+    sql = "UPDATE orcamentos SET status='enviado' WHERE id=%s AND user_id=%s" if USE_PG else \
+          "UPDATE orcamentos SET status='enviado' WHERE id=? AND user_id=?"
+    db_exec(sql, (id, uid))
     return jsonify({'ok': True})
 
 @app.route('/atualizar_status/<int:id>', methods=['POST'])
+@login_required
 def atualizar_status(id):
+    from flask import g
+    uid = g.current_user['id']
     d = request.get_json()
     status = d.get('status','')
     if status not in ['fechou','negociando','perdido','enviado','aberto']:
         return jsonify({'ok': False})
-    sql = 'UPDATE orcamentos SET status=%s WHERE id=%s' if USE_PG else 'UPDATE orcamentos SET status=? WHERE id=?'
-    db_exec(sql, (status, id))
+    sql = 'UPDATE orcamentos SET status=%s WHERE id=%s AND user_id=%s' if USE_PG else 'UPDATE orcamentos SET status=? WHERE id=? AND user_id=?'
+    db_exec(sql, (status, id, uid))
     return jsonify({'ok': True})
 
 @app.route('/link/<token>')
+@login_required
 def gerar_link(token):
     return jsonify({'link': f"{get_base_url()}/ver/{token}"})
 
@@ -1804,12 +1825,16 @@ def deletar_pdf(id):
 @app.route('/deletar_pdf_ajax/<int:id>', methods=['POST'])
 @login_required
 def deletar_pdf_ajax(id):
-    row = db_exec('SELECT arquivo_key FROM pdfs WHERE id=%s' if USE_PG else
-                  'SELECT arquivo_key FROM pdfs WHERE id=?', (id,), fetch='one')
-    if row and row.get('arquivo_key'):
+    from flask import g
+    uid = g.current_user['id']
+    row = db_exec('SELECT arquivo_key FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else
+                  'SELECT arquivo_key FROM pdfs WHERE id=? AND user_id=?', (id, uid), fetch='one')
+    if not row:
+        return jsonify({'ok': False, 'erro': 'PDF não encontrado'}), 404
+    if row.get('arquivo_key'):
         r2_delete(row['arquivo_key'])
-    sql = 'DELETE FROM pdfs WHERE id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=?'
-    db_exec(sql, (id,))
+    sql = 'DELETE FROM pdfs WHERE id=%s AND user_id=%s' if USE_PG else 'DELETE FROM pdfs WHERE id=? AND user_id=?'
+    db_exec(sql, (id, uid))
     return jsonify({'ok': True})
 
 @app.route('/acessos_pdf/<int:id>')
@@ -1848,21 +1873,23 @@ def acessos_pdf(id):
 @login_required
 def reler_valor(id):
     """Reextrai o valor total do PDF e atualiza no banco."""
-    sql = ('SELECT arquivo, arquivo_key FROM pdfs WHERE id=%s'
-           if USE_PG else 'SELECT arquivo, arquivo_key FROM pdfs WHERE id=?')
-    p = db_exec(sql, (id,), fetch='one')
+    from flask import g
+    uid = g.current_user['id']
+    sql = ('SELECT arquivo, arquivo_key FROM pdfs WHERE id=%s AND user_id=%s'
+           if USE_PG else 'SELECT arquivo, arquivo_key FROM pdfs WHERE id=? AND user_id=?')
+    p = db_exec(sql, (id, uid), fetch='one')
     if not p:
-        return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
+        return jsonify({'ok': False, 'erro': 'PDF não encontrado'}), 404
     if p.get('arquivo_key'):
         try: dados = r2_download(p['arquivo_key'])
         except Exception: return jsonify({'ok': False, 'erro': 'Erro ao ler PDF do storage'})
     elif p.get('arquivo'):
         dados = bytes(p['arquivo'])
     else:
-        return jsonify({'ok': False, 'erro': 'PDF não encontrado'})
+        return jsonify({'ok': False, 'erro': 'PDF não encontrado'}), 404
     valor = extrair_valor_pdf(dados)
-    sql2 = 'UPDATE pdfs SET valor=%s WHERE id=%s' if USE_PG else 'UPDATE pdfs SET valor=? WHERE id=?'
-    db_exec(sql2, (valor, id))
+    sql2 = 'UPDATE pdfs SET valor=%s WHERE id=%s AND user_id=%s' if USE_PG else 'UPDATE pdfs SET valor=? WHERE id=? AND user_id=?'
+    db_exec(sql2, (valor, id, uid))
     return jsonify({'ok': True, 'valor': valor})
 
 # ── Telegram webhook (público — chamado pelo servidor do Telegram) ─────────────
@@ -1951,6 +1978,7 @@ def configuracoes():
                            plano=plano, stripe_ok=stripe_ok)
 
 @app.route('/testar_whatsapp', methods=['POST'])
+@login_required
 def testar_whatsapp():
     d = request.get_json()
     numero, apikey = d.get('numero','').strip(), d.get('apikey','').strip()
@@ -1960,6 +1988,7 @@ def testar_whatsapp():
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_zapi', methods=['POST'])
+@login_required
 def testar_zapi():
     d = request.get_json()
     instance = d.get('instance','').strip()
@@ -1972,6 +2001,7 @@ def testar_zapi():
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_telegram', methods=['POST'])
+@login_required
 def testar_telegram():
     d = request.get_json()
     token, chat_id = d.get('token','').strip(), d.get('chat_id','').strip()
@@ -1981,12 +2011,14 @@ def testar_telegram():
     return jsonify({'ok': ok, 'resposta': resp})
 
 @app.route('/testar_email', methods=['POST'])
+@login_required
 def testar_email():
+    from flask import g
     d = request.get_json()
     html = '<div style="font-family:sans-serif;padding:2rem"><h2 style="color:#16a34a">✅ Email funcionando!</h2><p>Notificações do OrcEVeja configuradas com sucesso via Gmail.</p></div>'
     # Modo Gmail OAuth
     if d.get('gmail_oauth'):
-        cfg = get_config()
+        cfg = get_user_config(g.current_user['id'])
         if not cfg.get('gmail_refresh_token') or not cfg.get('gmail_email'):
             return jsonify({'ok': False, 'erro': 'Gmail não conectado'})
         ok, erro = notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html, subject='✅ Teste OrcEVeja — Gmail funcionando!')

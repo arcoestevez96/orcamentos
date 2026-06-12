@@ -76,7 +76,9 @@ def make_user(email='usuario@teste.com', senha='senha123', nome='Usuário Teste'
               trial_days=3, status='trial'):
     from zoneinfo import ZoneInfo
     BRASILIA = ZoneInfo('America/Sao_Paulo')
-    ph = generate_password_hash(senha)
+    # pbkdf2 em vez do scrypt padrão: alguns Pythons do host (CommandLineTools)
+    # não trazem hashlib.scrypt. check_password_hash detecta o método pelo hash.
+    ph = generate_password_hash(senha, method='pbkdf2:sha256')
     trial_end = (datetime.now(BRASILIA) + timedelta(days=trial_days)).strftime('%Y-%m-%d %H:%M:%S')
     _app_module.db_exec(
         'INSERT INTO users(email,password_hash,nome,criado_em,trial_ends_at,subscription_status) '
