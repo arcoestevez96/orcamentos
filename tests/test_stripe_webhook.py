@@ -1,10 +1,11 @@
 """Testa o webhook do Stripe sem depender de credenciais reais.
 
-Quando STRIPE_WEBHOOK_SECRET não está configurado, o handler aceita eventos
-como JSON puro — perfeito para testes unitários.
+O handler EXIGE STRIPE_WEBHOOK_SECRET (rejeita eventos não assinados com 503).
+Os testes setam um secret fake e mockam stripe.Webhook.construct_event para
+exercitar o caminho verificado.
 """
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -16,23 +17,13 @@ WEBHOOK_URL = '/webhook/stripe'
 
 
 def _post_event(client, event_type, obj_data):
-    payload = {
-        'type': event_type,
-        'data': {'object': obj_data},
-    }
-    # Sem STRIPE_WEBHOOK_SECRET → stripe.Event.construct_from é usado
-    with patch.dict('os.environ', {'STRIPE_WEBHOOK_SECRET': '', 'STRIPE_SECRET_KEY': 'sk_test_fake'}), \
-         patch('stripe.Event.construct_from', return_value=_make_stripe_event(event_type, obj_data)):
-        return client.post(WEBHOOK_URL, json=payload,
+    # Com secret + assinatura verificada (construct_event mockado retorna o evento)
+    event = {'type': event_type, 'data': {'object': obj_data}}
+    with patch.dict('os.environ', {'STRIPE_WEBHOOK_SECRET': 'whsec_test', 'STRIPE_SECRET_KEY': 'sk_test_fake'}), \
+         patch('stripe.Webhook.construct_event', return_value=event):
+        return client.post(WEBHOOK_URL, json={'type': event_type},
+                           headers={'Stripe-Signature': 't=1,v1=fake'},
                            content_type='application/json')
-
-
-def _make_stripe_event(event_type, obj_data):
-    event = MagicMock()
-    event.__getitem__ = lambda self, k: {'type': event_type, 'data': {'object': obj_data}}[k]
-    event['type'] = event_type
-    event['data'] = {'object': obj_data}
-    return event
 
 
 class TestCheckoutCompleted:
@@ -107,12 +98,20 @@ class TestSubscriptionDeleted:
 
 
 class TestWebhookSeguranca:
+    def test_sem_secret_retorna_503(self, client):
+        # Brecha fechada: sem STRIPE_WEBHOOK_SECRET o evento é REJEITADO (não ativa assinatura)
+        with patch.dict('os.environ', {'STRIPE_WEBHOOK_SECRET': '', 'STRIPE_SECRET_KEY': 'sk_test'}):
+            resp = client.post(WEBHOOK_URL, data=b'{"type":"checkout.session.completed"}',
+                               content_type='application/json')
+        assert resp.status_code == 503
+
     def test_payload_invalido_retorna_400(self, client):
-        with patch.dict('os.environ', {'STRIPE_WEBHOOK_SECRET': '', 'STRIPE_SECRET_KEY': 'sk_test'}), \
-             patch('stripe.Event.construct_from', side_effect=Exception('payload inválido')):
+        with patch.dict('os.environ', {'STRIPE_WEBHOOK_SECRET': 'whsec_test', 'STRIPE_SECRET_KEY': 'sk_test'}), \
+             patch('stripe.Webhook.construct_event', side_effect=Exception('payload inválido')):
             resp = client.post(WEBHOOK_URL,
                                data=b'nao-e-json',
-                               content_type='application/json')
+                               content_type='application/json',
+                               headers={'Stripe-Signature': 'invalida'})
         assert resp.status_code == 400
 
     def test_com_webhook_secret_assinatura_invalida_retorna_400(self, client):

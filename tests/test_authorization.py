@@ -4,6 +4,7 @@ Cada teste cria dois usuários (dono e intruso) e garante que o intruso não
 consegue ler, alterar ou apagar recursos do dono — e que rotas que mutam estado
 exigem sessão autenticada.
 """
+from unittest.mock import patch
 import app as _app_module
 from tests.conftest import make_user, login_client
 
@@ -118,3 +119,29 @@ class TestLoginObrigatorio:
                            follow_redirects=False)
         assert resp.status_code == 302
         assert '/login' in resp.headers['Location']
+
+
+def _chat_id_salvo(uid):
+    r = db('SELECT valor FROM user_config WHERE user_id=? AND chave=?',
+           (uid, 'telegram_chat_id'), fetch='one')
+    return r['valor'] if r else None
+
+
+class TestTelegramWebhookPorUsuario:
+    """O webhook por usuário não pode aceitar chat_id sem o secret_token correto."""
+    def test_rejeita_sem_secret_token(self, client):
+        dono = make_user(email='tg@teste.com')
+        _app_module.save_user_config(dono['id'], {'telegram_webhook_secret': 's3cr3t', 'telegram_token': 'bot'})
+        r = client.post(f"/telegram/webhook/{dono['id']}", json={'message': {'chat': {'id': 999}}})
+        assert r.status_code == 403
+        assert _chat_id_salvo(dono['id']) is None
+
+    def test_aceita_com_secret_correto(self, client):
+        dono = make_user(email='tg2@teste.com')
+        _app_module.save_user_config(dono['id'], {'telegram_webhook_secret': 's3cr3t', 'telegram_token': 'bot'})
+        with patch('app.requests.post'):  # não chama o Telegram de verdade
+            r = client.post(f"/telegram/webhook/{dono['id']}",
+                            json={'message': {'chat': {'id': 999}}},
+                            headers={'X-Telegram-Bot-Api-Secret-Token': 's3cr3t'})
+        assert r.status_code == 200
+        assert _chat_id_salvo(dono['id']) == '999'

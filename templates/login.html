@@ -136,7 +136,7 @@ body {
         </div>
         <div class="field">
           <label class="field-label" for="senha">Senha</label>
-          <input class="input" type="password" id="senha" name="senha" placeholder="{% if modo == 'cadastro' %}Mínimo 6 caracteres{% else %}••••••••{% endif %}" required autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}">
+          <input class="input" type="password" id="senha" name="senha" placeholder="{% if modo == 'cadastro' %}Mínimo 8 caracteres{% else %}••••••••{% endif %}" required autocomplete="{% if modo == 'cadastro' %}new-password{% else %}current-password{% endif %}">
         </div>
         {% if modo == 'cadastro' %}
         <div class="field">

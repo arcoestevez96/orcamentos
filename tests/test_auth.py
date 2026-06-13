@@ -91,7 +91,7 @@ class TestCadastro:
             'senha': '123',
             'confirmar': '123',
         }, follow_redirects=True)
-        assert '6 caracteres' in resp.data.decode('utf-8')
+        assert '8 caracteres' in resp.data.decode('utf-8')
 
     def test_email_duplicado_exibe_erro(self, client):
         make_user()

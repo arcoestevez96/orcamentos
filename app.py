@@ -667,8 +667,8 @@ def cadastro():
             erro = 'Preencha email e senha.'
         elif senha != conf:
             erro = 'As senhas não coincidem.'
-        elif len(senha) < 6:
-            erro = 'A senha deve ter pelo menos 6 caracteres.'
+        elif len(senha) < 8:
+            erro = 'A senha deve ter pelo menos 8 caracteres.'
         else:
             sql_check = 'SELECT id FROM users WHERE email=%s' if USE_PG else 'SELECT id FROM users WHERE email=?'
             if db_exec(sql_check, (email,), fetch='one'):
@@ -702,7 +702,7 @@ def notificar_admin_novo_usuario(nome, email, provider):
     """Notifica o admin quando um novo usuário se cadastra."""
     cfg = get_config()
     hora = datetime.now(BRASILIA).strftime('%d/%m/%Y às %H:%M')
-    txt = (f"🆕 Novo cadastro no OrcEVeja!\n\n"
+    txt = (f"🆕 Novo cadastro no ABRIU!\n\n"
            f"👤 Nome: {nome}\n"
            f"📧 Email: {email}\n"
            f"🔑 Via: {provider.capitalize()}\n"
@@ -748,11 +748,14 @@ def auth_gmail():
     if not client_id:
         return redirect(url_for('configuracoes') + '?erro=google_nao_configurado')
     base = get_base_url()
+    state = secrets.token_urlsafe(24)
+    session['gmail_oauth_state'] = state
     params = ('client_id=' + client_id +
               '&redirect_uri=' + requests.utils.quote(base + '/auth/gmail/callback') +
               '&response_type=code'
               '&scope=' + requests.utils.quote('https://www.googleapis.com/auth/gmail.send email profile') +
               '&access_type=offline'
+              '&state=' + state +
               '&prompt=consent')
     return redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params)
 
@@ -762,6 +765,11 @@ def auth_gmail_callback():
     code = request.args.get('code', '')
     if not code:
         return redirect(url_for('configuracoes') + '?gmail_erro=cancelado')
+    # Anti-CSRF: o state retornado tem que bater com o que guardamos na sessão
+    state_recebido = request.args.get('state', '')
+    state_esperado = session.pop('gmail_oauth_state', None)
+    if not state_esperado or not secrets.compare_digest(state_recebido, state_esperado):
+        return redirect(url_for('configuracoes') + '?gmail_erro=state_invalido')
     base = get_base_url()
     try:
         tok = requests.post('https://oauth2.googleapis.com/token', data={
@@ -982,7 +990,7 @@ def notificar_email(email, senha, html):
     except BaseException as e:
         return False, str(e)
 
-def notificar_email_gmail(refresh_token, sender_email, html, subject='👁 Notificação OrcEVeja'):
+def notificar_email_gmail(refresh_token, sender_email, html, subject='👁 Notificação ABRIU'):
     """Envia email via Gmail API usando OAuth (sem precisar de senha de app)."""
     try:
         # 1. Troca refresh_token por access_token
@@ -1118,21 +1126,29 @@ def notificar_zapi_documento(instance, token, client_token, phone, pdf_bytes, fi
         return False, str(e)
 
 def notificar(cfg, txt, html=None):
-    def _enviar():
+    def _check(canal, resultado):
+        """Loga quando um canal de notificação falha — evita churn silencioso."""
         try:
-            if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
-                notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)
-            # Gmail OAuth tem prioridade; cai no SMTP só se não tiver refresh_token
-            if cfg.get('gmail_refresh_token') and cfg.get('gmail_email'):
-                notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html or f'<p>{txt}</p>')
-            elif cfg.get('email_remetente') and cfg.get('email_senha_app'):
-                notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')
-            if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
-                notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)
-            if cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token') and cfg.get('zapi_phone'):
-                notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], cfg['zapi_phone'], txt)
-        except BaseException:
+            ok, resp = resultado
+            if not ok:
+                log.warning('notificar: canal %s falhou: %s', canal, str(resp)[:200])
+        except Exception:
             pass
+    def _enviar():
+        enviou = False
+        if cfg.get('whatsapp_numero') and cfg.get('whatsapp_apikey'):
+            _check('whatsapp', notificar_whatsapp(cfg['whatsapp_numero'], cfg['whatsapp_apikey'], txt)); enviou = True
+        # Gmail OAuth tem prioridade; cai no SMTP só se não tiver refresh_token
+        if cfg.get('gmail_refresh_token') and cfg.get('gmail_email'):
+            _check('gmail', notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html or f'<p>{txt}</p>')); enviou = True
+        elif cfg.get('email_remetente') and cfg.get('email_senha_app'):
+            _check('email', notificar_email(cfg['email_remetente'], cfg['email_senha_app'], html or f'<p>{txt}</p>')); enviou = True
+        if cfg.get('telegram_token') and cfg.get('telegram_chat_id'):
+            _check('telegram', notificar_telegram(cfg['telegram_token'], cfg['telegram_chat_id'], txt)); enviou = True
+        if cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token') and cfg.get('zapi_phone'):
+            _check('zapi', notificar_zapi(cfg['zapi_instance'], cfg['zapi_token'], cfg['zapi_client_token'], cfg['zapi_phone'], txt)); enviou = True
+        if not enviou:
+            log.warning('notificar: nenhum canal configurado — usuário não recebeu alerta')
     threading.Thread(target=_enviar, daemon=True).start()
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -1896,34 +1912,51 @@ def reler_valor(id):
 
 # ── Telegram webhook (público — chamado pelo servidor do Telegram) ─────────────
 
+def _telegram_processar(uid, token, data):
+    """Salva o chat_id no user_config do dono e responde confirmando."""
+    message = data.get('message') or data.get('edited_message') or {}
+    chat_id = str(message.get('chat', {}).get('id', ''))
+    if not chat_id:
+        return
+    save_user_config(uid, {'telegram_chat_id': chat_id})
+    cfg_u   = get_user_config(uid)
+    nome    = message.get('from', {}).get('first_name', 'você')
+    empresa = cfg_u.get('empresa_nome', 'ABRIU')
+    resposta = (f"✅ Olá, {nome}! Tudo certo.\n\n"
+                f"Você receberá notificações do *{empresa}* sempre que um cliente abrir um orçamento. 📋")
+    try:
+        requests.post(f'https://api.telegram.org/bot{token}/sendMessage',
+                      json={'chat_id': chat_id, 'text': resposta, 'parse_mode': 'Markdown'}, timeout=10)
+    except Exception:
+        pass
+
+@app.route('/telegram/webhook/<int:uid>', methods=['POST'])
+@csrf_exempt
+def telegram_webhook_user(uid):
+    """Webhook por usuário: o dono é identificado pela URL e validado pelo secret_token
+    que só o Telegram daquele bot conhece (impede sequestro de chat_id entre contas)."""
+    cfg    = get_user_config(uid)
+    secret = cfg.get('telegram_webhook_secret', '')
+    sent   = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+    if not secret or not secrets.compare_digest(sent, secret):
+        return '', 403
+    try:
+        _telegram_processar(uid, cfg.get('telegram_token', ''), request.get_json(silent=True) or {})
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
 @app.route('/telegram/webhook', methods=['POST'])
 @csrf_exempt
 def telegram_webhook():
-    """Recebe mensagens do bot e auto-registra o chat_id no user_config do dono do token."""
+    """Rota legada (single-tenant) — mantida só para bots já registrados antes da
+    migração por usuário. Novas conexões usam /telegram/webhook/<uid>."""
     try:
-        data = request.get_json(silent=True) or {}
-        message = data.get('message') or data.get('edited_message') or {}
-        chat = message.get('chat', {})
-        chat_id = str(chat.get('id', ''))
-        if chat_id:
-            # Descobre qual usuário tem telegram_token configurado e salva chat_id lá
-            sql_any = ('SELECT user_id, valor FROM user_config WHERE chave=%s LIMIT 1' if USE_PG
-                       else 'SELECT user_id, valor FROM user_config WHERE chave=? LIMIT 1')
-            row = db_exec(sql_any, ('telegram_token',), fetch='one')
-            if row:
-                uid   = row['user_id']
-                token = row['valor']
-                save_user_config(uid, {'telegram_chat_id': chat_id})
-                cfg_u   = get_user_config(uid)
-                nome    = message.get('from', {}).get('first_name', 'você')
-                empresa = cfg_u.get('empresa_nome', 'OrcEVeja')
-                resposta = (f"✅ Olá, {nome}! Tudo certo.\n\n"
-                            f"Você receberá notificações do *{empresa}* sempre que um cliente abrir um orçamento. 📋")
-                requests.post(
-                    f'https://api.telegram.org/bot{token}/sendMessage',
-                    json={'chat_id': chat_id, 'text': resposta, 'parse_mode': 'Markdown'},
-                    timeout=10
-                )
+        sql_any = ('SELECT user_id, valor FROM user_config WHERE chave=%s LIMIT 1' if USE_PG
+                   else 'SELECT user_id, valor FROM user_config WHERE chave=? LIMIT 1')
+        row = db_exec(sql_any, ('telegram_token',), fetch='one')
+        if row:
+            _telegram_processar(row['user_id'], row['valor'], request.get_json(silent=True) or {})
     except Exception:
         pass
     return jsonify({'ok': True})
@@ -1946,8 +1979,12 @@ def telegram_conectar():
     except Exception as e:
         return jsonify({'ok': False, 'erro': str(e)})
     base = get_base_url()
+    # secret_token por usuário: o Telegram o reenvia em cada update, provando a origem
+    secret = cfg.get('telegram_webhook_secret') or secrets.token_hex(16)
+    save_user_config(uid, {'telegram_webhook_secret': secret})
     wh = requests.post(f'https://api.telegram.org/bot{token}/setWebhook',
-                       json={'url': f'{base}/telegram/webhook'}, timeout=10).json()
+                       json={'url': f'{base}/telegram/webhook/{uid}', 'secret_token': secret},
+                       timeout=10).json()
     if not wh.get('ok'):
         return jsonify({'ok': False, 'erro': 'Falha ao registrar: ' + wh.get('description', '')})
     return jsonify({'ok': True, 'username': username,
@@ -2017,13 +2054,13 @@ def testar_telegram():
 def testar_email():
     from flask import g
     d = request.get_json()
-    html = '<div style="font-family:sans-serif;padding:2rem"><h2 style="color:#16a34a">✅ Email funcionando!</h2><p>Notificações do OrcEVeja configuradas com sucesso via Gmail.</p></div>'
+    html = '<div style="font-family:sans-serif;padding:2rem"><h2 style="color:#16a34a">✅ Email funcionando!</h2><p>Notificações do ABRIU configuradas com sucesso via Gmail.</p></div>'
     # Modo Gmail OAuth
     if d.get('gmail_oauth'):
         cfg = get_user_config(g.current_user['id'])
         if not cfg.get('gmail_refresh_token') or not cfg.get('gmail_email'):
             return jsonify({'ok': False, 'erro': 'Gmail não conectado'})
-        ok, erro = notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html, subject='✅ Teste OrcEVeja — Gmail funcionando!')
+        ok, erro = notificar_email_gmail(cfg['gmail_refresh_token'], cfg['gmail_email'], html, subject='✅ Teste ABRIU — Gmail funcionando!')
         return jsonify({'ok': ok, 'erro': erro})
     # Modo SMTP legado
     email, senha = d.get('email','').strip(), d.get('senha','').strip()
@@ -2163,7 +2200,7 @@ def get_stripe_price_id(plano):
     if cfg.get(cfg_key):
         return cfg[cfg_key]
     try:
-        product = stripe.Product.create(name='Orce & Veja Pro')
+        product = stripe.Product.create(name='ABRIU Pro')
         if plano == 'anual':
             price = stripe.Price.create(
                 product=product.id, unit_amount=18000, currency='brl',
@@ -2281,11 +2318,14 @@ def webhook_stripe():
     webhook_secret     = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
     payload            = request.get_data()
     sig                = request.headers.get('Stripe-Signature', '')
+    # Segurança: sem o secret não há como verificar a assinatura → eventos forjados
+    # poderiam ativar assinaturas de graça. Exigimos o secret e rejeitamos se faltar.
+    if not webhook_secret:
+        log.error('webhook_stripe: STRIPE_WEBHOOK_SECRET nao configurado — evento rejeitado. '
+                  'Configure em Render > Environment para ativar o webhook.')
+        return jsonify({'ok': False, 'erro': 'webhook nao configurado'}), 503
     try:
-        if webhook_secret:
-            event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
-        else:
-            event = stripe.Event.construct_from(request.get_json(), stripe.api_key)
+        event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
     except Exception:
         return jsonify({'ok': False}), 400
 
