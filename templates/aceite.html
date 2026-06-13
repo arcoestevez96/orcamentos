@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if decisao == 'aceito' %}Aceite confirmado{% elif decisao == 'recusado' %}Resposta registrada{% else %}Aceitar orçamento{% endif %} — ABRIU</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --navy:#0D1B2A; --coral:#E8441A; --ink:#1b2a3a; --line:#e5e9ef; --mute:#6b7c8d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+         background:#f4f6f9; color:var(--ink); display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; max-width:440px; width:100%;
+          padding:36px 28px; text-align:center; box-shadow:0 8px 30px rgba(13,27,42,.08); }
+  .mark { width:54px; height:54px; border-radius:14px; margin:0 auto 18px; display:flex; align-items:center; justify-content:center; font-size:28px; }
+  h1 { font-size:21px; margin:0 0 8px; letter-spacing:-.02em; }
+  p { font-size:15px; color:var(--mute); line-height:1.5; margin:0 0 22px; }
+  .titulo { font-weight:600; color:var(--ink); }
+  .btn { display:block; width:100%; border:none; border-radius:10px; padding:15px; font-size:16px; font-weight:600;
+         cursor:pointer; margin-bottom:10px; font-family:inherit; }
+  .btn-aceitar { background:var(--coral); color:#fff; }
+  .btn-aceitar:hover { filter:brightness(1.05); }
+  .btn-recusar { background:transparent; color:var(--mute); border:1px solid var(--line); }
+  .brand { margin-top:24px; font-size:12px; color:var(--mute); letter-spacing:.03em; }
+  .brand b { color:var(--navy); letter-spacing:.04em; }
+</style>
+</head>
+<body>
+  <div class="card">
+    {% if decisao == 'inexistente' %}
+      <div class="mark" style="background:#fef2f2;color:#dc2626">⚠️</div>
+      <h1>Orçamento não encontrado</h1>
+      <p>Este link pode ter expirado ou estar incorreto. Fale com quem enviou o orçamento.</p>
+
+    {% elif decisao == 'aceito' %}
+      <div class="mark" style="background:#f0fdf4;color:#16a34a">🎉</div>
+      <h1>Aceite confirmado!</h1>
+      <p>Você aceitou o orçamento <span class="titulo">{{ titulo }}</span>. Avisamos quem te enviou — em breve devem entrar em contato para os próximos passos. Obrigado!</p>
+
+    {% elif decisao == 'recusado' %}
+      <div class="mark" style="background:#f4f6f9;color:#6b7c8d">✓</div>
+      <h1>Resposta registrada</h1>
+      <p>Tudo bem, registramos que este orçamento não atende agora. Se mudar de ideia, fale com quem te enviou.</p>
+
+    {% else %}
+      <div class="mark" style="background:rgba(232,68,26,.1);color:var(--coral)">📄</div>
+      <h1>Olá, {{ cliente }}!</h1>
+      <p>Você deseja aceitar o orçamento <span class="titulo">{{ titulo }}</span>?</p>
+      <form method="POST" action="/aceitar/{{ token }}">
+        <button class="btn btn-aceitar" name="decisao" value="aceito" type="submit">✅ Aceitar orçamento</button>
+        <button class="btn btn-recusar" name="decisao" value="recusado" type="submit">Agora não</button>
+      </form>
+    {% endif %}
+
+    <div class="brand">rastreado e fechado com <b>ABRIU</b></div>
+  </div>
+</body>
+</html>

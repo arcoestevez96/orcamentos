@@ -392,7 +392,11 @@ def init_db():
             cur.execute('INSERT INTO config(chave,valor) VALUES(%s,%s) ON CONFLICT DO NOTHING', (k, v))
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS arquivo_key TEXT')
         cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS cliente_email TEXT')
+        cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS decisao TEXT')
+        cur.execute('ALTER TABLE pdfs ADD COLUMN IF NOT EXISTS decisao_em TEXT')
         cur.execute('ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS user_id INTEGER')
+        cur.execute('ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS decisao TEXT')
+        cur.execute('ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS decisao_em TEXT')
         cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS fonte TEXT')
         cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS operadora TEXT')
         cur.execute('ALTER TABLE pdf_acessos ADD COLUMN IF NOT EXISTS sistema TEXT')
@@ -498,7 +502,11 @@ def init_db():
             'ALTER TABLE pdfs ADD COLUMN arquivo_key TEXT',
             'ALTER TABLE pdfs ADD COLUMN valor REAL DEFAULT 0',
             'ALTER TABLE pdfs ADD COLUMN cliente_email TEXT',
+            'ALTER TABLE pdfs ADD COLUMN decisao TEXT',
+            'ALTER TABLE pdfs ADD COLUMN decisao_em TEXT',
             'ALTER TABLE orcamentos ADD COLUMN user_id INTEGER',
+            'ALTER TABLE orcamentos ADD COLUMN decisao TEXT',
+            'ALTER TABLE orcamentos ADD COLUMN decisao_em TEXT',
         ]:
             try: con.execute(col_sql)
             except Exception: pass
@@ -1024,9 +1032,14 @@ def notificar_email_gmail(refresh_token, sender_email, html, subject='👁 Notif
     except Exception as e:
         return False, str(e)
 
-def enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf_bytes, filename, link):
+def enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf_bytes, filename, link, link_aceite=''):
     """Envia o PDF rastreado como anexo para o email do cliente."""
     assunto = f"Orçamento: {titulo}"
+    botao_aceite = f"""
+      <p style="color:#444;font-size:15px;margin-top:18px">Gostou? Você pode aceitar o orçamento com um clique:</p>
+      <a href="{link_aceite}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;margin:8px 0">
+        ✅ Aceitar orçamento
+      </a>""" if link_aceite else ''
     corpo_html = f"""
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
       <h2 style="color:#0D1B2A">Olá, {cliente_nome}!</h2>
@@ -1039,6 +1052,7 @@ def enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf_bytes
       <a href="{link}" style="display:inline-block;background:#E8441A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;margin:8px 0">
         Ver orçamento online
       </a>
+      {botao_aceite}
       <p style="color:#888;font-size:13px;margin-top:24px">
         Qualquer dúvida estou à disposição. Obrigado!
       </p>
@@ -1319,8 +1333,8 @@ def dashboard():
     from flask import g
     u = g.current_user
     uid = u['id']
-    sql = 'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs WHERE user_id=%s ORDER BY criado_em DESC' if USE_PG else \
-          'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor FROM pdfs WHERE user_id=? ORDER BY criado_em DESC'
+    sql = 'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor,decisao FROM pdfs WHERE user_id=%s ORDER BY criado_em DESC' if USE_PG else \
+          'SELECT id,token,cliente_nome,cliente_telefone,titulo,filename,status,criado_em,aberto_em,aberturas,valor,decisao FROM pdfs WHERE user_id=? ORDER BY criado_em DESC'
     pdfs = db_exec(sql, (uid,), fetch='all') or []
     for p in pdfs:
         p['valor'] = float(p['valor'] or 0)
@@ -1428,6 +1442,59 @@ def atualizar_status(id):
 def gerar_link(token):
     return jsonify({'link': f"{get_base_url()}/ver/{token}"})
 
+# ── Aceite do orçamento (fecha a venda no próprio link do cliente) ────────────
+
+def _buscar_por_token(token):
+    """Retorna (tabela, registro) procurando o token em pdfs e depois em orcamentos."""
+    cols = 'id, token, cliente_nome, titulo, user_id, decisao'
+    for tabela in ('pdfs', 'orcamentos'):
+        sql = f'SELECT {cols} FROM {tabela} WHERE token=%s' if USE_PG else \
+              f'SELECT {cols} FROM {tabela} WHERE token=?'
+        r = db_exec(sql, (token,), fetch='one')
+        if r:
+            return tabela, r
+    return None, None
+
+@app.route('/aceitar/<token>', methods=['GET', 'POST'])
+@csrf_exempt
+def aceitar(token):
+    """Página pública onde o cliente aceita ou recusa o orçamento."""
+    # tabela vem de um conjunto fixo ({'pdfs','orcamentos'}) — nunca de input do usuário
+    tabela, reg = _buscar_por_token(token)
+    if not reg:
+        return render_template('aceite.html', titulo='', cliente='', token=token,
+                               decisao='inexistente'), 404
+    ja = (reg.get('decisao') or '')
+    if request.method == 'POST' and not ja:
+        decisao = request.form.get('decisao', 'aceito')
+        if decisao not in ('aceito', 'recusado'):
+            decisao = 'aceito'
+        sql = f'UPDATE {tabela} SET decisao=%s, decisao_em=%s WHERE token=%s' if USE_PG else \
+              f'UPDATE {tabela} SET decisao=?, decisao_em=? WHERE token=?'
+        db_exec(sql, (decisao, now_str(), token))
+        ja = decisao
+        owner = reg.get('user_id')
+        if owner:
+            hora = datetime.now(BRASILIA).strftime('%H:%M')
+            if decisao == 'aceito':
+                txt  = f"🎉 {reg['cliente_nome']} ACEITOU o orçamento '{reg['titulo']}' às {hora}!"
+                html = (f'<div style="font-family:sans-serif;padding:2rem;background:#f0fdf4;border-radius:12px">'
+                        f'<h2 style="color:#16a34a">🎉 Orçamento Aceito!</h2>'
+                        f'<p><strong>{reg["cliente_nome"]}</strong> aceitou <strong>{reg["titulo"]}</strong>'
+                        f' às <strong>{hora}</strong>. Hora de combinar os próximos passos!</p></div>')
+            else:
+                txt  = f"🙁 {reg['cliente_nome']} recusou o orçamento '{reg['titulo']}' às {hora}."
+                html = (f'<div style="font-family:sans-serif;padding:2rem;background:#fef2f2;border-radius:12px">'
+                        f'<h2 style="color:#dc2626">Orçamento recusado</h2>'
+                        f'<p><strong>{reg["cliente_nome"]}</strong> recusou <strong>{reg["titulo"]}</strong>'
+                        f' às <strong>{hora}</strong>.</p></div>')
+            cfg_u = get_user_config(owner)
+            sse_push(owner, 'decisao', {'nome': reg['cliente_nome'], 'titulo': reg['titulo'], 'decisao': decisao})
+            send_web_push(owner, txt, reg['titulo'])
+            threading.Thread(target=lambda: notificar(cfg_u, txt, html), daemon=True).start()
+    return render_template('aceite.html', titulo=reg['titulo'], cliente=reg['cliente_nome'],
+                           token=token, decisao=ja)
+
 # ── PDFs ─────────────────────────────────────────────────────────────────────
 
 @app.route('/pdfs')
@@ -1487,6 +1554,7 @@ def upload_pdf():
              cliente_email, request.form.get('titulo', filename), arquivo_db,
              arquivo_key, filename, 'enviado', now_str(), valor, uid))
     link = f"{get_base_url()}/pdf/{token}"
+    link_aceite = f"{get_base_url()}/aceitar/{token}"
     cliente_nome = request.form.get('cliente_nome', 'Cliente')
     cliente_tel = request.form.get('cliente_telefone', '').strip()
     titulo = request.form.get('titulo', filename)
@@ -1499,7 +1567,7 @@ def upload_pdf():
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
         caption = f"Olá, {cliente_nome}! 👋\n\nSegue o orçamento *{titulo}* conforme solicitado.\n\nQualquer dúvida estou à disposição!"
-        link_msg = f"🔗 Para visualizar online: {link}"
+        link_msg = f"🔗 Para visualizar online: {link}\n\n✅ Aceitar o orçamento: {link_aceite}"
         def _enviar_wpp(pdf=pdf_snapshot, fn=fname, cap=caption, lm=link_msg):
             try:
                 notificar_zapi_documento(
@@ -1516,7 +1584,7 @@ def upload_pdf():
     if cliente_email:
         def _enviar_email(pdf=pdf_snapshot, fn=fname):
             try:
-                enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf, fn, link)
+                enviar_pdf_email_cliente(cfg, cliente_email, cliente_nome, titulo, pdf, fn, link, link_aceite)
             except Exception:
                 pass
         threading.Thread(target=_enviar_email, daemon=True).start()
@@ -1776,6 +1844,7 @@ def renovar_link(id):
                 (novo_token, now_str(), 'enviado', arquivo_novo_db, novo_key, id))
 
     link = f"{get_base_url()}/pdf/{novo_token}"
+    link_aceite = f"{get_base_url()}/aceitar/{novo_token}"
 
     cfg          = get_user_config(uid)
     cliente_tel  = (p.get('cliente_telefone') or '').strip()
@@ -1788,7 +1857,7 @@ def renovar_link(id):
     if cliente_tel and cfg.get('zapi_instance') and cfg.get('zapi_token') and cfg.get('zapi_client_token'):
         phone   = '55' + cliente_tel if not cliente_tel.startswith('55') else cliente_tel
         caption = f"Olá, {cliente_nome}! 👋\n\nSegue o orçamento atualizado conforme solicitado.\n\nQualquer dúvida estou à disposição!"
-        link_msg = f"🔗 Para visualizar online: {link}"
+        link_msg = f"🔗 Para visualizar online: {link}\n\n✅ Aceitar o orçamento: {link_aceite}"
         def _reenviar_wpp(pdf=pdf_snap, fn=fname, cap=caption, lm=link_msg):
             try:
                 notificar_zapi_documento(
@@ -1805,7 +1874,7 @@ def renovar_link(id):
     if cliente_email_dest:
         def _reenviar_email(pdf=pdf_snap, fn=fname):
             try:
-                enviar_pdf_email_cliente(cfg, cliente_email_dest, cliente_nome, titulo_pdf, pdf, fn, link)
+                enviar_pdf_email_cliente(cfg, cliente_email_dest, cliente_nome, titulo_pdf, pdf, fn, link, link_aceite)
             except Exception:
                 pass
         threading.Thread(target=_reenviar_email, daemon=True).start()

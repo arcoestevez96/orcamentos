@@ -121,6 +121,32 @@ class TestLoginObrigatorio:
         assert '/login' in resp.headers['Location']
 
 
+class TestAceiteOrcamento:
+    """Fluxo público de aceite/recusa do orçamento pelo cliente."""
+    def test_aceitar_grava_decisao(self, client):
+        dono = make_user(email='v@teste.com')
+        _criar_pdf(dono['id'], token='aceite-tok')
+        with patch('app.send_web_push'), patch('app.notificar'):
+            r = client.post('/aceitar/aceite-tok', data={'decisao': 'aceito'})
+        assert r.status_code == 200
+        assert 'Aceite confirmado' in r.get_data(as_text=True)
+        row = db('SELECT decisao FROM pdfs WHERE token=?', ('aceite-tok',), fetch='one')
+        assert row['decisao'] == 'aceito'
+
+    def test_decisao_e_idempotente(self, client):
+        dono = make_user(email='v2@teste.com')
+        _criar_pdf(dono['id'], token='idem-tok')
+        with patch('app.send_web_push'), patch('app.notificar'):
+            client.post('/aceitar/idem-tok', data={'decisao': 'aceito'})
+            client.post('/aceitar/idem-tok', data={'decisao': 'recusado'})  # não deve sobrescrever
+        row = db('SELECT decisao FROM pdfs WHERE token=?', ('idem-tok',), fetch='one')
+        assert row['decisao'] == 'aceito'
+
+    def test_token_inexistente_404(self, client):
+        r = client.get('/aceitar/nao-existe-mesmo')
+        assert r.status_code == 404
+
+
 def _chat_id_salvo(uid):
     r = db('SELECT valor FROM user_config WHERE user_id=? AND chave=?',
            (uid, 'telegram_chat_id'), fetch='one')
