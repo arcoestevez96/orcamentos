@@ -893,7 +893,8 @@ def extrair_valor_pdf(dados_bytes):
         if anthropic_key:
             try:
                 import anthropic
-                client = anthropic.Anthropic(api_key=anthropic_key)
+                # timeout curto + sem retries: o default do SDK é 10min, o que penduraria o worker
+                client = anthropic.Anthropic(api_key=anthropic_key, timeout=20.0, max_retries=0)
                 msg = client.messages.create(
                     model='claude-3-haiku-20240307',
                     max_tokens=150,
@@ -1524,9 +1525,9 @@ def upload_pdf():
     valor_manual = request.form.get('valor', '').replace('R$','').replace('.','').replace(',','.').strip()
     try: valor = float(valor_manual) if valor_manual else None
     except: valor = None
-    # Se não informou valor manualmente, tenta extrair do PDF com IA
-    if not valor:
-        valor = extrair_valor_pdf(dados_originais) or 0.0
+    # Valor: usa o manual se informado; senão extrai em BACKGROUND (não trava o upload/site)
+    valor = valor or 0.0
+    extrair_valor_async = (valor == 0.0)
     # Comprime o PDF e emite rastreador embutido no arquivo
     dados = comprimir_pdf(dados_originais)
     tracking_url = f"{get_base_url()}/track/{token}"
@@ -1553,6 +1554,21 @@ def upload_pdf():
             (token, request.form.get('cliente_nome','Cliente'), request.form.get('cliente_telefone',''),
              cliente_email, request.form.get('titulo', filename), arquivo_db,
              arquivo_key, filename, 'enviado', now_str(), valor, uid))
+    # Extração de valor por IA roda em background — a chamada de rede não bloqueia a resposta
+    if extrair_valor_async:
+        raw_pdf = bytes(dados_originais)
+        def _extrair_valor(pdf_raw=raw_pdf, tok=token, owner=uid):
+            try:
+                v = extrair_valor_pdf(pdf_raw) or 0.0
+                if v and v > 0:
+                    sqlv = 'UPDATE pdfs SET valor=%s WHERE token=%s' if USE_PG else \
+                           'UPDATE pdfs SET valor=? WHERE token=?'
+                    db_exec(sqlv, (v, tok))
+                    sse_push(owner, 'valor', {'token': tok, 'valor': v})
+            except Exception:
+                pass
+        threading.Thread(target=_extrair_valor, daemon=True).start()
+
     link = f"{get_base_url()}/pdf/{token}"
     link_aceite = f"{get_base_url()}/aceitar/{token}"
     cliente_nome = request.form.get('cliente_nome', 'Cliente')

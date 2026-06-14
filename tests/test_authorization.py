@@ -121,6 +121,23 @@ class TestLoginObrigatorio:
         assert '/login' in resp.headers['Location']
 
 
+class TestUploadNaoBloqueia:
+    """O upload não pode esperar a extração de valor por IA (senão trava o site)."""
+    def test_upload_responde_sem_esperar_ia(self, client):
+        import io, time
+        make_user(email='up@teste.com')
+        login_client(client, 'up@teste.com')
+        with patch('app.extrair_valor_pdf', side_effect=lambda b: (time.sleep(3) or 999.0)):
+            inicio = time.time()
+            r = client.post('/upload_pdf',
+                            data={'pdf': (io.BytesIO(b'%PDF-1.4 x'), 'o.pdf'),
+                                  'cliente_nome': 'J', 'titulo': 'T'},
+                            content_type='multipart/form-data')
+            duracao = time.time() - inicio
+        assert r.status_code == 200 and r.get_json()['ok'] is True
+        assert duracao < 2.0  # respondeu sem esperar os 3s da IA
+
+
 class TestAceiteOrcamento:
     """Fluxo público de aceite/recusa do orçamento pelo cliente."""
     def test_aceitar_grava_decisao(self, client):
