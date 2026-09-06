@@ -49,6 +49,31 @@ em 2026-09-06. Ao sincronizar o hub, mover e deixar um ponteiro.
 **Recomendação registrada:** importando → Slumber Cloud UltraCool (único que atende os dois critérios).
 Comprando no Brasil → pluma de ganso 100% + ajuste fino pela capa de edredom.
 
+### Marcas brasileiras de enxoval — leitura crítica (2026-09)
+
+**Regra estrutural:** essas marcas competem no **tecido** (fio, toque, acabamento), não no **enchimento**.
+Como fofura vem de loft (enchimento), quase todas vendem edredom de gramatura baixa e concentram o valor
+na capa. **Nenhuma delas tem termorregulação ativa** — todas ficam no nível passivo.
+
+| Marca | Ficha | Positivos | Negativos |
+|---|---|---|---|
+| **Karsten** | Algodão egípcio cetim 300 fios, enchimento poliéster **118 g/m²**, tecnologia "Algodão Soft"; antipilling e hipoalergênico; queen ~R$ 540; 100+ anos | Melhor relação técnica/preço; **antipilling é diferencial real** (é o defeito que derruba os concorrentes); respira bem no calor BR | 118 g/m² é **leve, não fofo** — quase cobre-leito de verão; reclamações de durabilidade em modelos específicos |
+| **Trousseau** | Algodão egípcio 300/500/1000 fios, tecidos italianos, tratamento exclusivo **Dream Touch** (300 fios, tecido da Itália); duvets **R$ 1.850–19.700** | Topo do luxo BR; melhor "toque suave" do grupo; fio nobre respira | **Sedoso ≠ fofo**; preço em outro patamar; sem tecnologia térmica |
+| **Hoomy** | DTC "hotel 5 estrelas"; edredom **390 g/m²** (declara ser a única gramatura assim no país); claim de "inteligência térmica"; RA **8.6/10**, 99 reclamações | **Maior gramatura do grupo** — o mais próximo de volume/fofura; preço acessível; capa de algodão egípcio bem avaliada | **Risco documentado:** edredom queen "cheio de bolinhas" após ~2 meses, costura com defeito em 5 meses, toalhas soltando fiapos, erros de entrega/estoque. "Inteligência térmica" é marketing, sem PCM |
+| **Buddemeyer** | Alemã de 1924, 50+ anos no BR; Toque de Pluma Plus = algodão + microfibra extra macia; RA **6.9/10** (cama 7,2/10), 107 reclamações, responde 100% | Toque macio consistente; não alérgico; costura reforçada; barato e onipresente | Menor reputação do grupo; queixas em tecido (~32%) e toalhas (~48%); microfibra abafa; sem termorregulação |
+| **Trussardi** | Percal 100% algodão egípcio 200/300 fios (Perini, Mompiano); enchimento ~**220 g**; loja oficial no BR | Tecido excelente, estética de grife; percal egípcio é fresco e durável | 220 g é médio-baixo → bonito, não fofo; preço de marca licenciada; zero tecnologia térmica |
+| **I Wanna Sleep (IWS)** | Sleeptech de 2012; reputação em **travesseiros** (R$ 158–398, 4k+ avaliações) e colchões (Breeze, Zen, I3, Hip Grid); pillow top de pluma de ganso; cobertores "tecnológicos" a partir de ~R$ 600 | Marca séria, preço honesto; **pillow top de pluma** é ótimo para sensação de nuvem | **Não é especialista em edredom** — cobre-cama é o elo fraco do catálogo. Menos indicada para essa compra |
+
+**Jogada recomendada (a melhor do estudo):** *comprar o enchimento de quem faz enchimento e a capa de quem
+faz tecido* — duvet de **pluma de ganso 100% (Plumasul)** por dentro + **capa Karsten / Trousseau / Hoomy**
+por fora. Entrega o volume que Karsten e Trussardi não têm, o toque suave do fio nobre, e a temperatura se
+regula trocando a capa por estação. Sai mais barato que um Trousseau completo.
+
+Pronto e sem importar: **Karsten** para quem esquenta à noite · **Hoomy** para volume por menos (checar
+política de troca antes, pelo risco de pilling) · **Trousseau** se o toque for inegociável.
+
+*Nota: notas de Reclame Aqui são de 2026-09-06 e mudam com o tempo — reconferir antes de comprar.*
+
 ## Conexões
 
 - [[../index]] — índice do spoke (esta página é a exceção de escopo: vida pessoal, não ABRIU)
@@ -58,10 +83,15 @@ Comprando no Brasil → pluma de ganso 100% + ajuste fino pela capa de edredom.
 - Sleep Foundation — best cooling comforters; Forbes Vetted — best comforters for hot sleepers
 - outlast.com (PCM), slumbercloud.com (UltraCool/ClimaDry)
 - plumasul.com.br (Kassette), colchoesemma.com.br, altenburg.com.br, buddemeyer.com.br
-- br.my-best.com/10746, guiarecomenda.com/melhor-edredom, thesuite.co (Rest Evercool vs Buffy Breeze)
+- br.my-best.com/10746 e /21914, guiarecomenda.com/melhor-edredom, thesuite.co (Rest Evercool vs Buffy Breeze)
+- karsten.com.br, trousseau.com.br, hoomy.com.br, trussardi.com.br, iwannasleep.com.br
+- reclameaqui.com.br (perfis Hoomy e Buddemeyer), funcionamesmo.com.br (resenha IWS)
 
 ## Log de atualizações
 
 - 2026-09-06 — criação. Categoria vida pessoal/casa aberta no spoke (hub indisponível). Pesquisa de
   edredom: conceito de termorregulação ativa (PCM/Outlast) vs. passiva, trade-off fofura x cooling,
   top 5 com prós/contras e recomendação.
+- 2026-09-06 — adicionadas as 6 marcas brasileiras de enxoval (Hoomy, IWS, Karsten, Buddemeyer,
+  Trussardi, Trousseau) com ficha, prós/contras e notas de reputação. Conclusão nova: essas marcas
+  competem em tecido, não em enchimento → separar a compra (enchimento de pluma + capa de fio nobre).

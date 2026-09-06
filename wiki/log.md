@@ -69,3 +69,14 @@ quase todo "termorregulador" brasileiro entrega); trade-off fofura x cooling (Re
 Breeze são finos, não fofos); capa de edredom como regulador térmico barato. Top 5 com prós/contras.
 Nota: página é conteúdo de HUB (`~/projects/arco-wiki/`), que não existia no ambiente — mora no spoke
 com ponteiro para mover depois.
+
+## 2026-09-06 [tipo: ingest]
+
+Fonte: pesquisa web (Karsten, Trousseau, Hoomy, Trussardi, I Wanna Sleep, Buddemeyer; perfis do
+Reclame Aqui; my-best/21914; funcionamesmo). Categoria: **vida pessoal / casa**.
+Página atualizada: [[vida-pessoal/casa-cama-e-conforto]] — sem página nova (o tema já estava coberto).
+Achado que muda a decisão: essas marcas competem em **tecido**, não em **enchimento** — como fofura vem
+de loft, quase todas vendem edredom de gramatura baixa (Karsten 118 g/m², Trussardi ~220 g) e concentram
+valor na capa; **nenhuma tem termorregulação ativa**. Hoomy é a exceção em gramatura (390 g/m²) mas com
+relatos recorrentes de pilling em ~2 meses. Conclusão registrada: separar a compra — enchimento de pluma
+de ganso (Plumasul) + capa de fio nobre (Karsten/Trousseau/Hoomy).
