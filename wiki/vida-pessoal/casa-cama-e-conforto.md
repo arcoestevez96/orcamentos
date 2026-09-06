@@ -74,6 +74,53 @@ política de troca antes, pelo risco de pilling) · **Trousseau** se o toque for
 
 *Nota: notas de Reclame Aqui são de 2026-09-06 e mudam com o tempo — reconferir antes de comprar.*
 
+### CONTEXTO DECISIVO: mora-se em SALVADOR/BA — o clima manda na escolha
+
+Dado definidor (2026-09-06): **22 a 31 °C o ano todo, raramente abaixo de 20 °C; umidade relativa de
+68% a 90%**; clima "opressivo" o ano inteiro, sem estação seca. Isso **inverte** parte da recomendação
+geral registrada acima. A regra geral desta wiki vale para clima temperado/serra; para Salvador, vale o
+que segue.
+
+**Correção registrada (supera a recomendação anterior de pluma de ganso):**
+**pluma de ganso está DESACONSELHADA em Salvador.** A pluma absorve umidade do ambiente; retida no
+núcleo, ela cria mofo, mancha o tecido, deixa odor que não sai na lavagem e apodrece — perdendo de vez a
+capacidade de isolar. Sem estação seca não há como arejar. A jogada "pluma + capa de fio nobre" funciona
+em clima seco/frio, **não** no litoral baiano. (Nuance: a pluma em si não é habitat preferido de ácaro —
+o problema é o mofo, não o ácaro.)
+
+**Também caem, pelo mesmo motivo:**
+- **Altenburg Blend Sense** — sherpa 300 g/m² + coral fleece é para frio intenso; inutilizável em Salvador.
+- **Hoomy 390 g/m²** — a maior gramatura vira o maior defeito.
+- **Slumber Cloud / PCM Outlast** — limitação técnica honesta: PCM tem **capacidade finita**, absorve calor
+  até saturar e só volta a funcionar quando o ambiente esfria e ele descarrega. Em quarto quente a noite
+  toda, satura nas primeiras horas e vira edredom comum — caro e importado. Só compensa com ar-condicionado
+  ciclando a temperatura.
+
+**Reenquadramento que resolve:** em Salvador o edredom não trabalha contra o clima, trabalha **contra o
+ar-condicionado**. Com ar a 22–24 °C, edredom leve é perfeito. Sem ar, edredom é peça decorativa — o que
+resolve é lençol de fio bom + manta leve nos pés.
+
+**Segundo inimigo: ácaro.** Acima de 70% de umidade é o habitat ideal, e Salvador vive nessa faixa →
+"lavável em água quente (60 °C)" vira critério de saúde, não de conveniência.
+
+**Sobre fofura:** em Salvador "muito fofo" e "dormível" brigam. Tirar volume de **fibra siliconada oca**
+(loft sem peso, seca rápido, não mofa como pluma), nunca de gramatura alta.
+
+#### Ranking corrigido para Salvador
+
+1. **Karsten** — algodão egípcio cetim 300 fios, **118 g/m²** (o que era "leve demais" no ranking geral é
+   exatamente certo aqui), Algodão Soft para clima brasileiro, antipilling e hipoalergênico, ~R$ 540 queen.
+2. **Emma** — fibra oca + fluxo de ar, **lavável a 60 °C** (mata ácaro) e anti-mofo pela gestão de umidade.
+3. **Trousseau Dream Touch** — só se o toque for inegociável; algodão egípcio respira. Gasto de luxo.
+4. **Bambu/viscose ou eucalipto lyocell** — tecnicamente a melhor fibra para umidade (absorve muito, seca
+   rápido). Não é fofo e importar complica → vale mais como **capa** que como edredom.
+5. **Buddemeyer Percalle** (NÃO a "Plus") — percal respira; a microfibra da Plus abafa.
+
+**Decisão recomendada:** edredom **Karsten queen + capa de percal de algodão 200–300 fios + ar a 23–24 °C**.
+Lavar a capa quinzenalmente e o edredom a cada 2–3 meses, **sempre com secagem completa** — em Salvador,
+edredom guardado úmido mofa. Upgrade futuro: trocar só a capa (Trousseau ou bambu), que é onde o dinheiro
+vira sensação de pele.
+
 ## Conexões
 
 - [[../index]] — índice do spoke (esta página é a exceção de escopo: vida pessoal, não ABRIU)
@@ -86,6 +133,8 @@ política de troca antes, pelo risco de pilling) · **Trousseau** se o toque for
 - br.my-best.com/10746 e /21914, guiarecomenda.com/melhor-edredom, thesuite.co (Rest Evercool vs Buffy Breeze)
 - karsten.com.br, trousseau.com.br, hoomy.com.br, trussardi.com.br, iwannasleep.com.br
 - reclameaqui.com.br (perfis Hoomy e Buddemeyer), funcionamesmo.com.br (resenha IWS)
+- weatherspark.com/y/31054 e climatempo.com.br/climatologia/56 (clima de Salvador), dicasdabahia.com.br
+- mamaegansa.com.br e a7lavanderia.com.br (pluma de ganso x umidade/mofo)
 
 ## Log de atualizações
 
@@ -95,3 +144,7 @@ política de troca antes, pelo risco de pilling) · **Trousseau** se o toque for
 - 2026-09-06 — adicionadas as 6 marcas brasileiras de enxoval (Hoomy, IWS, Karsten, Buddemeyer,
   Trussardi, Trousseau) com ficha, prós/contras e notas de reputação. Conclusão nova: essas marcas
   competem em tecido, não em enchimento → separar a compra (enchimento de pluma + capa de fio nobre).
+- 2026-09-06 — **contexto de Salvador/BA incorporado; correção de rota.** Pluma de ganso desaconselhada
+  (mofo por umidade de 68–90% o ano todo), assim como fleece/sherpa e gramatura alta. Limitação do PCM
+  (saturação) registrada. Novo topo: Karsten 118 g/m². Reenquadramento: o edredom compete com o
+  ar-condicionado, não com o clima.

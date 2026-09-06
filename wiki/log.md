@@ -80,3 +80,16 @@ de loft, quase todas vendem edredom de gramatura baixa (Karsten 118 g/m², Truss
 valor na capa; **nenhuma tem termorregulação ativa**. Hoomy é a exceção em gramatura (390 g/m²) mas com
 relatos recorrentes de pilling em ~2 meses. Conclusão registrada: separar a compra — enchimento de pluma
 de ganso (Plumasul) + capa de fio nobre (Karsten/Trousseau/Hoomy).
+
+## 2026-09-06 [tipo: decisao]
+
+Fonte: clima de Salvador/BA (Weather Spark, Climatempo, Dicas da Bahia) + pluma de ganso x umidade
+(Mamãe Gansa, A7 Lavanderia). Categoria: **vida pessoal / casa**.
+Página atualizada: [[vida-pessoal/casa-cama-e-conforto]].
+**Correção de rota (add-only, supera a recomendação anterior):** moradia é Salvador — 22–31 °C o ano todo,
+umidade 68–90%, sem estação seca. **Pluma de ganso sai** (absorve umidade → mofo, odor, apodrece e perde
+isolamento; sem como arejar). Saem também fleece/sherpa (Altenburg) e gramatura alta (Hoomy 390 g/m²).
+Registrada a limitação técnica do PCM: capacidade finita → satura em quarto quente e vira edredom comum.
+Reenquadramento: **o edredom compete com o ar-condicionado, não com o clima**. Novo topo: Karsten
+(algodão egípcio 300 fios, 118 g/m², antipilling) + capa de percal + ar a 23–24 °C. Ácaro (umidade >70%)
+torna "lavável a 60 °C" critério de saúde — daí a Emma em 2º.
