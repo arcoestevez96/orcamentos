@@ -58,3 +58,14 @@ Auditoria confirmou: zero SQL injection, zero RCE, headers fortes. Achados novos
   dashboard. Testes: 90 verdes (2 falham só por scrypt ausente no host).
 Pendente p/ fechar venda: (a) STRIPE_WEBHOOK_SECRET no Render, (b) deploy manual (autodeploy off),
 (c) teste de notificação ponta-a-ponta com um canal real.
+
+## 2026-09-06 [tipo: ingest]
+
+Fonte: pesquisa web (Sleep Foundation, Forbes Vetted, Outlast, Slumber Cloud, Plumasul, Emma,
+Altenburg, Buddemeyer, my-best, Guia Recomenda). Categoria: **vida pessoal / casa**.
+Página criada: [[vida-pessoal/casa-cama-e-conforto]] — não havia nenhuma cobrindo o tema.
+Sintetizado: termorregulação **ativa** (PCM Outlast/37.5) vs. **passiva** (bambu, fibra oca — é o que
+quase todo "termorregulador" brasileiro entrega); trade-off fofura x cooling (Rest Evercool+/Buffy
+Breeze são finos, não fofos); capa de edredom como regulador térmico barato. Top 5 com prós/contras.
+Nota: página é conteúdo de HUB (`~/projects/arco-wiki/`), que não existia no ambiente — mora no spoke
+com ponteiro para mover depois.
