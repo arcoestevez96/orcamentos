@@ -58,3 +58,13 @@ Auditoria confirmou: zero SQL injection, zero RCE, headers fortes. Achados novos
   dashboard. Testes: 90 verdes (2 falham só por scrypt ausente no host).
 Pendente p/ fechar venda: (a) STRIPE_WEBHOOK_SECRET no Render, (b) deploy manual (autodeploy off),
 (c) teste de notificação ponta-a-ponta com um canal real.
+
+## 2026-09-15 [tipo: ingest]
+
+Recibo Nº 231 (R$ 350,00, 12/09/2026) reemitido: prestador **Washington da Silva**
+(CNPJ 60.280.175/0001-21) e tomador corrigido de "Gabriel Ribeiro" para **Horto Sapucaia
+Empreendimento Imobiliário Ltda** (CNPJ 43.246.850/0001-87, IM 00.826.980/001-04, entrega no
+Apto 504 decorado — Horto Florestal, Salvador). Adicionado bloco "Dados para pagamento - PIX"
+(chave = CPF do Washington, favorecido nomeado; a chave não é registrada na wiki).
+Página criada: [[operacao/recibos-prestadores]] — é conteúdo de HUB, gravado no spoke porque
+`~/projects/arco-wiki/` não existe neste ambiente remoto.
