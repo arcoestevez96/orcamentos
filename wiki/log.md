@@ -58,3 +58,10 @@ Auditoria confirmou: zero SQL injection, zero RCE, headers fortes. Achados novos
   dashboard. Testes: 90 verdes (2 falham só por scrypt ausente no host).
 Pendente p/ fechar venda: (a) STRIPE_WEBHOOK_SECRET no Render, (b) deploy manual (autodeploy off),
 (c) teste de notificação ponta-a-ponta com um canal real.
+
+## 2026-11-18 [tipo: ingestao]
+
+Convenção do Condomínio Ilha dos Pássaros (Praia do Forte) resumida em
+[[obras/condominio-ilha-dos-passaros]]: parâmetros por lote (OM 160 m², piscina 60 m², recuos,
+43 lotes com fundo de 15 m), fluxo Comitê → prefeitura, taxas e multas. Hub não estava
+acessível nesta sessão; página fica no spoke até migrar. Anexos I e II não vieram no PDF.
