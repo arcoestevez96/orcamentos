@@ -107,6 +107,15 @@ Comitê antes de projetar nesses lotes.
   com a logomarca na entrada que não pode ser retirada.
 - Foro: Comarca de Mata de São João. Casos omissos seguem a Lei 4.591/64.
 
+## Clientes / obras no condomínio
+
+- **Eduardo Filipac — Lote 179, Rua da Coruja.** Parâmetros: 800 m², OM 160 m², piscina 60 m²,
+  recuos frente 5 m, laterais 1,5 m, **fundo 2 m**. Os lotes 175–178, ao lado, têm fundo de
+  15 m, então é preciso confirmar o recuo com o Comitê. Em 2026-11-18 foi gerado o briefing
+  técnico em PDF (3 páginas) para o arquiteto do projeto técnico, com parâmetros, infra, fluxo
+  de aprovação, regras de obra e lista de documentos a pedir (Anexos I e II, planta de locação,
+  licenças, Termo de Acordo, pontos de ligação).
+
 ## O que ainda falta
 
 A convenção cita o **ANEXO I** (parâmetros de construção e ambientais) e o **ANEXO II**
@@ -127,3 +136,4 @@ estão aqui, como gabarito, materiais, muro e cobertura. Vale pedir os dois à a
 ## Log de atualizações
 
 - 2026-11-18 — criação a partir da convenção (resumo, parâmetros por lote, fluxo de aprovação).
+- 2026-11-18 — lote 179 (Eduardo Filipac) e briefing técnico em PDF para o arquiteto.

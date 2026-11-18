@@ -65,3 +65,4 @@ Convenção do Condomínio Ilha dos Pássaros (Praia do Forte) resumida em
 [[obras/condominio-ilha-dos-passaros]]: parâmetros por lote (OM 160 m², piscina 60 m², recuos,
 43 lotes com fundo de 15 m), fluxo Comitê → prefeitura, taxas e multas. Hub não estava
 acessível nesta sessão; página fica no spoke até migrar. Anexos I e II não vieram no PDF.
+- 2026-11-18 — Briefing técnico em PDF do lote 179 (Eduardo Filipac) para o arquiteto; registrado em [[obras/condominio-ilha-dos-passaros]].
